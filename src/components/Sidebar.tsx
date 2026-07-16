@@ -1,0 +1,39 @@
+import { Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, Settings, ShieldCheck, Trash2, Users } from "lucide-react";
+import type { Page } from "../types";
+
+const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> = [
+  { page: "dashboard", label: "Visão geral", icon: LayoutDashboard },
+  { page: "queue", label: "Minha fila", icon: ListTodo },
+  { page: "processes", label: "Processos", icon: Gavel },
+  { page: "reports", label: "Relatórios", icon: FileText },
+  { page: "quality", label: "Qualidade dos dados", icon: ShieldCheck },
+  { page: "import", label: "Importar e backup", icon: FileSpreadsheet },
+  { page: "trash", label: "Lixeira", icon: Trash2 },
+  { page: "team", label: "Equipe", icon: Users },
+  { page: "settings", label: "Configurações", icon: Settings },
+  { page: "about", label: "Sobre", icon: Info },
+];
+
+interface Props {
+  page: Page;
+  onChange: (page: Page) => void;
+}
+
+export function Sidebar({ page, onChange }: Props) {
+  return (
+    <aside className="sidebar">
+      <div className="brand">
+        <img className="brand-mark" src="/praxis-icon.png" alt="" />
+        <div><strong>Práxis</strong><span>Controle de Processos</span></div>
+      </div>
+      <nav>
+        {items.map(({ page: itemPage, label, icon: Icon }) => (
+          <button className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}>
+            <Icon size={19} />{label}
+          </button>
+        ))}
+      </nav>
+      <div className="sidebar-foot"><Database size={16} /><span>Banco online protegido</span></div>
+    </aside>
+  );
+}
