@@ -85,7 +85,7 @@ export function Dashboard({ records, currentUserId, currentUserName }: Props) {
         <StatCard label="Na caixa" value={pending.length} helper="processos pendentes" icon={Files} />
         <StatCard label="Prazos próximos" value={urgent.length} helper="até 3 dias" icon={AlertTriangle} tone="red" />
         <StatCard label="Enviados" value={sent.length} helper="registros concluídos" icon={CheckCircle2} tone="green" />
-        <StatCard label="Tempo médio" value={formatElapsedTime(averageHours)} helper="em dias corridos acima de 8 h" icon={Clock3} tone="amber" />
+        <StatCard label="Tempo médio" value={formatElapsedTime(averageHours)} helper="jornada estimada de 6 h por dia útil" icon={Clock3} tone="amber" />
       </div>
       <section className={`backup-health ${backup?.hasValidBackup && backup.lastAttemptOk !== false ? "valid" : "warning"}`}>
         <div className="backup-health-icon">{backup?.hasValidBackup && backup.lastAttemptOk !== false ? <ShieldCheck size={24} /> : <ShieldAlert size={24} />}</div>

@@ -1,4 +1,5 @@
 import { requireSupabase } from "./supabase";
+import { usefulElapsedHours } from "./date";
 import type { BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
 
 let workspacePromise: Promise<string> | null = null;
@@ -29,7 +30,7 @@ function caseRow(row: Record<string, any>): Record<string, any> {
   return Array.isArray(value) ? (value[0] ?? {}) : (value ?? {});
 }
 
-function movementFromRow(row: Record<string, any>): ProcessMovement {
+function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<string> = new Set()): ProcessMovement {
   const item = caseRow(row);
   const assigneeValue = row.assignee;
   const assignee = Array.isArray(assigneeValue) ? (assigneeValue[0] ?? {}) : (assigneeValue ?? {});
@@ -41,7 +42,7 @@ function movementFromRow(row: Record<string, any>): ProcessMovement {
     draftStatus: row.draft_status ?? "Pendente", workflowStatus: row.workflow_status,
     sentAt: row.sent_at, actionType: row.action_type ?? "", notes: row.notes ?? "",
     priority: row.priority ?? "Normal", documentPath: row.document_path ?? "",
-    elapsedHours: row.elapsed_hours === null ? null : Number(row.elapsed_hours),
+    elapsedHours: usefulElapsedHours(row.received_at, row.sent_at, excludedDates),
     sociallyRelevant: Boolean(item.socially_relevant), extremelyComplex: Boolean(item.extremely_complex),
     socialTheme: item.social_theme ?? "", relevanceReason: item.relevance_reason ?? "",
     fundamentalRight: item.fundamental_right ?? "", affectedGroup: item.affected_group ?? "",
@@ -68,9 +69,21 @@ const SELECT_MOVEMENT = "*, cases(*), assignee:profiles!movements_assigned_to_fk
 
 export async function listMovements(): Promise<ProcessMovement[]> {
   const { client, workspaceId } = await context();
-  const { data, error } = await client.from("movements").select(SELECT_MOVEMENT).eq("workspace_id", workspaceId).is("deleted_at", null).order("received_at", { ascending: false });
-  fail(error);
-  return (data ?? []).map((row) => movementFromRow(row));
+  const { data: exclusions, error: exclusionsError } = await client.from("calendar_exclusions").select("date").eq("workspace_id", workspaceId);
+  fail(exclusionsError);
+  const excludedDates = new Set((exclusions ?? []).map((item) => item.date));
+  const rows: Record<string, any>[] = [];
+  const pageSize = 1000;
+  for (let start = 0; ; start += pageSize) {
+    const { data, error } = await client.from("movements").select(SELECT_MOVEMENT)
+      .eq("workspace_id", workspaceId).is("deleted_at", null)
+      .order("received_at", { ascending: false }).order("id", { ascending: false })
+      .range(start, start + pageSize - 1);
+    fail(error);
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < pageSize) break;
+  }
+  return rows.map((row) => movementFromRow(row, excludedDates));
 }
 
 function filterRecords(records: ProcessMovement[], filters: MovementQuery, currentUserId = ""): ProcessMovement[] {
@@ -141,7 +154,7 @@ export async function updateMovementStatus(movementId: number, status: WorkflowS
   const { data: old, error: oldError } = await client.from("movements").select("workflow_status, action_type, received_at").eq("workspace_id", workspaceId).eq("id", movementId).single();
   fail(oldError);
   const sentAt = status === "Enviado" ? new Date().toISOString() : null;
-  const elapsed = sentAt ? Math.max(0, (Date.now() - new Date(`${old!.received_at}T00:00:00`).getTime()) / 3_600_000) : null;
+  const elapsed = usefulElapsedHours(old!.received_at, sentAt);
   const values: Record<string, any> = { workflow_status: status, updated_by: user.id, updated_at: new Date().toISOString(), row_version: undefined };
   delete values.row_version;
   if (actionType !== undefined) values.action_type = actionType;
@@ -212,7 +225,7 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
   const { error: caseError } = await client.from("cases").update({ ...caseValues(data), updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("id", old.caseId);
   fail(caseError);
   const sentAt = data.sentAt || null;
-  const elapsedHours = sentAt ? Math.max(0, (new Date(sentAt).getTime() - new Date(old.receivedAt).getTime()) / 3_600_000) : null;
+  const elapsedHours = usefulElapsedHours(old.receivedAt, sentAt);
   const movementValues: Record<string, unknown> = { deadline_at: data.deadlineAt, sent_at: sentAt, elapsed_hours: elapsedHours, action_type: data.actionType, notes: data.notes, priority: data.priority, document_path: data.documentPath, updated_by: user.id, updated_at: new Date().toISOString() };
   if (data.assignedTo && data.assignedTo !== old.assignedTo) movementValues.assigned_to = data.assignedTo;
   const { error } = await client.from("movements").update(movementValues).eq("workspace_id", workspaceId).eq("id", movementId);
@@ -307,17 +320,15 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
     const duplicateKey = `${caseId}|${record.receivedAt}|${record.workflowStatus}`;
     if (existingMovements.has(duplicateKey)) { ignoredRows += 1; continue; }
     existingMovements.add(duplicateKey);
-    const received = new Date(record.receivedAt).getTime();
     const automaticSentAt = record.workflowStatus === "Enviado" && !record.sentAt
       ? new Date(new Date(record.receivedAt).getTime() + 10 * 86_400_000).toISOString()
       : record.sentAt;
-    const sent = automaticSentAt ? new Date(automaticSentAt).getTime() : null;
     movementRows.push({
       workspace_id: workspaceId, case_id: caseId, received_at: record.receivedAt,
       deadline_at: record.deadlineAt, draft_status: record.draftStatus,
       workflow_status: record.workflowStatus, sent_at: automaticSentAt,
       action_type: record.actionType, notes: record.notes, priority: record.priority,
-      document_path: record.documentPath, elapsed_hours: sent ? Math.max(0, (sent - received) / 3_600_000) : null,
+      document_path: record.documentPath, elapsed_hours: usefulElapsedHours(record.receivedAt, automaticSentAt),
       assigned_to: record.assignedTo || user.id,
       created_by: user.id, updated_by: user.id,
     });
@@ -428,12 +439,16 @@ export async function updateTeamMember(userId: string, role: PraxisRole, active:
 }
 
 export async function teamComparativeReport(startDate: string, endDate: string): Promise<TeamComparison[]> {
-  const { client } = await context();
-  const { data, error } = await client.rpc("team_comparative_report", { period_start: startDate, period_end: endDate });
-  fail(error);
-  return (data ?? []).map((item: Record<string, any>) => ({
-    userId: item.user_id, fullName: item.full_name, email: item.email, role: item.role,
-    received: Number(item.received_count), sent: Number(item.sent_count), pending: Number(item.pending_count),
-    onTime: Number(item.on_time_count), averageHours: item.average_hours == null ? null : Number(item.average_hours),
-  }));
+  const [members, records] = await Promise.all([listTeamMembers(), listMovements()]);
+  return members.filter((member) => member.active).map((member) => {
+    const items = records.filter((record) => record.assignedTo === member.userId && record.receivedAt.slice(0, 10) >= startDate && record.receivedAt.slice(0, 10) <= endDate);
+    const sent = items.filter((record) => record.workflowStatus === "Enviado");
+    const elapsed = sent.map((record) => record.elapsedHours).filter((value): value is number => value !== null);
+    return {
+      userId: member.userId, fullName: member.fullName, email: member.email, role: member.role,
+      received: items.length, sent: sent.length, pending: items.length - sent.length,
+      onTime: sent.filter((record) => record.sentAt && new Date(record.sentAt).getTime() <= new Date(record.deadlineAt).getTime()).length,
+      averageHours: elapsed.length ? elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length : null,
+    };
+  });
 }
