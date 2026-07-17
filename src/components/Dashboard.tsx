@@ -8,12 +8,12 @@ import { StatCard } from "./StatCard";
 import { getBackupStatus } from "../api";
 import type { BackupStatus } from "../types";
 
-interface Props { records: ProcessMovement[]; currentUserId: string; currentUserName: string; }
+interface Props { records: ProcessMovement[]; currentUserId: string; currentUserName: string; isAdmin: boolean; }
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const PIE_COLORS = ["#1e6091", "#2a9d8f", "#e9a23b", "#d64933", "#6c63a8", "#718096"];
 
-export function Dashboard({ records, currentUserId, currentUserName }: Props) {
+export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: Props) {
   const todayLabel = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
   const [selectedAssignee, setSelectedAssignee] = useState(currentUserId);
   const scopedRecords = useMemo(() => selectedAssignee === "Todos" ? records : records.filter((record) => record.assignedTo === selectedAssignee), [records, selectedAssignee]);
@@ -25,7 +25,7 @@ export function Dashboard({ records, currentUserId, currentUserName }: Props) {
     if (!years.length) { setSelectedYear("Todos"); return; }
     if (!selectedYear || (selectedYear !== "Todos" && !years.includes(Number(selectedYear)))) setSelectedYear(String(years[0]));
   }, [years, selectedYear]);
-  useEffect(() => { getBackupStatus().then(setBackup).catch(() => setBackup(null)); }, []);
+  useEffect(() => { if (isAdmin) getBackupStatus().then(setBackup).catch(() => setBackup(null)); }, [isAdmin]);
   const filteredRecords = selectedYear && selectedYear !== "Todos"
     ? scopedRecords.filter((record) => new Date(record.receivedAt).getFullYear() === Number(selectedYear))
     : scopedRecords;
@@ -87,11 +87,11 @@ export function Dashboard({ records, currentUserId, currentUserName }: Props) {
         <StatCard label="Enviados" value={sent.length} helper="registros concluídos" icon={CheckCircle2} tone="green" />
         <StatCard label="Tempo médio" value={formatElapsedTime(averageHours)} helper="jornada estimada de 6 h por dia útil" icon={Clock3} tone="amber" />
       </div>
-      <section className={`backup-health ${backup?.hasValidBackup && backup.lastAttemptOk !== false ? "valid" : "warning"}`}>
+      {isAdmin && <section className={`backup-health ${backup?.hasValidBackup && backup.lastAttemptOk !== false ? "valid" : "warning"}`}>
         <div className="backup-health-icon">{backup?.hasValidBackup && backup.lastAttemptOk !== false ? <ShieldCheck size={24} /> : <ShieldAlert size={24} />}</div>
         <div className="grow"><span>Último backup válido</span><strong>{backup?.lastValidAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(backup.lastValidAt)) : "Ainda não registrado"}</strong><small title={backup?.path ?? ""}>{backup?.message ?? "Consultando a integridade dos backups..."}{backup?.backupType ? ` · ${backup.backupType}` : ""}</small></div>
         <b>{backup?.hasValidBackup && backup.lastAttemptOk !== false ? "VERIFICADO" : "ATENÇÃO"}</b>
-      </section>
+      </section>}
       <div className="dashboard-grid">
         <section className="panel chart-panel wide">
           <div className="panel-title"><div><h2>Movimentação mensal{selectedYear && selectedYear !== "Todos" ? ` — ${selectedYear}` : ""}</h2><p>Entradas e envios no período selecionado</p></div><Send size={19} /></div>

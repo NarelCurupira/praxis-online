@@ -13,7 +13,7 @@ interface Props {
   refreshKey?: number;
   currentUserId?: string;
   members?: TeamMember[];
-  isAdmin?: boolean;
+  canWrite?: boolean;
   onStatus: (id: number, status: WorkflowStatus, actionType?: string) => Promise<void>;
   onAction: (id: number, actionType: string) => Promise<void>;
   onAssignment: (id: number, assignedTo: string) => Promise<void>;
@@ -70,7 +70,7 @@ function excelRows(records: ProcessMovement[]) {
   }));
 }
 
-export function ProcessTable({ records, queueOnly = false, serverPagination = false, refreshKey = 0, currentUserId = "", members = [], isAdmin = false, onStatus, onAction, onAssignment, onDelete, onEdit, onExport }: Props) {
+export function ProcessTable({ records, queueOnly = false, serverPagination = false, refreshKey = 0, currentUserId = "", members = [], canWrite = true, onStatus, onAction, onAssignment, onDelete, onEdit, onExport }: Props) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Todos");
   const [year, setYear] = useState("Todos");
@@ -144,6 +144,7 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
   }
 
   async function changeStatus(record: ProcessMovement, next: WorkflowStatus) {
+    if (next === "Enviado" && record.assignedTo && record.assignedTo !== currentUserId && !confirm(`Este processo está atribuído a ${record.assignedName || "outro usuário"}. Confirma o envio mesmo assim?`)) return;
     if (next === "Enviado" && !record.actionType.trim()) { setPendingSend(record); setSendAction(""); return; }
     setMessage("");
     try { await onStatus(record.movementId, next); }
@@ -180,12 +181,12 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
         return <tr key={record.movementId}>
           <td><strong>{record.judicialNumber}</strong><span>{record.mpNumber}</span></td>
           <td className="subject-cell"><strong>{record.className}</strong><span title={record.subject}>{record.subject}</span>{(record.sociallyRelevant || record.extremelyComplex) && <div className="classification-badges">{record.sociallyRelevant && <b className="classification-badge social">Relevância social</b>}{record.extremelyComplex && <b className="classification-badge complex">Alta complexidade</b>}</div>}</td>
-          <td>{!queueOnly && isAdmin ? <select className="assignee-select" aria-label={`Responsável por ${record.judicialNumber}`} value={record.assignedTo} onChange={(event) => changeAssignment(record, event.target.value)}><option value="" disabled>Não atribuído</option>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select> : <strong>{record.assignedName || "Não atribuído"}</strong>}</td>
+          <td>{!queueOnly && canWrite ? <select className="assignee-select" aria-label={`Responsável por ${record.judicialNumber}`} value={record.assignedTo} onChange={(event) => changeAssignment(record, event.target.value)}><option value="" disabled>Não atribuído</option>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select> : <strong>{record.assignedName || "Não atribuído"}</strong>}</td>
           <td>{formatDate(record.receivedAt)}</td>
           <td><strong className={remaining <= 3 && record.workflowStatus !== "Enviado" ? "danger-text" : ""}>{formatDate(record.deadlineAt)}</strong><span>{record.workflowStatus === "Enviado" ? "concluído" : `${remaining} dias`}</span></td>
-          <td><select className="action-select" aria-label="Providência" value={record.actionType} onChange={(event) => changeAction(record, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>
-          <td><select className={`status-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(e) => changeStatus(record, e.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>
-          <td><div className="row-actions"><button className="icon-button" title="Editar registro" onClick={() => onEdit(record)}><Pencil size={16} /></button><button className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira? Ele poderá ser recuperado por 30 dias.") && onDelete(record.movementId)}><Trash2 size={17} /></button></div></td>
+          <td><select disabled={!canWrite} className="action-select" aria-label="Providência" value={record.actionType} onChange={(event) => changeAction(record, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>
+          <td><select disabled={!canWrite} className={`status-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(e) => changeStatus(record, e.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>
+          <td>{canWrite && <div className="row-actions"><button className="icon-button" title="Editar registro" onClick={() => onEdit(record)}><Pencil size={16} /></button><button className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira? Ele poderá ser recuperado por 30 dias.") && onDelete(record.movementId)}><Trash2 size={17} /></button></div>}</td>
         </tr>;
       })}</tbody>
     </table></div>

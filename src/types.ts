@@ -170,7 +170,7 @@ export interface BackupStatus {
   message: string;
 }
 
-export type Page = "dashboard" | "queue" | "processes" | "reports" | "quality" | "import" | "trash" | "team" | "settings" | "about";
+export type Page = "dashboard" | "queue" | "processes" | "efficiency" | "reports" | "quality" | "import" | "trash" | "team" | "settings" | "audit" | "about";
 
 export type PraxisRole = "admin" | "procurador" | "assessor" | "consulta";
 
@@ -192,4 +192,13 @@ export interface TeamComparison {
   pending: number;
   onTime: number;
   averageHours: number | null;
+}
+
+export interface AdminAuditEntry {
+  id: number;
+  createdAt: string;
+  eventType: string;
+  actorName: string;
+  actorEmail: string;
+  details: Record<string, unknown>;
 }

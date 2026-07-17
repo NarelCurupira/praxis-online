@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { Cloud, LogOut, Menu, Plus } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
-import { clearDatabase, createBackup, createMovement, databaseInfo, deleteCalendarExclusion, deleteClassSetting, deleteMovement, getStorageSettings, importRecords, listBackups, listCalendarExclusions, listClassSettings, listMovements, listTeamMembers, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, saveStorageDirectory, updateMovement, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
+import { clearDatabase, createBackup, createMovement, databaseInfo, deleteCalendarExclusion, deleteClassSetting, deleteMovement, getStorageSettings, importRecords, listCalendarExclusions, listClassSettings, listMovements, listTeamMembers, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, saveStorageDirectory, updateMovement, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { AboutPage } from "./components/AboutPage";
+import { AdminAuditPage } from "./components/AdminAuditPage";
 import { Dashboard } from "./components/Dashboard";
+import { EfficiencyPage } from "./components/EfficiencyPage";
 import { DataQualityPage } from "./components/DataQualityPage";
 import { EditProcessModal } from "./components/EditProcessModal";
 import { ImportPage } from "./components/ImportPage";
@@ -17,11 +19,15 @@ import { Sidebar } from "./components/Sidebar";
 import { TrashPage } from "./components/TrashPage";
 import { TeamPage } from "./components/TeamPage";
 import { AuthPage } from "./components/AuthPage";
+import { MfaGate } from "./components/MfaGate";
 import { SetupPage } from "./components/SetupPage";
 import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, ImportRecord, Page, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamMember, WorkflowStatus } from "./types";
+import { useIdleSession } from "./useIdleSession";
+import { acceptTeamInvite } from "./api";
 
 function PraxisApp({ session }: { session: Session }) {
+  useIdleSession();
   const [page, setPage] = useState<Page>("dashboard");
   const [records, setRecords] = useState<ProcessMovement[]>([]);
   const [modal, setModal] = useState(false);
@@ -64,52 +70,70 @@ function PraxisApp({ session }: { session: Session }) {
   async function saveStorage(kind: StorageDirectoryKind, path: string | null) { await saveStorageDirectory(kind, path); await reloadStorage(); }
   const currentMember = members.find((member) => member.userId === session.user.id);
   const isAdmin = currentMember?.role === "admin";
+  const canWrite = Boolean(currentMember && currentMember.role !== "consulta");
 
   if (loading) return <div className="splash-screen" role="status" aria-live="polite">
     <img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" />
     <div className="splash-progress"><span className="splash-spinner" /><span>Preparando seus processos...</span></div>
   </div>;
 
-  return <div className={sidebarOpen ? "app sidebar-visible" : "app"}>
-    <Sidebar page={page} onChange={(next) => { setPage(next); setSidebarOpen(false); }} />
+  const shell = <div className={sidebarOpen ? "app sidebar-visible" : "app"}>
+    <Sidebar page={page} isAdmin={Boolean(isAdmin)} onChange={(next) => { setPage(next); setSidebarOpen(false); }} />
     <main>
-      <header className="topbar"><button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button><div className="online-indicator"><Cloud size={17} /><span>Online</span></div><div className="topbar-spacer" /><span className="current-user" title={session.user.email}>{session.user.user_metadata.full_name || session.user.email}</span><button className="icon-button" onClick={() => supabase?.auth.signOut()} title="Sair"><LogOut size={18} /></button><button className="button primary" onClick={() => setModal(true)}><Plus size={18} />Novo processo</button></header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button><div className="online-indicator"><Cloud size={17} /><span>Online</span></div><div className="topbar-spacer" /><span className="current-user" title={session.user.email}>{session.user.user_metadata.full_name || session.user.email}</span><button className="icon-button" onClick={() => supabase?.auth.signOut()} title="Sair"><LogOut size={18} /></button>{canWrite && <button className="button primary" onClick={() => setModal(true)}><Plus size={18} />Novo processo</button>}</header>
       <div className="content">
         <>
-          {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || session.user.user_metadata.full_name || session.user.email || "Meus dados"} />}
-          {page === "queue" && <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Trabalho em andamento</p><h1>Minha fila</h1><p>Processos atribuídos a você e ainda não enviados.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} isAdmin={isAdmin} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
-          {page === "processes" && <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Histórico completo</p><h1>Processos</h1><p>Pesquise todas as entradas e retornos.</p></div></div><ProcessTable records={records} members={members} isAdmin={isAdmin} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+          {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || session.user.user_metadata.full_name || session.user.email || "Meus dados"} isAdmin={Boolean(isAdmin)} />}
+          {page === "queue" && <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Trabalho em andamento</p><h1>Minha fila</h1><p>Processos atribuídos a você e ainda não enviados.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} canWrite={canWrite} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+          {page === "processes" && <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Histórico completo</p><h1>Processos</h1><p>Pesquise todas as entradas e retornos.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} canWrite={canWrite} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+          {page === "efficiency" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} isAdmin={isAdmin} />}
           {page === "reports" && <ReportsPage records={records} onSave={savePdf} isAdmin={isAdmin} />}
-          {page === "quality" && <DataQualityPage records={records} members={members} isAdmin={isAdmin} onEdit={setEditing} onBulkAssignment={bulkAssignment} />}
-          {page === "import" && <ImportPage onImport={runImport} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onListBackups={listBackups} onRestoreBackup={restoreBackup} />}
+          {page === "quality" && isAdmin && <DataQualityPage records={records} members={members} isAdmin={isAdmin} onEdit={setEditing} onBulkAssignment={bulkAssignment} />}
+          {page === "import" && <ImportPage isAdmin={Boolean(isAdmin)} onImport={runImport} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
           {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} />}
-          {page === "team" && <TeamPage />}
-          {page === "settings" && <SettingsPage info={info} classes={classes} exclusions={exclusions} storage={storage} onSaveClass={saveClass} onDeleteClass={removeClass} onSaveExclusion={saveExclusion} onDeleteExclusion={removeExclusion} onSaveStorage={saveStorage} />}
+          {page === "team" && isAdmin && <TeamPage />}
+          {page === "settings" && isAdmin && <SettingsPage info={info} classes={classes} exclusions={exclusions} storage={storage} onSaveClass={saveClass} onDeleteClass={removeClass} onSaveExclusion={saveExclusion} onDeleteExclusion={removeExclusion} onSaveStorage={saveStorage} />}
+          {page === "audit" && isAdmin && <AdminAuditPage />}
           {page === "about" && <AboutPage />}
         </>
       </div>
     </main>
-    {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={isAdmin} onClose={() => setModal(false)} onSave={save} />}
-    {editing && <EditProcessModal record={editing} classes={classes} members={members} isAdmin={isAdmin} onClose={() => setEditing(null)} onSave={edit} />}
+    {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={canWrite} onClose={() => setModal(false)} onSave={save} />}
+    {editing && canWrite && <EditProcessModal record={editing} classes={classes} members={members} isAdmin={canWrite} onClose={() => setEditing(null)} onSave={edit} />}
   </div>;
+  return isAdmin ? <MfaGate>{shell}</MfaGate> : shell;
 }
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
+  const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
     if (!supabase) { setChecking(false); return; }
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
+    supabase.auth.getSession().then(({ data }) => {
+      const pending = localStorage.getItem("praxis-pending-invite");
+      if (data.session && pending) {
+        acceptTeamInvite(pending).then(() => { localStorage.removeItem("praxis-pending-invite"); window.location.reload(); }).catch((error) => { setSession(data.session); setInviteError(String(error)); setChecking(false); });
+        return;
+      }
+      setSession(data.session); setChecking(false);
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setChecking(false);
+      const pending = localStorage.getItem("praxis-pending-invite");
+      if (nextSession && pending) {
+        setChecking(true);
+        acceptTeamInvite(pending).then(() => { localStorage.removeItem("praxis-pending-invite"); window.location.reload(); }).catch((error) => { setInviteError(String(error)); setChecking(false); });
+        return;
+      }
+      setSession(nextSession); setChecking(false);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
   if (!supabaseConfigured) return <SetupPage />;
   if (checking) return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><div className="splash-progress"><span className="splash-spinner" /><span>Verificando acesso seguro...</span></div></div>;
+  if (inviteError) return <div className="auth-shell"><section className="auth-card"><h1>Não foi possível concluir o convite</h1><div className="auth-message">{inviteError}</div><button className="button primary auth-submit" onClick={() => { localStorage.removeItem("praxis-pending-invite"); void supabase?.auth.signOut(); setInviteError(""); }}>Voltar ao acesso</button></section></div>;
   if (!session) return <AuthPage />;
   return <PraxisApp session={session} />;
 }

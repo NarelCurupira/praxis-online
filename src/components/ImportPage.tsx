@@ -3,17 +3,17 @@ import { Archive, CheckCircle2, Download, FileSpreadsheet, RotateCcw, Trash2, Up
 import * as XLSX from "xlsx";
 import { addBusinessDays, addDays, excelDateToIso } from "../date";
 import { actionLabel } from "../labels";
-import type { BackupInfo, CalendarExclusion, ClassSetting, ImportRecord, ImportResult, Priority, WorkflowStatus } from "../types";
+import type { CalendarExclusion, ClassSetting, ImportRecord, ImportResult, Priority, WorkflowStatus } from "../types";
 
 interface Props {
+  isAdmin: boolean;
   onImport: (records: ImportRecord[], onProgress?: (message: string) => void) => Promise<ImportResult>;
   onBackup: () => Promise<string>;
   onChanged: () => Promise<void>;
   records: import("../types").ProcessMovement[];
   onExport: (bytes: number[]) => Promise<string>;
   onClear: () => Promise<string>;
-  onListBackups: () => Promise<BackupInfo[]>;
-  onRestoreBackup: (fileName: string) => Promise<string>;
+  onRestoreBackup: (file: File) => Promise<string>;
   classes: ClassSetting[];
   exclusions: CalendarExclusion[];
 }
@@ -203,7 +203,7 @@ async function parseWorkbook(file: File, classes: ClassSetting[], exclusions: Ca
   return { records, ignored, template: records.length ? "Planilha mensal do Práxis" : "Modelo não reconhecido" };
 }
 
-export function ImportPage({ onImport, onBackup, onChanged, records: currentRecords, onExport, onClear, onListBackups, onRestoreBackup, classes, exclusions }: Props) {
+export function ImportPage({ isAdmin, onImport, onBackup, onChanged, records: currentRecords, onExport, onClear, onRestoreBackup, classes, exclusions }: Props) {
   const [fileName, setFileName] = useState("");
   const [records, setRecords] = useState<ImportRecord[]>([]);
   const [ignored, setIgnored] = useState(0);
@@ -213,8 +213,7 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
   const [showClear, setShowClear] = useState(false);
   const [clearText, setClearText] = useState("");
   const [showRestore, setShowRestore] = useState(false);
-  const [backups, setBackups] = useState<BackupInfo[]>([]);
-  const [selectedBackup, setSelectedBackup] = useState("");
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restoreText, setRestoreText] = useState("");
   const [template, setTemplate] = useState("");
   const [importError, setImportError] = useState("");
@@ -245,20 +244,12 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
 
   async function backup() { setBusy(true); setMessage(await onBackup()); setBusy(false); }
 
-  async function openRestore() {
-    setBusy(true); setMessage("");
-    try {
-      const items = await onListBackups(); setBackups(items); setSelectedBackup(items[0]?.fileName ?? ""); setShowRestore(true);
-    } catch (error) { setMessage(`Não foi possível listar os backups: ${String(error)}`); }
-    finally { setBusy(false); }
-  }
-
   async function restore() {
-    if (!selectedBackup) return;
+    if (!restoreFile) return;
     setBusy(true); setMessage("");
     try {
-      const restored = await onRestoreBackup(selectedBackup); await onChanged();
-      setMessage(restored); setShowRestore(false); setRestoreText("");
+      const restored = await onRestoreBackup(restoreFile); await onChanged();
+      setMessage(restored); setShowRestore(false); setRestoreText(""); setRestoreFile(null);
     } catch (error) { setMessage(`Não foi possível restaurar: ${String(error)}`); setShowRestore(false); }
     finally { setBusy(false); }
   }
@@ -315,12 +306,12 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
         {importError && <div className="import-error">{importError}</div>}
         {result && <div className="success-box"><CheckCircle2 size={20} /><div><strong>Importação concluída</strong><span>{result.casesCreated} processos novos; {result.duplicatesLinked} retornos vinculados; {result.movementsCreated} movimentações.</span></div></div>}
       </section>
-      <section className="panel action-panel"><div className="large-icon green"><Archive size={28} /></div><h2>Backup e exportação</h2><p>Baixe cópias independentes dos dados armazenados no Supabase.</p><div className="button-row"><button className="button secondary" onClick={backup} disabled={busy}><Archive size={18} />Criar backup JSON</button><button className="button secondary" onClick={openRestore} disabled={busy}><RotateCcw size={18} />Restaurar backup</button><button className="button secondary" onClick={exportExcel} disabled={busy || !currentRecords.length}><Download size={18} />Exportar Excel completo</button></div>{message && <div className="info-box">{message}</div>}</section>
+      <section className="panel action-panel"><div className="large-icon green"><Archive size={28} /></div><h2>{isAdmin ? "Backup e exportação" : "Exportação"}</h2><p>{isAdmin ? "Baixe cópias independentes dos dados armazenados no Supabase." : "Exporte uma cópia em Excel para conferência e trabalho pessoal."}</p><div className="button-row">{isAdmin && <><button className="button secondary" onClick={backup} disabled={busy}><Archive size={18} />Criar backup JSON</button><label className="button secondary file-button"><RotateCcw size={18} />Restaurar backup<input type="file" accept=".json,application/json" onClick={(event) => { event.currentTarget.value = ""; }} onChange={(event) => { const file = event.currentTarget.files?.[0] ?? null; setRestoreFile(file); if (file) setShowRestore(true); }} /></label></>}<button className="button secondary" onClick={exportExcel} disabled={busy || !currentRecords.length}><Download size={18} />Exportar Excel completo</button></div>{message && <div className="info-box">{message}</div>}</section>
     </div>
-    <section className="panel danger-zone"><div><Trash2 size={22} /><span><strong>Limpar banco de dados</strong><small>Remove todos os processos e movimentações. As configurações de classes permanecem.</small></span></div><button className="button danger-button" disabled={busy || !currentRecords.length} onClick={() => setShowClear(true)}>Limpar banco</button></section>
+    {isAdmin && <section className="panel danger-zone"><div><Trash2 size={22} /><span><strong>Limpar banco de dados</strong><small>Remove todos os processos e movimentações. As configurações de classes permanecem.</small></span></div><button className="button danger-button" disabled={busy || !currentRecords.length} onClick={() => setShowClear(true)}>Limpar banco</button></section>}
     <section className="panel"><div className="panel-title"><div><h2>Como a importação funciona</h2><p>O modelo é identificado automaticamente e a planilha original permanece intacta.</p></div></div><ol className="steps-list"><li>No modelo mensal, são lidas as abas no formato AAAA-MM.</li><li>No modelo SAJ, são usados Entrada, Nº MP, Nº Judiciário, Assunto Principal, Observação da fila e Classe TJ.</li><li>Como o SAJ não fornece prazo nesse relatório, ele é calculado pelas regras e exclusões atuais das Configurações.</li><li>Números judiciais repetidos são vinculados como retornos, e importações idênticas são ignoradas.</li></ol></section>
     {showClear && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowClear(false)}><div className="confirm-dialog"><div className="modal-head"><div><p className="eyebrow danger-text">Ação irreversível</p><h2>Limpar todo o banco?</h2></div><button className="icon-button" onClick={() => setShowClear(false)}><X size={20} /></button></div><div className="confirm-body"><p>Todos os processos e movimentações serão removidos. Antes da limpeza, o programa criará automaticamente um backup de segurança.</p><label>Digite <strong>LIMPAR</strong> para confirmar<input autoFocus value={clearText} onChange={(event) => setClearText(event.target.value)} /></label></div><div className="modal-actions"><button className="button secondary" onClick={() => setShowClear(false)}>Cancelar</button><button className="button danger-button" disabled={busy || clearText !== "LIMPAR"} onClick={clearAll}>{busy ? "Limpando..." : "Limpar definitivamente"}</button></div></div></div>}
-    {showRestore && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowRestore(false)}><div className="restore-dialog"><div className="modal-head"><div><p className="eyebrow">Recuperação de dados</p><h2>Restaurar um backup</h2></div><button className="icon-button" onClick={() => setShowRestore(false)}><X size={20} /></button></div><div className="restore-body"><div className="restore-warning"><ShieldRestoreIcon /><p>A restauração substituirá os dados atuais pelos dados do backup. Antes disso, o Práxis criará automaticamente uma cópia de segurança do banco atual.</p></div><div className="backup-list">{backups.map((item) => <label className={selectedBackup === item.fileName ? "backup-option selected" : "backup-option"} key={item.fileName}><input type="radio" name="backup" value={item.fileName} checked={selectedBackup === item.fileName} onChange={() => setSelectedBackup(item.fileName)} /><span><strong>{item.fileName}</strong><small>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(item.modifiedAt))} · {(item.sizeBytes / 1024 / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} MB</small></span></label>)}{!backups.length && <div className="empty-state">Nenhum backup encontrado.</div>}</div>{backups.length > 0 && <label className="restore-confirm">Digite <strong>RESTAURAR</strong> para confirmar<input value={restoreText} onChange={(event) => setRestoreText(event.target.value)} /></label>}</div><div className="modal-actions"><button className="button secondary" onClick={() => setShowRestore(false)}>Cancelar</button><button className="button danger-button" disabled={busy || !selectedBackup || restoreText !== "RESTAURAR"} onClick={restore}>{busy ? "Restaurando..." : "Restaurar backup"}</button></div></div></div>}
+    {showRestore && restoreFile && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setShowRestore(false)}><div className="restore-dialog"><div className="modal-head"><div><p className="eyebrow">Recuperação de dados</p><h2>Restaurar um backup</h2></div><button className="icon-button" onClick={() => setShowRestore(false)}><X size={20} /></button></div><div className="restore-body"><div className="restore-warning"><ShieldRestoreIcon /><p>A restauração substituirá os dados atuais pelos dados de <strong>{restoreFile.name}</strong>. Antes disso, o Práxis baixará automaticamente uma cópia de segurança do banco atual.</p></div><label className="restore-confirm">Digite <strong>RESTAURAR</strong> para confirmar<input value={restoreText} onChange={(event) => setRestoreText(event.target.value)} /></label></div><div className="modal-actions"><button className="button secondary" onClick={() => setShowRestore(false)}>Cancelar</button><button className="button danger-button" disabled={busy || restoreText !== "RESTAURAR"} onClick={restore}>{busy ? "Restaurando..." : "Restaurar backup"}</button></div></div></div>}
   </div>;
 }
 

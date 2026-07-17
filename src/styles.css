@@ -181,3 +181,20 @@ td strong, td span { display: block; } td strong { color: #334e68; font-size: 11
 .team-row select { min-width: 160px; }
 .role-badge { padding: 6px 10px; border-radius: 999px; color: #315c75; background: #eaf3f7; font-size: .78rem; font-weight: 800; }
 @media (max-width: 760px) { .team-row { align-items: flex-start; flex-wrap: wrap; } .team-row .grow { flex: 1; } .team-row select { width: calc(100% - 55px); margin-left: 55px; } }
+.efficiency-grid { align-items: stretch; }
+.efficiency-grid .chart-panel { min-height: 340px; }
+.metric-note { padding: 13px 16px; border: 1px solid #d8e5ee; border-radius: 10px; background: #f2f7fa; color: #627d98; font-size: 11px; line-height: 1.55; }
+.metric-note strong { color: #334e68; }
+.audit-panel { padding: 0; overflow: hidden; }
+.audit-panel > .panel-title { padding: 18px; margin: 0; border-bottom: 1px solid #e7edf1; }
+.audit-list { display: grid; }
+.audit-row { display: grid; grid-template-columns: minmax(180px,.7fr) minmax(180px,.7fr) minmax(260px,1.5fr); gap: 16px; align-items: center; padding: 13px 18px; border-bottom: 1px solid #edf1f4; }
+.audit-row strong, .audit-row small { display: block; }
+.audit-row strong { color: #334e68; font-size: 11px; }
+.audit-row small { margin-top: 3px; color: #829ab1; font-size: 9px; }
+.audit-row code { overflow: hidden; color: #627d98; font-size: 9px; white-space: nowrap; text-overflow: ellipsis; }
+.mfa-card { text-align: center; }
+.mfa-icon { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 18px; background: #e5f5f0; color: #27856e; }
+.mfa-qr { display: block; width: min(220px, 80%); margin: 0 auto 20px; border: 10px solid white; border-radius: 12px; box-shadow: 0 8px 24px #102a4320; }
+.turnstile-box { display: flex; justify-content: center; min-height: 65px; }
+@media (max-width: 760px) { .audit-row { grid-template-columns: 1fr; } }

@@ -1,6 +1,6 @@
 import { requireSupabase } from "./supabase";
 import { usefulElapsedHours } from "./date";
-import type { BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
+import type { AdminAuditEntry, BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
 
 let workspacePromise: Promise<string> | null = null;
 
@@ -247,6 +247,7 @@ export async function clearDatabase(): Promise<string> {
   await createBackup();
   const { error } = await client.from("cases").delete().eq("workspace_id", workspaceId).gte("id", 0);
   fail(error);
+  await recordAdminAudit("database_cleared", { source: "interface" });
   return "Todos os processos do espaço de trabalho foram removidos.";
 }
 
@@ -353,6 +354,7 @@ function download(bytes: BlobPart, type: string, fileName: string) {
 export async function createBackup(): Promise<string> {
   const records = await listMovements();
   download(JSON.stringify({ createdAt: new Date().toISOString(), records }, null, 2), "application/json", `praxis-online-backup-${new Date().toISOString().slice(0, 10)}.json`);
+  await recordAdminAudit("backup_created", { records: records.length });
   return "Cópia JSON baixada para este computador.";
 }
 
@@ -373,7 +375,29 @@ export async function savePdf(bytes: number[]): Promise<string> {
 }
 
 export async function listBackups(): Promise<BackupInfo[]> { return []; }
-export async function restoreBackup(_fileName: string): Promise<string> { throw new Error("A restauração online será habilitada após a validação do formato de backup."); }
+export async function restoreBackup(file: File): Promise<string> {
+  const parsed = JSON.parse(await file.text()) as { records?: ProcessMovement[] };
+  if (!Array.isArray(parsed.records) || !parsed.records.length) throw new Error("O arquivo não contém um backup válido do Práxis.");
+  const invalid = parsed.records.find((item) => !item.judicialNumber || !item.receivedAt || !item.deadlineAt);
+  if (invalid) throw new Error("O backup possui registros incompletos e não pode ser restaurado com segurança.");
+  const activeMemberIds = new Set((await listTeamMembers()).filter((item) => item.active).map((item) => item.userId));
+  const records: ImportRecord[] = parsed.records.map((item) => ({
+    assignedTo: activeMemberIds.has(item.assignedTo) ? item.assignedTo : undefined, mpNumber: item.mpNumber, judicialNumber: item.judicialNumber,
+    className: item.className, subject: item.subject, receivedAt: item.receivedAt.slice(0, 10), deadlineAt: item.deadlineAt.slice(0, 10),
+    draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt,
+    actionType: item.actionType, notes: item.notes, priority: item.priority, documentPath: item.documentPath,
+    sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,
+    relevanceReason: item.relevanceReason, fundamentalRight: item.fundamentalRight, affectedGroup: item.affectedGroup,
+    reach: item.reach, territorialScope: item.territorialScope, impactType: item.impactType, socialResult: item.socialResult,
+    complexityReason: item.complexityReason,
+  }));
+  await createBackup();
+  const { client, workspaceId } = await context();
+  const { error } = await client.from("cases").delete().eq("workspace_id", workspaceId).gte("id", 0); fail(error);
+  const result = await importRecords(records);
+  await recordAdminAudit("backup_restored", { file: file.name, records: result.movementsCreated });
+  return `Backup restaurado: ${result.movementsCreated} movimentação(ões) recuperada(s).`;
+}
 
 export async function listCalendarExclusions(): Promise<CalendarExclusion[]> {
   const { client, workspaceId } = await context();
@@ -425,11 +449,29 @@ export async function createTeamInvite(email: string, role: PraxisRole): Promise
 }
 
 export async function acceptTeamInvite(token: string): Promise<void> {
-  const { client } = await context();
+  const client = requireSupabase();
   const { error } = await client.rpc("accept_workspace_invite", { invite_token: token });
   fail(error);
   workspacePromise = null;
   window.location.reload();
+}
+
+export async function validateTeamInvite(email: string, token: string): Promise<boolean> {
+  const client = requireSupabase();
+  const { data, error } = await client.rpc("validate_workspace_invite", { invited_email: email, invite_token: token });
+  fail(error); return Boolean(data);
+}
+
+export async function recordAdminAudit(eventType: string, details: Record<string, unknown> = {}): Promise<void> {
+  const { client } = await context();
+  const { error } = await client.rpc("record_admin_audit", { audit_event: eventType, audit_details: details });
+  fail(error);
+}
+
+export async function listAdminAudit(): Promise<AdminAuditEntry[]> {
+  const { client } = await context();
+  const { data, error } = await client.rpc("list_admin_audit"); fail(error);
+  return (data ?? []).map((item: Record<string, any>) => ({ id: Number(item.id), createdAt: item.created_at, eventType: item.event_type, actorName: item.actor_name ?? "", actorEmail: item.actor_email ?? "", details: item.details ?? {} }));
 }
 
 export async function updateTeamMember(userId: string, role: PraxisRole, active: boolean): Promise<void> {
