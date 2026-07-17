@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cloud, LogOut, Menu, Plus } from "lucide-react";
+import { Cloud, LogOut, Menu, Moon, Plus, Sun } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { clearDatabase, createBackup, createMovement, databaseInfo, deleteCalendarExclusion, deleteClassSetting, deleteMovement, getStorageSettings, importRecords, listCalendarExclusions, listClassSettings, listMovements, listTeamMembers, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, saveStorageDirectory, updateMovement, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { AboutPage } from "./components/AboutPage";
@@ -26,7 +26,7 @@ import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, ImportRec
 import { useIdleSession } from "./useIdleSession";
 import { acceptTeamInvite } from "./api";
 
-function PraxisApp({ session }: { session: Session }) {
+function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme: "light" | "dark"; onToggleTheme: () => void }) {
   useIdleSession();
   const [page, setPage] = useState<Page>("dashboard");
   const [records, setRecords] = useState<ProcessMovement[]>([]);
@@ -80,7 +80,7 @@ function PraxisApp({ session }: { session: Session }) {
   const shell = <div className={sidebarOpen ? "app sidebar-visible" : "app"}>
     <Sidebar page={page} isAdmin={Boolean(isAdmin)} onChange={(next) => { setPage(next); setSidebarOpen(false); }} />
     <main>
-      <header className="topbar"><button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button><div className="online-indicator"><Cloud size={17} /><span>Online</span></div><div className="topbar-spacer" /><span className="current-user" title={session.user.email}>{session.user.user_metadata.full_name || session.user.email}</span><button className="icon-button" onClick={() => supabase?.auth.signOut()} title="Sair"><LogOut size={18} /></button>{canWrite && <button className="button primary" onClick={() => setModal(true)}><Plus size={18} />Novo processo</button>}</header>
+      <header className="topbar"><button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button><div className="online-indicator"><Cloud size={17} /><span>Online</span></div><div className="topbar-spacer" /><span className="current-user" title={session.user.email}>{session.user.user_metadata.full_name || session.user.email}</span><button className="icon-button theme-toggle" onClick={onToggleTheme} title={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"} aria-label={theme === "dark" ? "Usar tema claro" : "Usar tema escuro"}>{theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}</button><button className="icon-button" onClick={() => supabase?.auth.signOut()} title="Sair"><LogOut size={18} /></button>{canWrite && <button className="button primary" onClick={() => setModal(true)}><Plus size={18} />Novo processo</button>}</header>
       <div className="content">
         <>
           {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || session.user.user_metadata.full_name || session.user.email || "Meus dados"} isAdmin={Boolean(isAdmin)} />}
@@ -105,9 +105,19 @@ function PraxisApp({ session }: { session: Session }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("praxis-theme");
+    if (saved === "light" || saved === "dark") return saved;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [inviteError, setInviteError] = useState("");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem("praxis-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!supabase) { setChecking(false); return; }
@@ -135,5 +145,5 @@ export default function App() {
   if (checking) return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><div className="splash-progress"><span className="splash-spinner" /><span>Verificando acesso seguro...</span></div></div>;
   if (inviteError) return <div className="auth-shell"><section className="auth-card"><h1>Não foi possível concluir o convite</h1><div className="auth-message">{inviteError}</div><button className="button primary auth-submit" onClick={() => { localStorage.removeItem("praxis-pending-invite"); void supabase?.auth.signOut(); setInviteError(""); }}>Voltar ao acesso</button></section></div>;
   if (!session) return <AuthPage />;
-  return <PraxisApp session={session} />;
+  return <PraxisApp session={session} theme={theme} onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")} />;
 }

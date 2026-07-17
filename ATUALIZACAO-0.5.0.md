@@ -1,6 +1,6 @@
-# Práxis Online 0.5.0 — instalação da atualização
+# Práxis Online 0.5.1 — instalação da atualização
 
-Esta versão acrescenta painel de eficiência, distribuição colaborativa, convite obrigatório, MFA administrativo, sessão inativa de quatro horas, auditoria e restauração de backup.
+Esta versão acrescenta painel de eficiência, distribuição colaborativa, convite obrigatório, MFA administrativo, sessão inativa de quatro horas, auditoria, restauração de backup e tema noturno. O QR Code do autenticador também foi ampliado para facilitar a leitura.
 
 ## Ordem recomendada
 
