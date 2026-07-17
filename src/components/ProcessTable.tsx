@@ -92,7 +92,7 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
   const filtered = useMemo(() => serverPagination ? [] : localFiltered(records, filters, currentUserId), [serverPagination, records, filters, currentUserId]);
   const localYears = useMemo(() => [...new Set(records.map((record) => new Date(record.receivedAt).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a), [records]);
   const years = serverPagination ? serverYears : localYears;
-  const displayed = serverPagination ? pagedRecords : filtered;
+  const displayed = serverPagination ? pagedRecords : filtered.slice((page - 1) * pageSize, page * pageSize);
   const resultTotal = serverPagination ? total : filtered.length;
   const totalPages = Math.max(1, Math.ceil(resultTotal / pageSize));
 
@@ -112,6 +112,10 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
     }, query ? 250 : 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [serverPagination, filters, refreshKey, page, pageSize, query]);
+
+  useEffect(() => {
+    if (!serverPagination && page > totalPages) setPage(totalPages);
+  }, [serverPagination, page, totalPages]);
 
   function resetPage() { setPage(1); }
 
@@ -153,8 +157,8 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
     catch (error) { setMessage(String(error)); }
   }
 
-  const start = resultTotal ? (serverPagination ? (page - 1) * pageSize + 1 : 1) : 0;
-  const end = serverPagination ? Math.min(page * pageSize, resultTotal) : resultTotal;
+  const start = resultTotal ? (page - 1) * pageSize + 1 : 0;
+  const end = Math.min(page * pageSize, resultTotal);
 
   return <section className="panel table-panel">
     <div className="table-toolbar">
@@ -187,7 +191,7 @@ export function ProcessTable({ records, queueOnly = false, serverPagination = fa
     </table></div>
     {loading && <div className="table-loading">Carregando processos...</div>}
     {!loading && !displayed.length && <div className="empty-state">Nenhum processo encontrado.</div>}
-    <div className="table-footer pagination-footer"><span>{start}–{end} de {resultTotal} registro(s)</span>{serverPagination && <><label>Por página<select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}><option>30</option><option>50</option><option>100</option></select></label><div className="pagination-buttons"><button className="icon-button" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={17} /></button><b>Página {page} de {totalPages}</b><button className="icon-button" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={17} /></button></div></>}</div>
+    <div className="table-footer pagination-footer"><span>{start}–{end} de {resultTotal} registro(s)</span><label>Por página<select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}><option>30</option><option>50</option><option>100</option></select></label><div className="pagination-buttons"><button className="icon-button" disabled={page <= 1 || loading} onClick={() => setPage((value) => value - 1)}><ChevronLeft size={17} /></button><b>Página {page} de {totalPages}</b><button className="icon-button" disabled={page >= totalPages || loading} onClick={() => setPage((value) => value + 1)}><ChevronRight size={17} /></button></div></div>
     {pendingSend && <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPendingSend(null)}><div className="confirm-dialog"><div className="modal-head"><div><p className="eyebrow">Conclusão do fluxo</p><h2>Definir providência</h2></div><button className="icon-button" onClick={() => setPendingSend(null)}><X size={20} /></button></div><div className="confirm-body"><p>Para marcar o processo como enviado, informe a providência efetivamente adotada.</p><label>Providência<select autoFocus value={sendAction} onChange={(event) => setSendAction(event.target.value)}><option value="">Selecione...</option>{actions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></label></div><div className="modal-actions"><button className="button secondary" onClick={() => setPendingSend(null)}>Cancelar</button><button className="button primary" disabled={!sendAction} onClick={confirmSend}>Definir e marcar como enviado</button></div></div></div>}
   </section>;
 }
