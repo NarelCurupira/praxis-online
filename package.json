@@ -1,12 +1,11 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.4.1",
+  "version": "0.4.2",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
     "build": "vite build",
-    "postbuild": "node scripts/copy-hosting-config.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 1420",
     "check": "tsc --noEmit"
   },

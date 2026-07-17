@@ -55,7 +55,7 @@ function PraxisApp({ session }: { session: Session }) {
   async function assignment(id: number, assignedTo: string) { await updateMovementAssignment(id, assignedTo); await reload(); }
   async function bulkAssignment(ids: number[], assignedTo: string) { await updateMovementAssignments(ids, assignedTo); await reload(); }
   async function remove(id: number) { await deleteMovement(id); await reload(); }
-  async function runImport(items: ImportRecord[]) { return importRecords(items); }
+  async function runImport(items: ImportRecord[], onProgress?: (message: string) => void) { return importRecords(items, onProgress); }
   async function saveClass(setting: ClassSetting) { await saveClassSetting(setting); await reloadClasses(); }
   async function removeClass(name: string) { await deleteClassSetting(name); await reloadClasses(); }
   async function saveExclusion(data: CalendarExclusionRange) { await saveCalendarExclusion(data); await reloadExclusions(); }

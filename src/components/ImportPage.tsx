@@ -6,7 +6,7 @@ import { actionLabel } from "../labels";
 import type { BackupInfo, CalendarExclusion, ClassSetting, ImportRecord, ImportResult, Priority, WorkflowStatus } from "../types";
 
 interface Props {
-  onImport: (records: ImportRecord[]) => Promise<ImportResult>;
+  onImport: (records: ImportRecord[], onProgress?: (message: string) => void) => Promise<ImportResult>;
   onBackup: () => Promise<string>;
   onChanged: () => Promise<void>;
   records: import("../types").ProcessMovement[];
@@ -218,10 +218,11 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
   const [restoreText, setRestoreText] = useState("");
   const [template, setTemplate] = useState("");
   const [importError, setImportError] = useState("");
+  const [importProgress, setImportProgress] = useState("");
 
   async function chooseFile(file?: File) {
     if (!file) return;
-    setBusy(true); setResult(null); setMessage(""); setImportError(""); setRecords([]);
+    setBusy(true); setResult(null); setMessage(""); setImportError(""); setImportProgress(""); setRecords([]);
     try {
       const parsed = await parseWorkbook(file, classes, exclusions);
       setFileName(file.name); setRecords(parsed.records); setIgnored(parsed.ignored); setTemplate(parsed.template);
@@ -232,14 +233,14 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
 
   async function confirmImport() {
     if (!records.length) return;
-    setBusy(true); setImportError("");
+    setBusy(true); setImportError(""); setImportProgress("Preparando importação...");
     try {
-      const imported = await onImport(records);
+      const imported = await onImport(records, setImportProgress);
       imported.ignoredRows += ignored;
       setResult(imported); setRecords([]); await onChanged();
     } catch (error) {
       setImportError(`A planilha foi lida, mas não foi possível gravar os dados: ${String(error)}`);
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setImportProgress(""); }
   }
 
   async function backup() { setBusy(true); setMessage(await onBackup()); setBusy(false); }
@@ -309,8 +310,8 @@ export function ImportPage({ onImport, onBackup, onChanged, records: currentReco
     <div className="page-heading"><div><p className="eyebrow">Segurança dos dados</p><h1>Importar e backup</h1><p>Traga o histórico do Excel e preserve cópias externas do banco online.</p></div></div>
     <div className="two-column">
       <section className="panel action-panel"><div className="large-icon blue"><FileSpreadsheet size={28} /></div><h2>Importar planilha</h2><p>Compatível com a planilha mensal do Práxis e com o relatório “Fluxo de Trabalho” exportado pelo SAJ.</p><label className="button primary file-button"><Upload size={18} />Selecionar arquivo<input type="file" accept=".xlsx,.xls" onClick={(event) => { event.currentTarget.value = ""; }} onChange={(event) => { const file = event.currentTarget.files?.[0]; void chooseFile(file); }} /></label>
-        {busy && <p className="muted">Processando...</p>}
-        {records.length > 0 && <div className="import-preview"><strong>{fileName}</strong><span className="template-detected">Modelo identificado: {template}</span><span>{records.length} registros reconhecidos</span><span>{ignored} linhas ignoradas</span>{template.startsWith("SAJ") && <small>Os prazos foram calculados conforme a classe e o calendário atual das Configurações.</small>}<button className="button primary" onClick={confirmImport}>Confirmar importação</button></div>}
+        {busy && <p className="muted">{importProgress || "Processando..."}</p>}
+        {records.length > 0 && <div className="import-preview"><strong>{fileName}</strong><span className="template-detected">Modelo identificado: {template}</span><span>{records.length} registros reconhecidos</span><span>{ignored} linhas ignoradas</span>{template.startsWith("SAJ") && <small>Os prazos foram calculados conforme a classe e o calendário atual das Configurações.</small>}<button className="button primary" disabled={busy} onClick={confirmImport}>{busy ? "Importando..." : "Confirmar importação"}</button></div>}
         {importError && <div className="import-error">{importError}</div>}
         {result && <div className="success-box"><CheckCircle2 size={20} /><div><strong>Importação concluída</strong><span>{result.casesCreated} processos novos; {result.duplicatesLinked} retornos vinculados; {result.movementsCreated} movimentações.</span></div></div>}
       </section>

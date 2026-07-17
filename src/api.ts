@@ -256,21 +256,64 @@ export async function deleteClassSetting(name: string): Promise<void> {
   fail(error);
 }
 
-export async function importRecords(records: ImportRecord[]): Promise<ImportResult> {
+function batches<T>(items: T[], size = 100): T[][] {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
+  return result;
+}
+
+export async function importRecords(records: ImportRecord[], onProgress?: (message: string) => void): Promise<ImportResult> {
   const { client, user, workspaceId } = await context();
-  let casesCreated = 0, movementsCreated = 0, duplicatesLinked = 0, ignoredRows = 0;
+  let casesCreated = 0, movementsCreated = 0, ignoredRows = 0;
+  const uniqueCases = new Map<string, ImportRecord>();
+  for (const record of records) if (!uniqueCases.has(record.judicialNumber)) uniqueCases.set(record.judicialNumber, record);
+
+  onProgress?.("Verificando processos já cadastrados...");
+  const caseIds = new Map<string, number>();
+  for (const numbers of batches([...uniqueCases.keys()])) {
+    const { data, error } = await client.from("cases").select("id, judicial_number")
+      .eq("workspace_id", workspaceId).in("judicial_number", numbers);
+    fail(error);
+    for (const item of data ?? []) caseIds.set(item.judicial_number, Number(item.id));
+  }
+
+  const missingCases = [...uniqueCases.entries()].filter(([number]) => !caseIds.has(number));
+  for (const group of batches(missingCases)) {
+    onProgress?.(`Cadastrando processos (${Math.min(casesCreated + group.length, missingCases.length)} de ${missingCases.length})...`);
+    const rows = group.map(([, record]) => ({
+      workspace_id: workspaceId, mp_number: record.mpNumber, judicial_number: record.judicialNumber,
+      ...caseValues(record), created_by: user.id, updated_by: user.id,
+    }));
+    const { data, error } = await client.from("cases").insert(rows).select("id, judicial_number");
+    fail(error);
+    for (const item of data ?? []) caseIds.set(item.judicial_number, Number(item.id));
+    casesCreated += data?.length ?? 0;
+  }
+
+  const relevantCaseIds = [...new Set(caseIds.values())];
+  const existingMovements = new Set<string>();
+  onProgress?.("Verificando movimentações já importadas...");
+  for (const ids of batches(relevantCaseIds)) {
+    const { data, error } = await client.from("movements").select("case_id, received_at, workflow_status")
+      .eq("workspace_id", workspaceId).in("case_id", ids).limit(10000);
+    fail(error);
+    for (const item of data ?? []) existingMovements.add(`${item.case_id}|${item.received_at}|${item.workflow_status}`);
+  }
+
+  const movementRows: Record<string, unknown>[] = [];
   for (const record of records) {
-    const found = await findOrCreateCase(record);
-    if (found.created) casesCreated += 1; else duplicatesLinked += 1;
-    const { data: duplicate } = await client.from("movements").select("id").eq("workspace_id", workspaceId).eq("case_id", found.id).eq("received_at", record.receivedAt).eq("workflow_status", record.workflowStatus).maybeSingle();
-    if (duplicate) { ignoredRows += 1; continue; }
+    const caseId = caseIds.get(record.judicialNumber);
+    if (!caseId) throw new Error(`Não foi possível localizar o processo ${record.judicialNumber}.`);
+    const duplicateKey = `${caseId}|${record.receivedAt}|${record.workflowStatus}`;
+    if (existingMovements.has(duplicateKey)) { ignoredRows += 1; continue; }
+    existingMovements.add(duplicateKey);
     const received = new Date(record.receivedAt).getTime();
     const automaticSentAt = record.workflowStatus === "Enviado" && !record.sentAt
       ? new Date(new Date(record.receivedAt).getTime() + 10 * 86_400_000).toISOString()
       : record.sentAt;
     const sent = automaticSentAt ? new Date(automaticSentAt).getTime() : null;
-    const { error } = await client.from("movements").insert({
-      workspace_id: workspaceId, case_id: found.id, received_at: record.receivedAt,
+    movementRows.push({
+      workspace_id: workspaceId, case_id: caseId, received_at: record.receivedAt,
       deadline_at: record.deadlineAt, draft_status: record.draftStatus,
       workflow_status: record.workflowStatus, sent_at: automaticSentAt,
       action_type: record.actionType, notes: record.notes, priority: record.priority,
@@ -278,9 +321,16 @@ export async function importRecords(records: ImportRecord[]): Promise<ImportResu
       assigned_to: record.assignedTo || user.id,
       created_by: user.id, updated_by: user.id,
     });
-    if (error) throw new Error(error.message);
-    movementsCreated += 1;
   }
+
+  for (const group of batches(movementRows)) {
+    const { error } = await client.from("movements").insert(group);
+    fail(error);
+    movementsCreated += group.length;
+    onProgress?.(`Gravando movimentações (${movementsCreated} de ${movementRows.length})...`);
+  }
+  const duplicatesLinked = records.length - casesCreated;
+  onProgress?.("Importação concluída.");
   return { casesCreated, movementsCreated, duplicatesLinked, ignoredRows };
 }
 
