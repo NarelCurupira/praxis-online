@@ -264,7 +264,7 @@ export function ReportsPage({ records, onSave, isAdmin }: Props) {
         doc.setPage(page); const height = doc.internal.pageSize.getHeight();
         doc.setDrawColor(217, 226, 236); doc.line(14, height - 13, pageWidth - 14, height - 13);
         doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(98, 125, 152);
-        doc.text(disclaimer, 14, height - 8); doc.text(`Práxis Online 0.5.1  |  Página ${page} de ${pages}`, pageWidth - 14, height - 8, { align: "right" });
+        doc.text(disclaimer, 14, height - 8); doc.text(`Práxis Online 0.5.2  |  Página ${page} de ${pages}`, pageWidth - 14, height - 8, { align: "right" });
       }
       setMessage(await onSave(Array.from(new Uint8Array(doc.output("arraybuffer")))));
     } catch (error) {

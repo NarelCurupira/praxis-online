@@ -14,6 +14,7 @@ import { ImportPage } from "./components/ImportPage";
 import { ProcessModal } from "./components/ProcessModal";
 import { ProcessTable } from "./components/ProcessTable";
 import { ReportsPage } from "./components/ReportsPage";
+import { ResetPasswordPage } from "./components/ResetPasswordPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { Sidebar } from "./components/Sidebar";
 import { TrashPage } from "./components/TrashPage";
@@ -112,6 +113,7 @@ export default function App() {
   });
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(() => window.location.hash.includes("type=recovery"));
   const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
@@ -129,7 +131,10 @@ export default function App() {
       }
       setSession(data.session); setChecking(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecovery(true); setSession(nextSession); setChecking(false); return;
+      }
       const pending = localStorage.getItem("praxis-pending-invite");
       if (nextSession && pending) {
         setChecking(true);
@@ -143,6 +148,7 @@ export default function App() {
 
   if (!supabaseConfigured) return <SetupPage />;
   if (checking) return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><div className="splash-progress"><span className="splash-spinner" /><span>Verificando acesso seguro...</span></div></div>;
+  if (passwordRecovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setPasswordRecovery(false); }} />;
   if (inviteError) return <div className="auth-shell"><section className="auth-card"><h1>Não foi possível concluir o convite</h1><div className="auth-message">{inviteError}</div><button className="button primary auth-submit" onClick={() => { localStorage.removeItem("praxis-pending-invite"); void supabase?.auth.signOut(); setInviteError(""); }}>Voltar ao acesso</button></section></div>;
   if (!session) return <AuthPage />;
   return <PraxisApp session={session} theme={theme} onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")} />;

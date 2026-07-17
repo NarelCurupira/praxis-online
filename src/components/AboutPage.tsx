@@ -5,7 +5,7 @@ export function AboutPage() {
     <div className="page-heading"><div><p className="eyebrow">Informações do aplicativo</p><h1>Sobre</h1><p>Autoria, finalidade e canais de contribuição.</p></div></div>
     <section className="panel about-card">
       <img src="/praxis-logo.png" alt="Práxis - Controle de Processos" />
-      <div className="about-version">Práxis Online · Versão 0.5.1</div>
+      <div className="about-version">Práxis Online · Versão 0.5.2</div>
       <div className="about-copy">
         <p><strong>© 2026 Marcos Antonio Santos Machado. Todos os direitos reservados.</strong></p>
         <p>Idealização e criação: Marcos Antonio Santos Machado.</p>

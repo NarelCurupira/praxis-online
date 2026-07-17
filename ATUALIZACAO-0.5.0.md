@@ -1,6 +1,10 @@
-# Práxis Online 0.5.1 — instalação da atualização
+# Práxis Online 0.5.2 — instalação da atualização
 
-Esta versão acrescenta painel de eficiência, distribuição colaborativa, convite obrigatório, MFA administrativo, sessão inativa de quatro horas, auditoria, restauração de backup e tema noturno. O QR Code do autenticador também foi ampliado para facilitar a leitura.
+Esta versão acrescenta painel de eficiência, distribuição colaborativa, convite obrigatório, MFA administrativo, recuperação de senha por e-mail, sessão inativa de quatro horas, auditoria, restauração de backup e tema noturno. O QR Code do autenticador também foi ampliado para facilitar a leitura.
+
+## Recuperação de senha
+
+No Supabase, abra **Authentication → URL Configuration** e confirme que o endereço público do Práxis está cadastrado em **Redirect URLs**. Exemplo: `https://seu-endereco.workers.dev/**`. Sem essa autorização, o e-mail pode ser enviado, mas o link não conseguirá retornar corretamente ao sistema.
 
 ## Ordem recomendada
 
