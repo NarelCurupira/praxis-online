@@ -1,94 +1,38 @@
--- Práxis Online 0.6.0 — gestão de usuários, MFA configurável e correção da auditoria
--- Execute uma única vez após 006-seguranca-auditoria-eficiencia.sql.
+# Atualização do Práxis Online 0.6.0
 
-alter table public.workspace_members
-  add column if not exists mfa_required boolean not null default false;
+Esta versão corrige a consulta da Auditoria, amplia o gráfico de distribuição e acrescenta administração segura dos usuários.
 
-update public.workspace_members set mfa_required = true where role = 'admin';
+## 1. Atualizar o banco
 
--- O e-mail de auth.users é varchar; o cast explícito corrige
--- "structure of query does not match function result type".
-create or replace function public.list_admin_audit()
-returns table(id bigint, created_at timestamptz, event_type text, actor_name text, actor_email text, details jsonb)
-language plpgsql stable security definer set search_path = public
-as $$
-declare target_workspace uuid;
-begin
-  select current_workspace_id into target_workspace from public.profiles where profiles.id = auth.uid();
-  if target_workspace is null or not public.is_workspace_admin(target_workspace) then raise exception 'Acesso administrativo e segundo fator necessários'; end if;
-  return query
-    select a.id::bigint, a.created_at::timestamptz, a.event_type::text,
-      coalesce(p.full_name, '')::text, coalesce(u.email, '')::text, a.details::jsonb
-    from public.admin_audit_log a
-    left join public.profiles p on p.id = a.actor_id
-    left join auth.users u on u.id = a.actor_id
-    where a.workspace_id = target_workspace
-    order by a.created_at desc limit 500;
-end $$;
+No Supabase, abra **SQL Editor**, cole todo o conteúdo de `supabase/007-usuarios-distribuicao-auditoria.sql` e clique em **Run**. O resultado esperado é `Success. No rows returned`.
 
-drop function if exists public.list_current_workspace_members();
-create function public.list_current_workspace_members()
-returns table(user_id uuid, full_name text, email text, role public.praxis_role, active boolean, mfa_required boolean)
-language sql stable security definer set search_path = public
-as $$
-  select wm.user_id, p.full_name::text, coalesce(u.email, '')::text,
-    wm.role, wm.active, (wm.mfa_required or wm.role = 'admin')
-  from public.profiles me
-  join public.workspace_members wm on wm.workspace_id = me.current_workspace_id
-  join public.profiles p on p.id = wm.user_id
-  join auth.users u on u.id = wm.user_id
-  where me.id = auth.uid() and public.is_workspace_member(me.current_workspace_id)
-  order by case wm.role when 'admin' then 0 when 'procurador' then 1 when 'assessor' then 2 else 3 end, p.full_name;
-$$;
+## 2. Implantar a função protegida de e-mail
 
-grant execute on function public.list_current_workspace_members() to authenticated;
+A alteração de e-mail usa uma Edge Function para que a chave administrativa nunca seja exposta no navegador.
 
-create or replace function public.update_workspace_member_profile(
-  target_user uuid,
-  new_full_name text,
-  new_role public.praxis_role,
-  new_active boolean,
-  new_mfa_required boolean
-)
-returns void language plpgsql security definer set search_path = public
-as $$
-declare
-  target_workspace uuid;
-  previous_role public.praxis_role;
-begin
-  select current_workspace_id into target_workspace from public.profiles where id = auth.uid();
-  if target_workspace is null or not public.is_workspace_admin(target_workspace) then
-    raise exception 'Acesso administrativo e segundo fator necessários';
-  end if;
-  select role into previous_role from public.workspace_members
-    where workspace_id = target_workspace and user_id = target_user;
-  if previous_role is null then raise exception 'Usuário não pertence a este espaço'; end if;
-  if trim(coalesce(new_full_name, '')) = '' then raise exception 'Informe o nome do usuário'; end if;
-  if previous_role = 'admin' and (new_role <> 'admin' or not new_active) then
-    raise exception 'O acesso do administrador não pode ser removido por esta tela';
-  end if;
-  if previous_role <> 'admin' and new_role = 'admin' then
-    raise exception 'A promoção para administrador exige procedimento específico';
-  end if;
-  if target_user = auth.uid() and (new_role <> previous_role or not new_active) then
-    raise exception 'O administrador não pode alterar o próprio perfil de acesso';
-  end if;
+No Supabase, abra **Edge Functions**, crie a função `admin-manage-user`, copie o conteúdo de `supabase/functions/admin-manage-user/index.ts` e implante-a com a verificação de JWT ativada.
 
-  update public.profiles set full_name = trim(new_full_name) where id = target_user;
-  update public.workspace_members
-    set role = new_role,
-        active = new_active,
-        mfa_required = case when new_role = 'admin' then true else new_mfa_required end
-    where workspace_id = target_workspace and user_id = target_user;
+Alternativa pelo terminal, dentro desta pasta:
 
-  insert into public.admin_audit_log(workspace_id, actor_id, event_type, details)
-  values (target_workspace, auth.uid(), 'member_profile_updated', jsonb_build_object(
-    'target_user', target_user, 'role', new_role, 'active', new_active,
-    'mfa_required', case when new_role = 'admin' then true else new_mfa_required end
-  ));
-end $$;
+```text
+npx supabase login
+npx supabase link --project-ref yoqsxkakoeqjbiaewdim
+npx supabase functions deploy admin-manage-user
+```
 
-grant execute on function public.update_workspace_member_profile(uuid, text, public.praxis_role, boolean, boolean) to authenticated;
+As variáveis `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` já existem automaticamente nas Edge Functions hospedadas do projeto. Não coloque a `service_role` no GitHub ou no Cloudflare.
 
-comment on column public.workspace_members.mfa_required is 'Exige AAL2 no Práxis; administradores são sempre obrigatórios.';
+## 3. Publicar o site
 
+Envie esta versão para a ramificação `main` do GitHub e acompanhe a implantação automática no Cloudflare.
+
+## 4. Testes rápidos
+
+1. Entre como administrador usando o segundo fator.
+2. Abra **Auditoria**: a lista deve carregar sem o erro de estrutura.
+3. Abra **Eficiência**: o gráfico deve mostrar duas cores, “Distribuídos nos últimos 30 dias” e “Pendentes atuais”.
+4. Abra **Equipe**, edite um usuário e altere somente o nome e a exigência de 2FA.
+5. Depois teste a troca de e-mail e confirme que o novo endereço aparece na lista.
+6. Clique em **Redefinir senha** e confirme o recebimento do e-mail pelo usuário.
+
+Observação: “distribuídos nos últimos 30 dias” usa a data de recebimento do processo, que é o marco histórico confiável disponível no banco atual. As pendências são todos os processos ainda não enviados, independentemente da data.

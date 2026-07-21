@@ -102,7 +102,7 @@ function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme:
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={canWrite} onClose={() => setModal(false)} onSave={save} />}
     {editing && canWrite && <EditProcessModal record={editing} classes={classes} members={members} isAdmin={canWrite} onClose={() => setEditing(null)} onSave={edit} />}
   </div>;
-  return isAdmin ? <MfaGate>{shell}</MfaGate> : shell;
+  return (isAdmin || currentMember?.mfaRequired) ? <MfaGate>{shell}</MfaGate> : shell;
 }
 
 export default function App() {

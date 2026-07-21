@@ -13,7 +13,7 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
     if (error) { setMessage(error.message); return; }
     const verified = data.totp.find((item) => item.status === "verified");
     if (verified) { setFactorId(verified.id); return; }
-    const enrolled = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: "Práxis Administrador" });
+    const enrolled = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: "Práxis" });
     if (enrolled.error) { setMessage(enrolled.error.message); return; }
     setFactorId(enrolled.data.id); setQr(enrolled.data.totp.qr_code);
   }

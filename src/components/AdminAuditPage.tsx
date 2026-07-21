@@ -3,7 +3,7 @@ import { ClipboardList, RefreshCw } from "lucide-react";
 import { listAdminAudit } from "../api";
 import type { AdminAuditEntry } from "../types";
 
-const labels: Record<string, string> = { invite_created: "Convite criado", member_updated: "Acesso alterado", backup_created: "Backup criado", backup_restored: "Backup restaurado", database_cleared: "Banco limpo", class_setting_changed: "Regra de prazo alterada", calendar_changed: "Calendário alterado" };
+const labels: Record<string, string> = { invite_created: "Convite criado", member_updated: "Acesso alterado", member_profile_updated: "Usuário atualizado", member_email_updated: "E-mail alterado", member_password_reset_requested: "Redefinição de senha solicitada", backup_created: "Backup criado", backup_restored: "Backup restaurado", database_cleared: "Banco limpo", class_setting_changed: "Regra de prazo alterada", calendar_changed: "Calendário alterado" };
 
 export function AdminAuditPage() {
   const [items, setItems] = useState<AdminAuditEntry[]>([]); const [loading, setLoading] = useState(true); const [message, setMessage] = useState("");

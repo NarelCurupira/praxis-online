@@ -438,7 +438,7 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
   const { client } = await context();
   const { data, error } = await client.rpc("list_current_workspace_members");
   fail(error);
-  return (data ?? []).map((item: Record<string, any>) => ({ userId: item.user_id, fullName: item.full_name, email: item.email, role: item.role, active: item.active }));
+  return (data ?? []).map((item: Record<string, any>) => ({ userId: item.user_id, fullName: item.full_name, email: item.email, role: item.role, active: item.active, mfaRequired: Boolean(item.mfa_required) }));
 }
 
 export async function createTeamInvite(email: string, role: PraxisRole): Promise<string> {
@@ -478,6 +478,31 @@ export async function updateTeamMember(userId: string, role: PraxisRole, active:
   const { client } = await context();
   const { error } = await client.rpc("update_workspace_member", { target_user: userId, new_role: role, new_active: active });
   fail(error);
+}
+
+export async function updateTeamMemberProfile(member: TeamMember, values: { fullName: string; email: string; role: PraxisRole; active: boolean; mfaRequired: boolean }): Promise<void> {
+  const { client } = await context();
+  if (values.email.trim().toLocaleLowerCase("pt-BR") !== member.email.trim().toLocaleLowerCase("pt-BR")) {
+    const { error: functionError } = await client.functions.invoke("admin-manage-user", {
+      body: { action: "update_email", targetUserId: member.userId, email: values.email.trim() },
+    });
+    if (functionError) throw new Error(`Não foi possível alterar o e-mail. Verifique se a função admin-manage-user foi implantada no Supabase. ${functionError.message}`);
+  }
+  const { error } = await client.rpc("update_workspace_member_profile", {
+    target_user: member.userId,
+    new_full_name: values.fullName,
+    new_role: values.role,
+    new_active: values.active,
+    new_mfa_required: values.mfaRequired,
+  });
+  fail(error);
+}
+
+export async function sendMemberPasswordReset(member: TeamMember): Promise<void> {
+  const { client } = await context();
+  const { error } = await client.auth.resetPasswordForEmail(member.email, { redirectTo: window.location.origin });
+  fail(error);
+  await recordAdminAudit("member_password_reset_requested", { target_user: member.userId });
 }
 
 export async function teamComparativeReport(startDate: string, endDate: string): Promise<TeamComparison[]> {

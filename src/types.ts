@@ -180,6 +180,7 @@ export interface TeamMember {
   email: string;
   role: PraxisRole;
   active: boolean;
+  mfaRequired: boolean;
 }
 
 export interface TeamComparison {
