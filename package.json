@@ -1,34 +1,30 @@
--- Práxis Online 0.4.0 — qualidade de dados, responsáveis e data de envio
--- Execute após 004-responsaveis-e-relatorios.sql.
-
--- Registros já concluídos sem data recebem a estimativa solicitada.
-update public.movements
-set sent_at = received_at::timestamptz + interval '10 days',
-    elapsed_hours = 240,
-    updated_at = now()
-where workflow_status = 'Enviado'
-  and sent_at is null;
-
-create or replace function public.default_missing_sent_at()
-returns trigger language plpgsql set search_path = public
-as $$
-begin
-  if new.workflow_status = 'Enviado' and new.sent_at is null then
-    new.sent_at := new.received_at::timestamptz + interval '10 days';
-  end if;
-
-  if new.sent_at is not null then
-    new.elapsed_hours := greatest(
-      0,
-      extract(epoch from (new.sent_at - new.received_at::timestamptz)) / 3600
-    );
-  else
-    new.elapsed_hours := null;
-  end if;
-  return new;
-end $$;
-
-drop trigger if exists default_missing_sent_at_trigger on public.movements;
-create trigger default_missing_sent_at_trigger
-before insert or update of workflow_status, sent_at, received_at on public.movements
-for each row execute function public.default_missing_sent_at();
+{
+  "name": "praxis-online",
+  "private": true,
+  "version": "0.6.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1420",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 1420",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.56.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "^1.24.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "recharts": "^3.9.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^5.1.4",
+    "typescript": "5.9.3",
+    "vite": "^8.1.4"
+  }
+}
