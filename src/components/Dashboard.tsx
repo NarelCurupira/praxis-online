@@ -18,35 +18,62 @@ export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: 
   const [selectedAssignee, setSelectedAssignee] = useState(currentUserId);
   const scopedRecords = useMemo(() => selectedAssignee === "Todos" ? records : records.filter((record) => record.assignedTo === selectedAssignee), [records, selectedAssignee]);
   const years = useMemo(() => [...new Set(scopedRecords.map((record) => new Date(record.receivedAt).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a), [scopedRecords]);
-  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState("");
   const [comparisonMode, setComparisonMode] = useState<"same" | "full">("same");
   const [backup, setBackup] = useState<BackupStatus | null>(null);
   useEffect(() => {
-    if (!years.length) { setSelectedYear("Todos"); return; }
-    if (!selectedYear || (selectedYear !== "Todos" && !years.includes(Number(selectedYear)))) setSelectedYear(String(years[0]));
-  }, [years, selectedYear]);
+    if (!years.length) { setSelectedPeriod("Todos"); return; }
+    const isSpecialPeriod = selectedPeriod === "MesAtual" || selectedPeriod === "Ultimos30";
+    if (!selectedPeriod || (!isSpecialPeriod && selectedPeriod !== "Todos" && !years.includes(Number(selectedPeriod)))) setSelectedPeriod(String(years[0]));
+  }, [years, selectedPeriod]);
   useEffect(() => { if (isAdmin) getBackupStatus().then(setBackup).catch(() => setBackup(null)); }, [isAdmin]);
-  const filteredRecords = selectedYear && selectedYear !== "Todos"
-    ? scopedRecords.filter((record) => new Date(record.receivedAt).getFullYear() === Number(selectedYear))
-    : scopedRecords;
+  const filteredRecords = useMemo(() => {
+    const now = new Date();
+    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+    if (selectedPeriod === "MesAtual") {
+      return scopedRecords.filter((record) => {
+        const date = new Date(`${record.receivedAt.slice(0, 10)}T12:00:00`);
+        return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+      });
+    }
+    if (selectedPeriod === "Ultimos30") {
+      const start = new Date(now); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - 29);
+      return scopedRecords.filter((record) => {
+        const date = new Date(`${record.receivedAt.slice(0, 10)}T12:00:00`);
+        return date >= start && date <= todayEnd;
+      });
+    }
+    if (selectedPeriod && selectedPeriod !== "Todos") return scopedRecords.filter((record) => new Date(record.receivedAt).getFullYear() === Number(selectedPeriod));
+    return scopedRecords;
+  }, [scopedRecords, selectedPeriod]);
   const pending = filteredRecords.filter((record) => record.workflowStatus !== "Enviado");
   const sent = filteredRecords.filter((record) => record.workflowStatus === "Enviado");
   const urgent = pending.filter((record) => daysUntil(record.deadlineAt) <= 3);
   const elapsed = sent.map((record) => record.elapsedHours).filter((value): value is number => value !== null);
   const averageHours = elapsed.length ? elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length : 0;
 
-  const monthly = MONTHS.map((month, index) => ({
+  const monthlyAll = MONTHS.map((month, index) => ({
     month,
     recebidos: filteredRecords.filter((record) => new Date(record.receivedAt).getMonth() === index).length,
     enviados: sent.filter((record) => record.sentAt && new Date(record.sentAt).getMonth() === index).length,
   }));
+  const monthly = selectedPeriod === "MesAtual"
+    ? [monthlyAll[new Date().getMonth()]]
+    : selectedPeriod === "Ultimos30"
+      ? monthlyAll.filter((item) => item.recebidos || item.enviados)
+      : monthlyAll;
 
   const actionMap = new Map<string, number>();
   filteredRecords.forEach((record) => {
     const label = actionLabel(record.actionType);
     actionMap.set(label, (actionMap.get(label) ?? 0) + 1);
   });
-  const actions = [...actionMap.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  const actionTotal = filteredRecords.length;
+  const actions = [...actionMap.entries()].map(([name, value]) => ({
+    name, value,
+    percentage: actionTotal ? value / actionTotal * 100 : 0,
+  })).sort((a, b) => b.value - a.value);
+  const periodLabel = selectedPeriod === "MesAtual" ? "Mês atual" : selectedPeriod === "Ultimos30" ? "Últimos 30 dias" : selectedPeriod;
   const priorityRecords = [...pending].sort((a, b) => daysUntil(a.deadlineAt) - daysUntil(b.deadlineAt)).slice(0, 6);
   const latestYear = years[0];
   const latestYearDates = scopedRecords.filter((record) => new Date(record.receivedAt).getFullYear() === latestYear).map((record) => new Date(record.receivedAt)).filter((date) => !Number.isNaN(date.getTime()));
@@ -80,7 +107,7 @@ export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: 
 
   return (
     <div className="page-stack">
-      <div className="page-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedYear || "Todos"} onChange={(event) => setSelectedYear(event.target.value)}><option>Todos</option>{years.map((year) => <option key={year}>{year}</option>)}</select></label></div></div>
+      <div className="page-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedPeriod || "Todos"} onChange={(event) => setSelectedPeriod(event.target.value)}><option value="MesAtual">Mês atual</option><option value="Ultimos30">Últimos 30 dias</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}<option value="Todos">Todos</option></select></label></div></div>
       <div className="stats-grid">
         <StatCard label="Na caixa" value={pending.length} helper="processos pendentes" icon={Files} />
         <StatCard label="Prazos próximos" value={urgent.length} helper="até 3 dias" icon={AlertTriangle} tone="red" />
@@ -94,7 +121,7 @@ export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: 
       </section>}
       <div className="dashboard-grid">
         <section className="panel chart-panel wide">
-          <div className="panel-title"><div><h2>Movimentação mensal{selectedYear && selectedYear !== "Todos" ? ` — ${selectedYear}` : ""}</h2><p>Entradas e envios no período selecionado</p></div><Send size={19} /></div>
+          <div className="panel-title"><div><h2>Movimentação mensal{periodLabel && periodLabel !== "Todos" ? ` — ${periodLabel}` : ""}</h2><p>Entradas e envios no período selecionado</p></div><Send size={19} /></div>
           <div className="chart-box">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthly} barGap={4}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5eaf0" /><XAxis dataKey="month" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="recebidos" fill="#9bbbd4" radius={[4, 4, 0, 0]} /><Bar dataKey="enviados" fill="#1e6091" radius={[4, 4, 0, 0]} /></BarChart>
@@ -106,7 +133,7 @@ export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: 
           <div className="chart-box pie-box">
             {actions.length ? <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={actions} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78} paddingAngle={3}>{actions.map((_, index) => <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer> : <div className="empty-chart">Sem dados importados</div>}
           </div>
-          <div className="legend-list">{actions.map((item, index) => <span key={item.name}><i style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />{item.name}<b>{item.value}</b></span>)}</div>
+          <div className="legend-list">{actions.map((item, index) => <span key={item.name}><i style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />{item.name}<b>{item.value} · {item.percentage.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></span>)}</div>
         </section>
       </div>
       <section className="panel">

@@ -64,7 +64,8 @@ function excelRows(records: ProcessMovement[]) {
     "Alta complexidade": record.extremelyComplex ? "Sim" : "Não", "Tema social": record.socialTheme,
     "Justificativa da relevância": record.relevanceReason, "Direito fundamental": record.fundamentalRight,
     "Grupo afetado": record.affectedGroup, "Alcance": record.reach, "Abrangência territorial": record.territorialScope,
-    "Tipo de impacto": record.impactType, "Resultado social": record.socialResult,
+    "Tipo de impacto": record.impactType, "Impacto social esperado": record.socialResult,
+    "ODS da ONU": record.sdgs.join("; "),
     "Justificativa da complexidade": record.complexityReason,
     "Responsável": record.assignedName,
   }));

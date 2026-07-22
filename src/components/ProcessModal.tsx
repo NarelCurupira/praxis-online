@@ -15,7 +15,7 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
     mpNumber: "", judicialNumber: "", className: initialClass.name, subject: "", receivedAt: now,
     deadlineAt: addBusinessDays(now, initialClass.businessDays, exclusions.map((item) => item.date)).slice(0, 10), actionType: "", notes: "", priority: "Normal", documentPath: "",
     sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "", fundamentalRight: "",
-    affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", complexityReason: "",
+    affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", sdgs: [], complexityReason: "",
   });
   const [saving, setSaving] = useState(false);
 

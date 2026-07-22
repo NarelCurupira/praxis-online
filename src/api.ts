@@ -47,7 +47,7 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
     socialTheme: item.social_theme ?? "", relevanceReason: item.relevance_reason ?? "",
     fundamentalRight: item.fundamental_right ?? "", affectedGroup: item.affected_group ?? "",
     reach: item.reach ?? "", territorialScope: item.territorial_scope ?? "",
-    impactType: item.impact_type ?? "", socialResult: item.social_result ?? "",
+    impactType: item.impact_type ?? "", socialResult: item.social_result ?? "", sdgs: Array.isArray(item.sdgs) ? item.sdgs : [],
     complexityReason: item.complexity_reason ?? "", deletedAt: row.deleted_at,
     assignedTo: row.assigned_to ?? "", assignedName: assignee.full_name ?? "",
   };
@@ -60,7 +60,7 @@ function caseValues(data: ProcessFormData | ProcessEditData) {
     social_theme: data.socialTheme, relevance_reason: data.relevanceReason,
     fundamental_right: data.fundamentalRight, affected_group: data.affectedGroup,
     reach: data.reach, territorial_scope: data.territorialScope,
-    impact_type: data.impactType, social_result: data.socialResult,
+    impact_type: data.impactType, social_result: data.socialResult, sdgs: data.sdgs,
     complexity_reason: data.complexityReason,
   };
 }
@@ -236,7 +236,10 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
     ["Data de envio", old.sentAt, data.sentAt],
     ["Observações", old.notes, data.notes], ["Prioridade", old.priority, data.priority],
     ["Responsável", old.assignedTo, data.assignedTo],
-    ["Relevância social", old.sociallyRelevant, data.sociallyRelevant], ["Alta complexidade", old.extremelyComplex, data.extremelyComplex],
+    ["Relevância social", old.sociallyRelevant, data.sociallyRelevant],
+    ["Impacto social esperado", old.socialResult, data.socialResult],
+    ["ODS da ONU", old.sdgs.join("; "), data.sdgs.join("; ")],
+    ["Alta complexidade", old.extremelyComplex, data.extremelyComplex],
   ];
   const rows = changes.filter(([, before, after]) => String(before) !== String(after)).map(([field, before, after]) => ({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: field, old_value: String(before ?? ""), new_value: String(after ?? "") }));
   if (rows.length) await client.from("change_history").insert(rows);
@@ -389,6 +392,7 @@ export async function restoreBackup(file: File): Promise<string> {
     sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,
     relevanceReason: item.relevanceReason, fundamentalRight: item.fundamentalRight, affectedGroup: item.affectedGroup,
     reach: item.reach, territorialScope: item.territorialScope, impactType: item.impactType, socialResult: item.socialResult,
+    sdgs: Array.isArray(item.sdgs) ? item.sdgs : [],
     complexityReason: item.complexityReason,
   }));
   await createBackup();

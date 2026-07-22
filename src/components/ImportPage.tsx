@@ -43,7 +43,7 @@ function specialDefaults() {
   return {
     sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "",
     fundamentalRight: "", affectedGroup: "", reach: "", territorialScope: "", impactType: "",
-    socialResult: "", complexityReason: "",
+    socialResult: "", sdgs: [], complexityReason: "",
   };
 }
 
@@ -279,7 +279,8 @@ export function ImportPage({ isAdmin, onImport, onBackup, onChanged, records: cu
       "Alcance": record.reach,
       "Abrangência territorial": record.territorialScope,
       "Tipo de impacto": record.impactType,
-      "Resultado social": record.socialResult,
+      "Impacto social esperado": record.socialResult,
+      "ODS da ONU": record.sdgs.join("; "),
       "Justificativa da complexidade": record.complexityReason,
     }));
     const workbook = XLSX.utils.book_new();

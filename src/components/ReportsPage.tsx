@@ -228,11 +228,11 @@ export function ReportsPage({ records, onSave, isAdmin }: Props) {
         if (highlighted.length) {
           autoTable(doc, {
             startY: y,
-            head: [["Processo judicial", "Classificação", "Classe / assunto", "Fundamento do destaque", "Impacto / resultado"]],
+            head: [["Processo judicial", "Classificação", "Classe / assunto", "Fundamento do destaque", "Impacto esperado / ODS"]],
             body: highlighted.map((item) => {
               const labels = [item.sociallyRelevant ? "Relevância social" : "", item.extremelyComplex ? "Alta complexidade" : ""].filter(Boolean).join(" + ");
               const foundation = [item.socialTheme, item.fundamentalRight, item.affectedGroup, item.relevanceReason, item.complexityReason].filter((value) => value.trim()).join(" | ");
-              const impact = [item.reach, item.territorialScope, item.impactType, item.socialResult].filter((value) => value.trim()).join(" | ");
+              const impact = [item.reach, item.territorialScope, item.impactType, item.socialResult, item.sdgs.join(", ")].filter((value) => value.trim()).join(" | ");
               return [item.judicialNumber, labels, `${item.className}\n${safe(item.subject)}`, foundation || "—", impact || "—"];
             }),
             theme: "grid", styles: { fontSize: 7.3, cellPadding: 2.2, overflow: "linebreak" }, headStyles: { fillColor: [147, 105, 24] },

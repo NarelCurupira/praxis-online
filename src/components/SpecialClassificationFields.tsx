@@ -11,15 +11,39 @@ export interface SpecialClassificationData {
   territorialScope: string;
   impactType: string;
   socialResult: string;
+  sdgs: string[];
   complexityReason: string;
 }
 
 interface Props {
   data: SpecialClassificationData;
-  onChange: (key: keyof SpecialClassificationData, value: string | boolean) => void;
+  onChange: (key: keyof SpecialClassificationData, value: string | boolean | string[]) => void;
 }
 
+export const SDG_OPTIONS = [
+  "ODS 1 — Erradicação da pobreza",
+  "ODS 2 — Fome zero e agricultura sustentável",
+  "ODS 3 — Saúde e bem-estar",
+  "ODS 4 — Educação de qualidade",
+  "ODS 5 — Igualdade de gênero",
+  "ODS 6 — Água potável e saneamento",
+  "ODS 7 — Energia limpa e acessível",
+  "ODS 8 — Trabalho decente e crescimento econômico",
+  "ODS 9 — Indústria, inovação e infraestrutura",
+  "ODS 10 — Redução das desigualdades",
+  "ODS 11 — Cidades e comunidades sustentáveis",
+  "ODS 12 — Consumo e produção responsáveis",
+  "ODS 13 — Ação contra a mudança global do clima",
+  "ODS 14 — Vida na água",
+  "ODS 15 — Vida terrestre",
+  "ODS 16 — Paz, justiça e instituições eficazes",
+  "ODS 17 — Parcerias e meios de implementação",
+] as const;
+
 export function SpecialClassificationFields({ data, onChange }: Props) {
+  function toggleSdg(sdg: string, checked: boolean) {
+    onChange("sdgs", checked ? [...new Set([...data.sdgs, sdg])] : data.sdgs.filter((item) => item !== sdg));
+  }
   return <>
     <div className="classification-switches full">
       <label className={data.sociallyRelevant ? "classification-switch social active" : "classification-switch social"}>
@@ -40,8 +64,9 @@ export function SpecialClassificationFields({ data, onChange }: Props) {
         <label>Alcance<select value={data.reach} onChange={(event) => onChange("reach", event.target.value)}><option value="">Não informado</option><option>Individual qualificado</option><option>Coletivo</option><option>Difuso</option><option>Estrutural</option></select></label>
         <label>Abrangência territorial<select value={data.territorialScope} onChange={(event) => onChange("territorialScope", event.target.value)}><option value="">Não informada</option><option>Local</option><option>Municipal</option><option>Regional</option><option>Estadual</option><option>Nacional</option></select></label>
         <label>Tipo de impacto<select value={data.impactType} onChange={(event) => onChange("impactType", event.target.value)}><option value="">Não informado</option><option>Direto</option><option>Indireto</option><option>Reflexo</option></select></label>
+        <fieldset className="sdg-fieldset full"><legend>Objetivos de Desenvolvimento Sustentável da ONU</legend><small>Selecione um ou mais ODS relacionados ao processo, se houver.</small><div className="sdg-grid">{SDG_OPTIONS.map((sdg) => <label key={sdg} className={data.sdgs.includes(sdg) ? "sdg-option selected" : "sdg-option"}><input type="checkbox" checked={data.sdgs.includes(sdg)} onChange={(event) => toggleSdg(sdg, event.target.checked)} /><span>{sdg}</span></label>)}</div></fieldset>
         <label className="full">Justificativa da relevância<textarea rows={2} value={data.relevanceReason} onChange={(event) => onChange("relevanceReason", event.target.value)} placeholder="Por que este processo merece destaque social?" /></label>
-        <label className="full">Resultado social observado<textarea rows={2} value={data.socialResult} onChange={(event) => onChange("socialResult", event.target.value)} placeholder="Preencha quando houver resultado ou efeito social identificável." /></label>
+        <label className="full">Impacto social esperado<textarea rows={2} value={data.socialResult} onChange={(event) => onChange("socialResult", event.target.value)} placeholder="Descreva o impacto social que se espera produzir ou proteger." /></label>
       </div>
     </div>}
     {data.extremelyComplex && <div className="classification-section complex-section full">

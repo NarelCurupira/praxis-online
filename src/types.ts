@@ -28,6 +28,7 @@ export interface ProcessMovement {
   territorialScope: string;
   impactType: string;
   socialResult: string;
+  sdgs: string[];
   complexityReason: string;
   deletedAt: string | null;
   assignedTo: string;
@@ -56,6 +57,7 @@ export interface ProcessFormData {
   territorialScope: string;
   impactType: string;
   socialResult: string;
+  sdgs: string[];
   complexityReason: string;
 }
 
@@ -79,6 +81,7 @@ export interface ProcessEditData {
   territorialScope: string;
   impactType: string;
   socialResult: string;
+  sdgs: string[];
   complexityReason: string;
 }
 

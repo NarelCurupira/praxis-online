@@ -38,6 +38,7 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
     territorialScope: record.territorialScope,
     impactType: record.impactType,
     socialResult: record.socialResult,
+    sdgs: record.sdgs,
     complexityReason: record.complexityReason,
   });
   const [saving, setSaving] = useState(false);
