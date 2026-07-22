@@ -13,7 +13,7 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
   const [form, setForm] = useState<ProcessFormData>({
     assignedTo: currentUserId,
     mpNumber: "", judicialNumber: "", className: initialClass.name, subject: "", receivedAt: now,
-    deadlineAt: addBusinessDays(now, initialClass.businessDays, exclusions.map((item) => item.date)), actionType: "", notes: "", priority: "Normal", documentPath: "",
+    deadlineAt: addBusinessDays(now, initialClass.businessDays, exclusions.map((item) => item.date)).slice(0, 10), actionType: "", notes: "", priority: "Normal", documentPath: "",
     sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "", fundamentalRight: "",
     affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", complexityReason: "",
   });
@@ -26,7 +26,7 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
         const className = key === "className" ? String(value) : current.className;
         const receivedAt = key === "receivedAt" ? String(value) : current.receivedAt;
         const days = classes.find((item) => item.name === className)?.businessDays ?? 30;
-        next.deadlineAt = addBusinessDays(receivedAt, days, exclusions.map((item) => item.date));
+        next.deadlineAt = addBusinessDays(receivedAt, days, exclusions.map((item) => item.date)).slice(0, 10);
       }
       return next;
     });
@@ -48,7 +48,7 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
           <label>Número judicial<input required value={form.judicialNumber} onChange={(e) => change("judicialNumber", e.target.value)} placeholder="0000000-00.2026.8.14.0000" /></label>
           <label>Classe<select value={form.className} onChange={(e) => change("className", e.target.value)}>{selectableClasses.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
           <label>Entrada<input type="datetime-local" required value={form.receivedAt} onChange={(e) => change("receivedAt", e.target.value)} /></label>
-          <label>Prazo<input type="datetime-local" required value={form.deadlineAt} onChange={(e) => change("deadlineAt", e.target.value)} /><small>Calculado com sábados, domingos e as exclusões cadastradas nas Configurações.</small></label>
+          <label>Prazo<input type="date" required value={form.deadlineAt} onChange={(e) => change("deadlineAt", e.target.value)} /><small>Calculado com sábados, domingos e as exclusões cadastradas nas Configurações.</small></label>
           <label>Prioridade<select value={form.priority} onChange={(e) => change("priority", e.target.value as Priority)}><option>Baixa</option><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
           {isAdmin && <label>Responsável<select value={form.assignedTo} onChange={(e) => change("assignedTo", e.target.value)}>{members.filter((member) => member.active).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select></label>}
           <label>Documento relacionado<input value={form.documentPath} onChange={(e) => change("documentPath", e.target.value)} placeholder="C:\\Processos\\manifestacao.docx" /></label>

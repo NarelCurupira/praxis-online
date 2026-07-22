@@ -23,7 +23,7 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
     sentAt: record.sentAt ? toLocalInput(new Date(record.sentAt)) : null,
     className: record.className,
     subject: record.subject,
-    deadlineAt: record.deadlineAt.slice(0, 16),
+    deadlineAt: record.deadlineAt.slice(0, 10),
     actionType: record.actionType,
     notes: record.notes,
     priority: record.priority,
@@ -54,7 +54,10 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
-    await onSave(record.movementId, form);
+    await onSave(record.movementId, {
+      ...form,
+      deadlineAt: form.deadlineAt || record.deadlineAt.slice(0, 10),
+    });
     setSaving(false);
   }
 
@@ -69,7 +72,7 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
       <div className="form-grid">
         <label>Classe<select value={form.className} onChange={(event) => change("className", event.target.value)}>{classNames.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label>Providência<select required={record.workflowStatus === "Enviado"} value={form.actionType} onChange={(event) => change("actionType", event.target.value)}><option value="">Ainda não definida</option>{actions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></label>
-        <label>Prazo<input required type="datetime-local" value={form.deadlineAt} onChange={(event) => change("deadlineAt", event.target.value)} /></label>
+        <label>{record.workflowStatus === "Enviado" ? "Prazo (histórico)" : "Prazo"}<input required={record.workflowStatus !== "Enviado"} type="date" value={form.deadlineAt} onChange={(event) => change("deadlineAt", event.target.value)} /></label>
         {record.workflowStatus === "Enviado" && <label>Data de envio<input required type="datetime-local" value={form.sentAt ?? ""} onChange={(event) => change("sentAt", event.target.value || null)} /><small>Quando ausente, o sistema sugere 10 dias corridos após a entrada.</small></label>}
         <label>Prioridade<select value={form.priority} onChange={(event) => change("priority", event.target.value as Priority)}><option>Baixa</option><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
         {isAdmin ? <label>Responsável<select value={form.assignedTo} onChange={(event) => change("assignedTo", event.target.value)}>{members.filter((member) => member.active).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select></label> : <label>Responsável<input value={record.assignedName || "Não identificado"} disabled /></label>}
