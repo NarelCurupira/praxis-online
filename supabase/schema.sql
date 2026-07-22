@@ -47,6 +47,7 @@ create table if not exists public.cases (
   territorial_scope text not null default '',
   impact_type text not null default '',
   social_result text not null default '',
+  sdgs text[] not null default '{}'::text[],
   complexity_reason text not null default '',
   created_by uuid references auth.users(id),
   updated_by uuid references auth.users(id),
@@ -60,7 +61,7 @@ create table if not exists public.movements (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   case_id bigint not null references public.cases(id) on delete cascade,
   received_at date not null,
-  deadline_at date not null,
+  deadline_at date,
   draft_status text not null default 'Pendente',
   workflow_status text not null default 'Recebido' check (workflow_status in ('Recebido', 'Em análise', 'Minutado', 'Enviado', 'Sobrestado')),
   sent_at timestamptz,
@@ -229,4 +230,3 @@ drop policy if exists history_select_member on public.change_history;
 create policy history_select_member on public.change_history for select using (public.is_workspace_member(workspace_id));
 drop policy if exists history_insert_writer on public.change_history;
 create policy history_insert_writer on public.change_history for insert with check (public.can_write_workspace(workspace_id));
-

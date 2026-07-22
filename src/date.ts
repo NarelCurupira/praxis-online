@@ -66,6 +66,7 @@ export function usefulElapsedHours(receivedAt: string, sentAt: string | null, ex
 
 export function daysUntil(value: string): number {
   const end = new Date(value);
+  if (!value || Number.isNaN(end.getTime())) return Number.POSITIVE_INFINITY;
   const now = new Date();
   return Math.ceil((end.getTime() - now.getTime()) / 86_400_000);
 }

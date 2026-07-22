@@ -1,6 +1,6 @@
 # Práxis Online
 
-Versão atual: **0.6.0**, conectada ao projeto Atrium no Supabase.
+Versão atual: **0.7.0**, conectada ao projeto Atrium no Supabase.
 
 Versão web e multiusuário do **Práxis — Controle de Processos**, derivada da interface local 0.9.3. Este projeto é independente do Práxis Local e não altera o banco SQLite nem o instalador do Windows.
 
@@ -17,6 +17,9 @@ Versão web e multiusuário do **Práxis — Controle de Processos**, derivada d
 - cadastro, edição, fila, lixeira, histórico, relatórios e importação conectados ao banco online;
 - atribuição individual de responsáveis, filtro na tabela e correção em bloco na qualidade dos dados;
 - exportação em Excel, PDF e backup JSON pelo navegador;
+- relatórios gerenciais Executivo, Completo e Anexo de Processos Destacados;
+- estoque conciliado, situações de prazo separadas, mediana e percentis em horas úteis;
+- gráficos dinâmicos de fluxo, equipe, prazos, tramitação, relevância social, ODS e providências;
 - build de produção validado.
 
 Use somente dados fictícios ou anonimizados nesta fase de protótipo.
@@ -25,7 +28,7 @@ Use somente dados fictícios ou anonimizados nesta fase de protótipo.
 
 1. Crie um projeto em https://supabase.com/dashboard.
 2. Abra **SQL Editor**, crie uma consulta e execute todo o conteúdo de `supabase/schema.sql`.
-3. Em seguida, execute, na ordem, `supabase/002-equipe-convites.sql`, `supabase/003-corrigir-convites-pgcrypto.sql`, `supabase/004-responsaveis-e-relatorios.sql` e `supabase/005-qualidade-responsavel-e-data-envio.sql`.
+3. Em seguida, execute, na ordem, as migrações numeradas de `supabase/002-equipe-convites.sql` até `supabase/009-relatorios-gerenciais.sql`.
 4. Em **Project Settings > API**, copie a URL do projeto e a chave pública `anon`/`publishable`.
 5. Copie `.env.example` para `.env.local` e preencha:
 
@@ -57,6 +60,7 @@ Validação e compilação:
 
 ```bash
 npm run build
+npm run test:reports
 ```
 
 ## Primeiro usuário

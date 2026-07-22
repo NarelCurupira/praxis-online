@@ -38,7 +38,7 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
     movementId: Number(row.id), caseId: Number(row.case_id),
     mpNumber: item.mp_number ?? "", judicialNumber: item.judicial_number ?? "",
     className: item.class_name ?? "", subject: item.subject ?? "",
-    receivedAt: row.received_at, deadlineAt: row.deadline_at,
+    receivedAt: row.received_at, deadlineAt: row.deadline_at ?? "",
     draftStatus: row.draft_status ?? "Pendente", workflowStatus: row.workflow_status,
     sentAt: row.sent_at, actionType: row.action_type ?? "", notes: row.notes ?? "",
     priority: row.priority ?? "Normal", documentPath: row.document_path ?? "",
@@ -140,7 +140,7 @@ export async function createMovement(data: ProcessFormData): Promise<ProcessMove
   const found = await findOrCreateCase(data);
   const { data: row, error } = await client.from("movements").insert({
     workspace_id: workspaceId, case_id: found.id, received_at: data.receivedAt,
-    deadline_at: data.deadlineAt, action_type: data.actionType, notes: data.notes,
+    deadline_at: data.deadlineAt || null, action_type: data.actionType, notes: data.notes,
     priority: data.priority, document_path: data.documentPath,
     assigned_to: data.assignedTo || user.id,
     created_by: user.id, updated_by: user.id,
@@ -226,7 +226,7 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
   fail(caseError);
   const sentAt = data.sentAt || null;
   const elapsedHours = usefulElapsedHours(old.receivedAt, sentAt);
-  const movementValues: Record<string, unknown> = { deadline_at: data.deadlineAt, sent_at: sentAt, elapsed_hours: elapsedHours, action_type: data.actionType, notes: data.notes, priority: data.priority, document_path: data.documentPath, updated_by: user.id, updated_at: new Date().toISOString() };
+  const movementValues: Record<string, unknown> = { deadline_at: data.deadlineAt || null, sent_at: sentAt, elapsed_hours: elapsedHours, action_type: data.actionType, notes: data.notes, priority: data.priority, document_path: data.documentPath, updated_by: user.id, updated_at: new Date().toISOString() };
   if (data.assignedTo && data.assignedTo !== old.assignedTo) movementValues.assigned_to = data.assignedTo;
   const { error } = await client.from("movements").update(movementValues).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
@@ -329,7 +329,7 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
       : record.sentAt;
     movementRows.push({
       workspace_id: workspaceId, case_id: caseId, received_at: record.receivedAt,
-      deadline_at: record.deadlineAt, draft_status: record.draftStatus,
+      deadline_at: record.deadlineAt || null, draft_status: record.draftStatus,
       workflow_status: record.workflowStatus, sent_at: automaticSentAt,
       action_type: record.actionType, notes: record.notes, priority: record.priority,
       document_path: record.documentPath, elapsed_hours: usefulElapsedHours(record.receivedAt, automaticSentAt),
@@ -381,12 +381,12 @@ export async function listBackups(): Promise<BackupInfo[]> { return []; }
 export async function restoreBackup(file: File): Promise<string> {
   const parsed = JSON.parse(await file.text()) as { records?: ProcessMovement[] };
   if (!Array.isArray(parsed.records) || !parsed.records.length) throw new Error("O arquivo não contém um backup válido do Práxis.");
-  const invalid = parsed.records.find((item) => !item.judicialNumber || !item.receivedAt || !item.deadlineAt);
+  const invalid = parsed.records.find((item) => !item.judicialNumber || !item.receivedAt);
   if (invalid) throw new Error("O backup possui registros incompletos e não pode ser restaurado com segurança.");
   const activeMemberIds = new Set((await listTeamMembers()).filter((item) => item.active).map((item) => item.userId));
   const records: ImportRecord[] = parsed.records.map((item) => ({
     assignedTo: activeMemberIds.has(item.assignedTo) ? item.assignedTo : undefined, mpNumber: item.mpNumber, judicialNumber: item.judicialNumber,
-    className: item.className, subject: item.subject, receivedAt: item.receivedAt.slice(0, 10), deadlineAt: item.deadlineAt.slice(0, 10),
+    className: item.className, subject: item.subject, receivedAt: item.receivedAt.slice(0, 10), deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
     draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt,
     actionType: item.actionType, notes: item.notes, priority: item.priority, documentPath: item.documentPath,
     sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,

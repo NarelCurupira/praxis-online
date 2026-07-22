@@ -1,13 +1,15 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 1420",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:reports": "node --import tsx --test src/reporting.test.ts",
+    "report:sample": "node --import tsx scripts/generate-report-sample.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",
@@ -24,6 +26,7 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.4",
+    "tsx": "^4.23.1",
     "typescript": "5.9.3",
     "vite": "^8.1.4"
   }

@@ -145,7 +145,7 @@ export function Dashboard({ records, currentUserId, currentUserName, isAdmin }: 
       </section>
       <section className="panel">
         <div className="panel-title"><div><h2>Prioridades da fila</h2><p>Ordenadas pelo prazo mais próximo</p></div></div>
-        {priorityRecords.length ? <div className="compact-list">{priorityRecords.map((record) => <div className="compact-row" key={record.movementId}><div className={`priority-dot ${record.priority.toLowerCase()}`} /><div className="grow"><strong>{record.judicialNumber}</strong><span>{record.subject}</span></div><div className="right"><strong>{formatDate(record.deadlineAt)}</strong><span>{daysUntil(record.deadlineAt)} dias</span></div></div>)}</div> : <div className="empty-state">Importe sua planilha ou cadastre o primeiro processo.</div>}
+        {priorityRecords.length ? <div className="compact-list">{priorityRecords.map((record) => <div className="compact-row" key={record.movementId}><div className={`priority-dot ${record.priority.toLowerCase()}`} /><div className="grow"><strong>{record.judicialNumber}</strong><span>{record.subject}</span></div><div className="right"><strong>{record.deadlineAt ? formatDate(record.deadlineAt) : "Sem prazo"}</strong><span>{record.deadlineAt ? `${daysUntil(record.deadlineAt)} dias` : "não aplicável"}</span></div></div>)}</div> : <div className="empty-state">Importe sua planilha ou cadastre o primeiro processo.</div>}
       </section>
     </div>
   );
