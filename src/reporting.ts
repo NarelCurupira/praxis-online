@@ -149,14 +149,28 @@ function inRange(value: string, start: string, end: string): boolean {
   return Boolean(value && value >= start && value <= end);
 }
 
+function cleanCategorySpacing(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
 function foldText(value: string): string {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+  return cleanCategorySpacing(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
+}
+
+function closedCategoryLabel(value: string): string {
+  const cleaned = cleanCategorySpacing(value);
+  const lowerWords = new Set(["a", "as", "o", "os", "da", "das", "de", "do", "dos", "e", "em", "para", "por", "com"]);
+  return cleaned.toLocaleLowerCase("pt-BR").split(" ").map((word, index) => {
+    if (/^ods$/i.test(word)) return "ODS";
+    if (index > 0 && lowerWords.has(word)) return word;
+    return word ? word.charAt(0).toLocaleUpperCase("pt-BR") + word.slice(1) : word;
+  }).join(" ");
 }
 
 function matchesFilters(record: ProcessMovement, filters: ReportFilters): boolean {
   if (filters.scope !== "team" && record.assignedTo !== filters.scope) return false;
-  if (filters.className && filters.className !== "all" && record.className !== filters.className) return false;
-  if (filters.actionType && filters.actionType !== "all" && actionLabel(record.actionType) !== filters.actionType) return false;
+  if (filters.className && filters.className !== "all" && foldText(record.className) !== foldText(filters.className)) return false;
+  if (filters.actionType && filters.actionType !== "all" && foldText(actionLabel(record.actionType)) !== foldText(filters.actionType)) return false;
   if (filters.highlight === "social" && !record.sociallyRelevant) return false;
   if (filters.highlight === "complex" && !record.extremelyComplex) return false;
   if (filters.highlight === "both" && !(record.sociallyRelevant && record.extremelyComplex)) return false;
@@ -249,11 +263,20 @@ function hasCompleteTime(value: string | null | undefined): boolean {
   return Boolean(value && /T\d{2}:\d{2}/.test(value) && !/T00:00(?::00)?(?:[Z+-]|$)/.test(value));
 }
 
-function countCategories(values: string[], denominator: number): CategoryMetric[] {
-  const counts = new Map<string, number>();
-  values.map((value) => value.trim()).filter(Boolean).forEach((value) => counts.set(value, (counts.get(value) ?? 0) + 1));
-  return [...counts.entries()].map(([label, value]) => ({ label, value, percentage: denominator ? value / denominator * 100 : 0 }))
+function countCategories(values: string[], denominator: number, closed = false): CategoryMetric[] {
+  const counts = new Map<string, { label: string; value: number }>();
+  values.map(cleanCategorySpacing).filter(Boolean).forEach((value) => {
+    const key = closed ? foldText(value) : value;
+    const current = counts.get(key);
+    if (current) current.value += 1;
+    else counts.set(key, { label: closed ? closedCategoryLabel(value) : value, value: 1 });
+  });
+  return [...counts.values()].map(({ label, value }) => ({ label, value, percentage: denominator ? value / denominator * 100 : 0 }))
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"));
+}
+
+export function countClosedCategories(values: string[], denominator = values.length): CategoryMetric[] {
+  return countCategories(values, denominator, true);
 }
 
 export function pluralize(count: number, singular: string, plural: string): string { return count === 1 ? singular : plural; }
@@ -288,8 +311,8 @@ function userMetrics(records: ProcessMovement[], member: TeamMember, filters: Re
     socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length,
     complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length,
     both: cases.filter((item) => item.sociallyRelevant && item.extremelyComplex).length,
-    classes: countCategories(population.map((item) => item.className), population.length).map(({ label, value }) => ({ label, value })),
-    actions: countCategories(population.map((item) => actionLabel(item.actionType)), population.length).map(({ label, value }) => ({ label, value })),
+    classes: countCategories(population.map((item) => item.className), population.length, true).map(({ label, value }) => ({ label, value })),
+    actions: countCategories(population.map((item) => actionLabel(item.actionType)), population.length, true).map(({ label, value }) => ({ label, value })),
     qualityIssues: quality.length,
     qualityChecked: population.length,
   };
@@ -351,8 +374,8 @@ export function buildReportModel(records: ProcessMovement[], members: TeamMember
     transit: calculateDistribution(scoped, filters.startDate, filters.endDate),
     users: activeMembers.map((member) => userMetrics(scoped, member, filters)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
     trend: buildFlowTrend(scoped, filters.startDate, filters.endDate),
-    actions: countCategories(actionValues, actionValues.length),
-    classes: countCategories(population.map((item) => item.className), population.length),
+    actions: countCategories(actionValues, actionValues.length, true),
+    classes: countCategories(population.map((item) => item.className), population.length, true),
     highlights: {
       socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length,
       complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length,
@@ -360,13 +383,13 @@ export function buildReportModel(records: ProcessMovement[], members: TeamMember
       socialTotal: social.length, complexTotal: complex.length, total: highlighted.length,
     },
     relevance: {
-      reach: countCategories(social.map((item) => item.reach), socialDenominator),
-      territory: countCategories(social.map((item) => item.territorialScope), socialDenominator),
-      impact: countCategories(social.map((item) => item.impactType), socialDenominator),
+      reach: countCategories(social.map((item) => item.reach), socialDenominator, true),
+      territory: countCategories(social.map((item) => item.territorialScope), socialDenominator, true),
+      impact: countCategories(social.map((item) => item.impactType), socialDenominator, true),
       rights: countCategories(splitMulti(social.map((item) => item.fundamentalRight)), socialDenominator),
       groups: countCategories(splitMulti(social.map((item) => item.affectedGroup)), socialDenominator),
       themes: countCategories(splitMulti(social.map((item) => item.socialTheme)), socialDenominator),
-      sdgs: countCategories(social.flatMap((item) => [...new Set(item.sdgs)]), socialDenominator),
+      sdgs: countCategories(social.flatMap((item) => [...new Set(item.sdgs)]), socialDenominator, true),
     },
     synthesis: summaryText(flow, deadline, social.length, complex.length),
     warnings,

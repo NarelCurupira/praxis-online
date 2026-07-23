@@ -25,6 +25,7 @@ function fmtPct(value: number | null): string { return value == null ? "-" : `${
 function fmtDate(value: string): string { return new Intl.DateTimeFormat("pt-BR").format(new Date(`${value}T12:00:00`)); }
 function shortList(items: Array<{ label: string; value: number }>, limit = 3): string { return items.slice(0, limit).map((item) => `${item.label} (${item.value})`).join(", ") || "-"; }
 function durationNumber(value: number): string { return value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+function chartNumber(value: number): string { return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 }); }
 function formatDuration(value: number | null, stats?: DistributionStats, withEquivalent = false): string {
   if (value == null) return "Não disponível";
   if (value === 0) return stats?.zeroSameDate ? "Mesmo dia útil" : "Não disponível";
@@ -41,8 +42,8 @@ function formatDuration(value: number | null, stats?: DistributionStats, withEqu
 }
 function formatChartDuration(value: number, stats?: DistributionStats): string {
   if (value === 0) return stats?.zeroSameDate ? "Mesmo dia útil" : "Não disponível";
-  if (value > WORKDAY_HOURS) return `${durationNumber(value)} h / ${durationNumber(value / WORKDAY_HOURS)} dias`;
-  return `${durationNumber(value)} h`;
+  if (value > WORKDAY_HOURS) return `${chartNumber(value)} h / ${chartNumber(value / WORKDAY_HOURS)} dias`;
+  return `${chartNumber(value)} h`;
 }
 function deadlineRate(value: number | null): string {
   return value == null ? "Não aplicável" : fmtPct(value);
@@ -144,9 +145,10 @@ function drawFlowChart(doc: jsPDF, model: ReportModel, x: number, y: number, w: 
   const stockStayedZero = model.trend.every((point) => point.stock === 0);
   const plotY = y + 15; const plotH = h - (stockStayedZero ? 32 : 27); const plotX = x + 10; const plotW = w - 12;
   const rawMax = Math.max(...model.trend.flatMap((point) => [point.received, point.sent, point.stock]), 1);
-  const max = rawMax * 1.15;
+  const max = rawMax * 1.22;
   const groupW = plotW / model.trend.length; const barW = Math.min(4, groupW / 3);
   [0, .5, 1].forEach((ratio) => { const gy = plotY + plotH * (1 - ratio); doc.setDrawColor(226, 233, 239); doc.line(plotX, gy, plotX + plotW, gy); doc.setFontSize(5.8); doc.setTextColor(...GREY); doc.text(String(Math.round(rawMax * ratio)), plotX - 2, gy + 1.5, { align: "right" }); });
+  const stockPoints: Array<{ x: number; y: number; value: number; receivedLabelY: number; sentLabelY: number }> = [];
   let previous: { x: number; y: number } | null = null;
   model.trend.forEach((point, index) => {
     const center = plotX + groupW * index + groupW / 2;
@@ -154,15 +156,31 @@ function drawFlowChart(doc: jsPDF, model: ReportModel, x: number, y: number, w: 
     doc.setFillColor(...BLUE_LIGHT); doc.rect(center - barW - .5, plotY + plotH - receivedH, barW, receivedH, "F");
     doc.setFillColor(...BLUE); doc.rect(center + .5, plotY + plotH - sentH, barW, sentH, "F");
     doc.setFont("helvetica", "bold"); doc.setFontSize(5.4); doc.setTextColor(...INK);
-    doc.text(fmtNumber(point.received), center - barW / 2 - .5, Math.max(plotY + 3, plotY + plotH - receivedH - 1.6), { align: "center" });
-    doc.text(fmtNumber(point.sent), center + barW / 2 + .5, Math.max(plotY + 7, plotY + plotH - sentH - 1.6), { align: "center" });
+    const receivedLabelY = Math.max(plotY + 3, plotY + plotH - receivedH - 1.6);
+    const sentLabelY = Math.max(plotY + 7, plotY + plotH - sentH - 1.6);
+    doc.text(fmtNumber(point.received), center - barW / 2 - .5, receivedLabelY, { align: "center" });
+    doc.text(fmtNumber(point.sent), center + barW / 2 + .5, sentLabelY, { align: "center" });
     const stockPoint = { x: center, y: plotY + plotH - point.stock / max * plotH };
     if (previous) { doc.setDrawColor(...GOLD); doc.setLineWidth(.7); doc.line(previous.x, previous.y, stockPoint.x, stockPoint.y); }
     doc.setFillColor(...GOLD); doc.circle(stockPoint.x, stockPoint.y, 1.1, "F"); previous = stockPoint;
-    doc.setFont("helvetica", "bold"); doc.setFontSize(5.2); doc.setTextColor(...GOLD);
-    doc.text(fmtNumber(point.stock), center, Math.max(plotY + 3, stockPoint.y - 2.2), { align: "center" });
+    stockPoints.push({ ...stockPoint, value: point.stock, receivedLabelY, sentLabelY });
     if (model.trend.length <= 16 || index % Math.ceil(model.trend.length / 12) === 0) { doc.setFont("helvetica", "normal"); doc.setFontSize(5.7); doc.setTextColor(...GREY); doc.text(text(point.label), center, plotY + plotH + 5, { align: "center", angle: model.trend.length > 12 ? 35 : 0 }); }
   });
+  if (!stockStayedZero) {
+    stockPoints.forEach((point, index) => {
+      const label = fmtNumber(point.value);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5);
+      const labelW = Math.max(7.5, doc.getTextWidth(label) + 4);
+      const labelH = 5.8;
+      let labelY = point.y - labelH - 3.2 - (model.trend.length > 16 && index % 2 ? 6.2 : 0);
+      const barCollision = [point.receivedLabelY, point.sentLabelY].some((barY) => Math.abs((labelY + labelH / 2) - barY) < 4.8);
+      if (barCollision) labelY -= 6.2;
+      labelY = Math.max(plotY + 1.2, labelY);
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(...GOLD); doc.setLineWidth(.35);
+      doc.roundedRect(point.x - labelW / 2, labelY, labelW, labelH, 1.2, 1.2, "FD");
+      doc.setTextColor(...INK); doc.text(label, point.x, labelY + 4, { align: "center" });
+    });
+  }
   const legend = [["Recebidos", BLUE_LIGHT], ["Enviados", BLUE], ["Estoque final", GOLD]] as const;
   let lx = x + w - 65; legend.forEach(([label, color]) => { doc.setFillColor(...color); doc.rect(lx, y + 1, 3, 3, "F"); doc.setFontSize(5.8); doc.setTextColor(...GREY); doc.text(label, lx + 4, y + 3.1); lx += doc.getTextWidth(label) + 10; });
   if (stockStayedZero) {
@@ -193,16 +211,70 @@ function drawStackedDeadlines(doc: jsPDF, users: UserReportMetrics[], x: number,
 }
 
 function drawTransitChart(doc: jsPDF, users: UserReportMetrics[], x: number, y: number, w: number, h: number) {
-  const rows = users.map((user) => ({ label: user.name, values: [user.transit.median ?? 0, user.transit.p75 ?? 0, user.transit.p90 ?? 0], stats: user.transit }));
-  drawGroupedBars(
-    doc,
-    rows,
-    [{ label: "Mediana", color: GREEN }, { label: "P75", color: BLUE }, { label: "P90", color: GOLD }],
-    x, y, w, h,
-    "Tempo de tramitação",
-    "Horas úteis normalizadas; média permanece na tabela de apoio.",
-    { showValues: true, headroom: 1.15, valueFormatter: (value, row) => formatChartDuration(value, row.stats) },
-  );
+  chartTitle(doc, "Tempo de tramitação", "Horas úteis normalizadas; métricas coincidentes possuem rótulo consolidado.", x, y);
+  const measuredUsers = users.filter((user) => user.transit.count);
+  if (!measuredUsers.length) { emptyChart(doc, x, y + 7, w, h - 7, "Não há medições suficientes"); return; }
+  const series = [
+    { label: "Mediana", color: GREEN, value: (user: UserReportMetrics) => user.transit.median ?? 0 },
+    { label: "P75", color: BLUE, value: (user: UserReportMetrics) => user.transit.p75 ?? 0 },
+    { label: "P90", color: GOLD, value: (user: UserReportMetrics) => user.transit.p90 ?? 0 },
+  ];
+  const plotY = y + 13; const plotH = h - 25; const plotX = x + 9; const plotW = w - 10;
+  const rawMax = Math.max(...measuredUsers.flatMap((user) => series.map((item) => item.value(user))), 1);
+  const max = rawMax * 1.15;
+  const groupW = plotW / measuredUsers.length;
+  const barW = Math.min(8, groupW / 4.1);
+  [0, .5, 1].forEach((ratio) => {
+    const gy = plotY + plotH * (1 - ratio);
+    doc.setDrawColor(226, 233, 239); doc.line(plotX, gy, plotX + plotW, gy);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(5.5); doc.setTextColor(...GREY);
+    doc.text(String(Math.round(max * ratio)), plotX - 2, gy + 1.6, { align: "right" });
+  });
+  measuredUsers.forEach((user, userIndex) => {
+    const center = plotX + groupW * userIndex + groupW / 2;
+    const metrics = series.map((item, seriesIndex) => ({ ...item, seriesIndex, numeric: item.value(user) }));
+    metrics.forEach((metric) => {
+      const barX = center - (series.length * barW) / 2 + metric.seriesIndex * barW;
+      const barH = plotH * metric.numeric / max;
+      doc.setFillColor(...metric.color); doc.rect(barX, plotY + plotH - barH, barW - 1, barH, "F");
+    });
+    const coincident = new Map<string, typeof metrics>();
+    metrics.forEach((metric) => {
+      const key = metric.numeric.toFixed(1);
+      coincident.set(key, [...(coincident.get(key) ?? []), metric]);
+    });
+    const labels = [...coincident.values()].map((items) => {
+      const numeric = items[0].numeric;
+      const names = items.map((item) => item.label).join("/");
+      const barCenters = items.map((item) => center - (series.length * barW) / 2 + item.seriesIndex * barW + (barW - 1) / 2);
+      const label = `${names}: ${formatChartDuration(numeric, user.transit)}`;
+      doc.setFont("helvetica", "bold"); doc.setFontSize(5.15);
+      const lines = doc.splitTextToSize(text(label), Math.max(24, groupW - 3)).slice(0, 2);
+      const height = 1.7 + lines.length * 2.8;
+      const pointY = plotY + plotH - numeric / max * plotH;
+      return { lines, height, pointY, anchorX: barCenters.reduce((sum, value) => sum + value, 0) / barCenters.length };
+    }).sort((a, b) => b.pointY - a.pointY);
+    let lowerLabelTop = plotY + plotH + 1;
+    labels.forEach((label) => {
+      let top = label.pointY - label.height - 1.4;
+      top = Math.min(top, lowerLabelTop - label.height - 1);
+      top = Math.max(plotY + .8, top);
+      const labelW = Math.max(24, groupW - 3);
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(219, 227, 234); doc.setLineWidth(.2);
+      doc.roundedRect(label.anchorX - labelW / 2, top, labelW, label.height, .8, .8, "FD");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(5.15); doc.setTextColor(...INK);
+      doc.text(label.lines, label.anchorX, top + 3.1, { align: "center" });
+      lowerLabelTop = top;
+    });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(5.6); doc.setTextColor(...GREY);
+    doc.text(doc.splitTextToSize(text(user.name), groupW - 2)[0] || "", center, plotY + plotH + 5, { align: "center" });
+  });
+  let legendX = x + w;
+  [...series].reverse().forEach((item) => {
+    const width = doc.getTextWidth(item.label) + 8; legendX -= width;
+    doc.setFillColor(...item.color); doc.rect(legendX, y + 1, 3, 3, "F");
+    doc.setFontSize(6.2); doc.setTextColor(...GREY); doc.text(item.label, legendX + 4.5, y + 3.1);
+  });
 }
 
 function drawIndividualTransitCards(doc: jsPDF, user: UserReportMetrics | undefined, x: number, y: number, w: number, h: number) {
@@ -553,10 +625,31 @@ function annexDetails(record: ReportModel["highlightedProcesses"][number]): Arra
   return fields;
 }
 
-function processBlockHeight(doc: jsPDF, record: ReportModel["highlightedProcesses"][number]): number {
-  const metaRows = Math.ceil(annexMeta(record).length / 2);
-  const detailsHeight = annexDetails(record).reduce((sum, [, value]) => sum + 6.2 + doc.splitTextToSize(text(value), 170).length * 4.1, 0);
-  return Math.max(53, 16 + metaRows * 12 + detailsHeight + 6);
+interface AnnexMetaCell { label: string; lines: string[]; }
+interface AnnexMetaRow { cells: AnnexMetaCell[]; height: number; }
+interface AnnexDetailRow { label: string; lines: string[]; height: number; }
+interface AnnexBlockLayout { metaRows: AnnexMetaRow[]; details: AnnexDetailRow[]; height: number; }
+
+function processBlockLayout(doc: jsPDF, record: ReportModel["highlightedProcesses"][number]): AnnexBlockLayout {
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+  const metaCells = annexMeta(record).map(([label, value]) => ({
+    label,
+    lines: doc.splitTextToSize(text(value), 82).slice(0, 2) as string[],
+  }));
+  const metaRows: AnnexMetaRow[] = [];
+  for (let index = 0; index < metaCells.length; index += 2) {
+    const cells = metaCells.slice(index, index + 2);
+    const lineCount = Math.max(...cells.map((cell) => cell.lines.length), 1);
+    metaRows.push({ cells, height: 6.1 + lineCount * 3.15 });
+  }
+  doc.setFont("helvetica", "normal"); doc.setFontSize(7.6);
+  const details = annexDetails(record).map(([label, value]) => {
+    const lines = doc.splitTextToSize(text(value), 170) as string[];
+    return { label, lines, height: 6 + Math.max(lines.length, 1) * 3.55 };
+  });
+  const contentHeight = 15 + metaRows.reduce((sum, row) => sum + row.height, 0) + (details.length ? 2 : 0)
+    + details.reduce((sum, row) => sum + row.height, 0) + 4;
+  return { metaRows, details, height: Math.max(48, contentHeight) };
 }
 
 function highlightedAnnex(builder: PdfBuilder, model: ReportModel) {
@@ -569,24 +662,29 @@ function highlightedAnnex(builder: PdfBuilder, model: ReportModel) {
   const doc = builder.doc; let y = 29;
   if (!model.highlightedProcesses.length) { emptyChart(doc, 14, 35, 182, 45, "Nenhum processo destacado para os filtros aplicados"); return; }
   model.highlightedProcesses.forEach((record, index) => {
-    const height = processBlockHeight(doc, record); const pageHeight = doc.internal.pageSize.getHeight();
-    if (y + height > pageHeight - 18) { builder.addPage("portrait"); builder.header("ANEXO DE PROCESSOS DESTACADOS", `Continuação - registro ${index + 1} de ${model.highlightedProcesses.length}`, true); y = 29; }
+    const layout = processBlockLayout(doc, record); const height = layout.height; const pageHeight = doc.internal.pageSize.getHeight();
+    const contentBottom = pageHeight - 19;
+    if (y + height > contentBottom) { builder.addPage("portrait"); builder.header("ANEXO DE PROCESSOS DESTACADOS", `Continuação - registro ${index + 1} de ${model.highlightedProcesses.length}`, true); y = 29; }
     roundedRect(doc, 14, y, 182, height, [252, 253, 254], [205, 216, 225]);
     doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...INK); doc.text(`Processo destacado ${index + 1} de ${model.highlightedProcesses.length}`, 18, y + 7);
     const tags = record.sociallyRelevant && record.extremelyComplex ? ["RELEVÂNCIA SOCIAL", "ALTA COMPLEXIDADE"] : [record.sociallyRelevant ? "RELEVÂNCIA SOCIAL" : "ALTA COMPLEXIDADE"];
     let tagX = 192; [...tags].reverse().forEach((tag) => { doc.setFont("helvetica", "bold"); doc.setFontSize(5.8); const width = doc.getTextWidth(tag) + 7; tagX -= width; doc.setDrawColor(...INK); doc.setFillColor(241, 245, 249); doc.roundedRect(tagX, y + 3, width, 6, 1.5, 1.5, "FD"); doc.setTextColor(...INK); doc.text(tag, tagX + 3.5, y + 7); tagX -= 2; });
-    const meta = annexMeta(record);
     const cols = [18, 107];
-    meta.forEach(([label, value], metaIndex) => {
-      const col = metaIndex % 2; const row = Math.floor(metaIndex / 2); const top = y + 15 + row * 12;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...GREY); doc.text(text(label).toUpperCase(), cols[col], top);
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...INK); doc.text(doc.splitTextToSize(text(value), 82).slice(0, 2), cols[col], top + 4.3);
+    let contentY = y + 15;
+    layout.metaRows.forEach((row) => {
+      row.cells.forEach((cell, col) => {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(6.5); doc.setTextColor(...GREY); doc.text(text(cell.label).toUpperCase(), cols[col], contentY);
+        doc.setFont("helvetica", "normal"); doc.setFontSize(7.5); doc.setTextColor(...INK);
+        doc.text(cell.lines, cols[col], contentY + 4.1, { lineHeightFactor: 1.15 });
+      });
+      contentY += row.height;
     });
-    let detailY = y + 18 + Math.ceil(meta.length / 2) * 12;
-    const details = annexDetails(record);
-    details.forEach(([label, value]) => {
-      doc.setFont("helvetica", "bold"); doc.setFontSize(7.1); doc.setTextColor(...INK); doc.text(text(label), 18, detailY);
-      const lines = doc.splitTextToSize(text(value), 170); doc.setFont("helvetica", "normal"); doc.setFontSize(7.6); doc.setTextColor(55, 75, 92); doc.text(lines, 18, detailY + 4.3); detailY += 6.2 + lines.length * 4.1;
+    if (layout.details.length) contentY += 2;
+    layout.details.forEach((detail) => {
+      doc.setFont("helvetica", "bold"); doc.setFontSize(7.1); doc.setTextColor(...INK); doc.text(text(detail.label), 18, contentY);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(7.6); doc.setTextColor(55, 75, 92);
+      doc.text(detail.lines, 18, contentY + 4.2, { lineHeightFactor: 1.15 });
+      contentY += detail.height;
     });
     y += height + 5;
   });

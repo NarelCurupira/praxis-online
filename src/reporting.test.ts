@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildReportFileName, buildReportModel, calculateDeadlines, calculateDistribution, calculateFlow, categoryPresentation, percentile, reportScopeInfo } from "./reporting";
+import { buildReportFileName, buildReportModel, calculateDeadlines, calculateDistribution, calculateFlow, categoryPresentation, countClosedCategories, percentile, reportScopeInfo } from "./reporting";
 import type { ProcessMovement, TeamMember } from "./types";
 
 const members: TeamMember[] = [
@@ -118,4 +118,28 @@ test("campos livres sem repetição suficiente usam síntese em vez de ranking",
     { label: "Outro", value: 1, percentage: 12.5 },
   ], true), "chart");
   assert.equal(categoryPresentation([{ label: "Direto", value: 8, percentage: 100 }]), "single");
+});
+
+test("categorias fechadas equivalentes são consolidadas sem aproximação semântica", () => {
+  const categories = countClosedCategories([
+    " Agravo de Instrumento ",
+    "AGRAVO  DE  INSTRUMENTO",
+    "agravo de instrumento",
+    "Conflito Negativo de Competência",
+    "Conflito de Competência",
+  ]);
+  assert.deepEqual(categories.map((item) => [item.label, item.value]), [
+    ["Agravo de Instrumento", 3],
+    ["Conflito de Competência", 1],
+    ["Conflito Negativo de Competência", 1],
+  ]);
+
+  const records = [
+    movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-02", className: "Agravo de Instrumento", actionType: "Manifestação" }),
+    movement({ movementId: 2, caseId: 2, receivedAt: "2026-01-03", className: " AGRAVO  DE INSTRUMENTO ", actionType: "MANIFESTAÇÃO" }),
+  ];
+  const model = buildReportModel(records, members, { startDate: "2026-01-01", endDate: "2026-01-31", scope: "team", className: "agravo de instrumento", actionType: "manifestação", highlight: "all" });
+  assert.equal(model.population.length, 2);
+  assert.deepEqual(model.classes.map((item) => [item.label, item.value]), [["Agravo de Instrumento", 2]]);
+  assert.deepEqual(model.actions.map((item) => [item.label, item.value]), [["Manifestação", 2]]);
 });
