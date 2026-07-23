@@ -31,6 +31,8 @@ export interface DistributionStats {
   sameBusinessDay: number;
   withinOneBusinessDay: number;
   withinThreeBusinessDays: number;
+  zeroSameDate: number;
+  withoutCompleteTime: number;
 }
 
 export interface DeadlineBreakdown {
@@ -73,6 +75,7 @@ export interface UserReportMetrics extends FlowMetrics {
 
 export interface FlowPoint { label: string; startDate: string; endDate: string; received: number; sent: number; stock: number; }
 export interface CategoryMetric { label: string; value: number; percentage: number; }
+export type CategoryPresentation = "empty" | "single" | "insight" | "chart";
 
 export interface ReportModel {
   filters: ReportFilters;
@@ -98,6 +101,13 @@ export interface ReportModel {
   };
   synthesis: string;
   warnings: string[];
+}
+
+export interface ReportScopeInfo {
+  kind: "individual" | "team";
+  title: string;
+  responsibleName: string | null;
+  usersConsidered: number;
 }
 
 function dateKey(value: string | null | undefined): string {
@@ -230,7 +240,13 @@ export function calculateDistribution(records: ProcessMovement[], startDate: str
     sameBusinessDay: measured.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
     withinOneBusinessDay: values.filter((value) => value <= WORKDAY_HOURS).length,
     withinThreeBusinessDays: values.filter((value) => value <= WORKDAY_HOURS * 3).length,
+    zeroSameDate: measured.filter((record) => record.elapsedHours === 0 && dateKey(record.receivedAt) === sentDate(record)).length,
+    withoutCompleteTime: measured.filter((record) => !hasCompleteTime(record.receivedAt) || !hasCompleteTime(record.sentAt)).length,
   };
+}
+
+function hasCompleteTime(value: string | null | undefined): boolean {
+  return Boolean(value && /T\d{2}:\d{2}/.test(value) && !/T00:00(?::00)?(?:[Z+-]|$)/.test(value));
 }
 
 function countCategories(values: string[], denominator: number): CategoryMetric[] {
@@ -240,12 +256,16 @@ function countCategories(values: string[], denominator: number): CategoryMetric[
     .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"));
 }
 
-function singularPlural(count: number, singular: string, plural: string): string { return count === 1 ? singular : plural; }
+export function pluralize(count: number, singular: string, plural: string): string { return count === 1 ? singular : plural; }
 
 function summaryText(flow: FlowMetrics, deadline: DeadlineBreakdown, social: number, complex: number): string {
-  const compliance = deadline.completionCompliance == null ? "não houve processos concluídos com prazo aplicável" : `${deadline.completionCompliance.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% dos processos concluídos com prazo aplicável foram enviados tempestivamente`;
+  const compliance = deadline.completionCompliance == null
+    ? "não houve processos concluídos com prazo aplicável"
+    : `${deadline.completionCompliance.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% dos processos concluídos com prazo aplicável foram enviados tempestivamente`;
   const pending = flow.finalStock;
-  return `No período selecionado, ${flow.received} ${singularPlural(flow.received, "processo foi recebido", "processos foram recebidos")} e ${flow.sent} ${singularPlural(flow.sent, "foi enviado", "foram enviados")}, encerrando o intervalo com ${pending} ${singularPlural(pending, "pendência", "pendências")}. ${compliance.charAt(0).toUpperCase()}${compliance.slice(1)}. Foram identificados ${social} ${singularPlural(social, "processo socialmente relevante", "processos socialmente relevantes")} e ${complex} de alta complexidade.`;
+  const socialText = `${social} ${pluralize(social, "processo socialmente relevante", "processos socialmente relevantes")}`;
+  const complexText = `${complex} ${pluralize(complex, "processo de alta complexidade", "processos de alta complexidade")}`;
+  return `No período selecionado, ${flow.received} ${pluralize(flow.received, "processo foi recebido", "processos foram recebidos")} e ${flow.sent} ${pluralize(flow.sent, "foi enviado", "foram enviados")}, encerrando o intervalo com ${pending} ${pluralize(pending, "pendência", "pendências")}. ${compliance.charAt(0).toUpperCase()}${compliance.slice(1)}. Foram identificados ${socialText} e ${complexText}.`;
 }
 
 function periodPopulation(records: ProcessMovement[], startDate: string, endDate: string): ProcessMovement[] {
@@ -317,7 +337,7 @@ export function buildReportModel(records: ProcessMovement[], members: TeamMember
   const activeMembers = members.filter((member) => member.active && (filters.scope === "team" || member.userId === filters.scope));
   const actionValues = population.map((item) => actionLabel(item.actionType));
   const warnings: string[] = [];
-  if (flow.reconciliationDifference) warnings.push(`A conciliação encontrou diferença de ${flow.reconciliationDifference} registro(s), normalmente causada por dados históricos sem data de envio coerente.`);
+  if (flow.reconciliationDifference) warnings.push(`A conciliação encontrou diferença de ${flow.reconciliationDifference} ${pluralize(Math.abs(flow.reconciliationDifference), "registro", "registros")}, normalmente causada por dados históricos sem data de envio coerente.`);
   if (population.some((item) => item.workflowStatus === "Enviado" && !item.sentAt)) warnings.push("Há registros marcados como enviados sem data de envio; eles não entram nas métricas temporais.");
   const socialDenominator = social.length;
   const splitMulti = (values: string[]) => values.flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean));
@@ -365,3 +385,52 @@ export function reportFilterDescription(filters: ReportFilters, members: TeamMem
 }
 
 export function normalizeCategory(value: string): string { return foldText(value); }
+
+export function categoryPresentation(data: CategoryMetric[], freeText = false): CategoryPresentation {
+  if (!data.length) return "empty";
+  if (data.length === 1) return "single";
+  if (freeText && data.filter((item) => item.value > 1).length < 2) return "insight";
+  return "chart";
+}
+
+export function reportScopeInfo(model: ReportModel, members: TeamMember[]): ReportScopeInfo {
+  if (model.filters.scope === "team") {
+    return {
+      kind: "team",
+      title: "Relatório da equipe",
+      responsibleName: null,
+      usersConsidered: model.users.length,
+    };
+  }
+  const member = members.find((item) => item.userId === model.filters.scope);
+  return {
+    kind: "individual",
+    title: "Relatório individual",
+    responsibleName: member?.fullName || member?.email || model.users[0]?.name || "Usuário não identificado",
+    usersConsidered: 1,
+  };
+}
+
+function safeInitials(value: string): string {
+  const withoutAccents = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const words = withoutAccents.match(/[A-Za-z0-9]+/g) ?? [];
+  if (!words.length) return "usuario";
+  const initials = words.map((word) => word[0]).join("").toLowerCase();
+  return initials.replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || "usuario";
+}
+
+export function buildReportFileName(mode: ReportMode, model: ReportModel, members: TeamMember[]): string {
+  const prefix: Record<ReportMode, string> = {
+    executive: "praxis-relatorio-executivo",
+    complete: "praxis-relatorio-completo",
+    highlights: "praxis-anexo-processos-destacados",
+  };
+  const scope = reportScopeInfo(model, members);
+  const scopePart = scope.kind === "team" ? "equipe" : safeInitials(scope.responsibleName ?? "");
+  return `${prefix[mode]}-${scopePart}-${model.filters.startDate}-a-${model.filters.endDate}.pdf`
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .toLowerCase();
+}

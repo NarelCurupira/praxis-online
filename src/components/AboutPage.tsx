@@ -1,11 +1,12 @@
 import { Mail } from "lucide-react";
+import { PRAXIS_VERSION } from "../version";
 
 export function AboutPage() {
   return <div className="page-stack">
     <div className="page-heading"><div><p className="eyebrow">Informações do aplicativo</p><h1>Sobre</h1><p>Autoria, finalidade e canais de contribuição.</p></div></div>
     <section className="panel about-card">
       <img src="/praxis-logo.png" alt="Práxis - Controle de Processos" />
-      <div className="about-version">Práxis Web · Versão 0.7.0</div>
+      <div className="about-version">Práxis Web · Versão {PRAXIS_VERSION}</div>
       <div className="about-copy">
         <p><strong>© 2026 Marcos Antonio Santos Machado. Todos os direitos reservados.</strong></p>
         <p>Idealização e criação: Marcos Antonio Santos Machado.</p>

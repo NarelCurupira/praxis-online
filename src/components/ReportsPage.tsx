@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { CalendarRange, FileDown, FileSpreadsheet, FileText, ShieldCheck } from "lucide-react";
 import { actionLabel } from "../labels";
-import { buildReportModel, type HighlightFilter, type ReportMode } from "../reporting";
+import { buildReportFileName, buildReportModel, reportScopeInfo, type HighlightFilter, type ReportMode } from "../reporting";
 import { generateManagementReportPdf } from "../reportPdf";
 import type { ProcessMovement, TeamMember } from "../types";
+import { PRAXIS_VERSION } from "../version";
 
 interface Props {
   records: ProcessMovement[];
   members: TeamMember[];
   currentUserId: string;
-  onSave: (bytes: number[]) => Promise<string>;
+  onSave: (bytes: number[], fileName: string) => Promise<string>;
   isAdmin: boolean;
 }
 
@@ -70,13 +71,13 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
     setBusy(true); setMessage("");
     try {
       const bytes = generateManagementReportPdf(model, { mode, members, comparisonModel: previousModel });
-      setMessage(await onSave(bytes));
+      setMessage(await onSave(bytes, buildReportFileName(mode, model, members)));
     } catch (error) { setMessage(`Não foi possível gerar o relatório: ${String(error)}`); }
     finally { setBusy(false); }
   }
 
   return <div className="page-stack">
-    <div className="page-heading"><div><p className="eyebrow">Práxis Web 0.7</p><h1>Relatórios gerenciais</h1><p>Analise fluxo, estoque, produtividade, prazos e relevância com indicadores conciliados.</p></div></div>
+    <div className="page-heading"><div><p className="eyebrow">Práxis Web {PRAXIS_VERSION}</p><h1>Relatórios gerenciais</h1><p>Analise fluxo, estoque, produtividade, prazos e relevância com indicadores conciliados.</p></div></div>
     <div className="reports-layout">
       <section className="panel report-builder">
         <div className="panel-title"><div><h2>1. Modalidade</h2><p>Escolha a profundidade do documento.</p></div><FileText size={22} /></div>
@@ -105,8 +106,12 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
         <div className="report-preview-icon"><ShieldCheck size={28} /></div><h2>Prévia conciliada</h2>
         {model ? <><dl>
           <div><dt>Período</dt><dd>{shortDate(startDate)} a {shortDate(endDate)}</dd></div>
+          <div><dt>Escopo</dt><dd>{reportScopeInfo(model, members).title}</dd></div>
+          {reportScopeInfo(model, members).kind === "individual"
+            ? <div><dt>Responsável</dt><dd>{reportScopeInfo(model, members).responsibleName}</dd></div>
+            : <div><dt>Usuários considerados</dt><dd>{reportScopeInfo(model, members).usersConsidered}</dd></div>}
           <div><dt>Estoque inicial</dt><dd>{model.flow.initialStock}</dd></div><div><dt>Recebidos</dt><dd>{model.flow.received}</dd></div><div><dt>Enviados</dt><dd>{model.flow.sent}</dd></div><div><dt>Estoque final</dt><dd>{model.flow.finalStock}</dd></div>
-          <div><dt>Concluídos no prazo</dt><dd>{percentage(model.deadline.completionCompliance)}</dd></div><div><dt>Pendentes vencidos</dt><dd>{model.deadline.pendingOverdue}</dd></div><div><dt>Destacados</dt><dd>{model.highlights.total}</dd></div>
+          <div><dt>Concluídos no prazo</dt><dd>{model.deadline.completionCompliance == null ? "Não aplicável" : percentage(model.deadline.completionCompliance)}</dd></div><div><dt>Sem prazo aplicável</dt><dd>{model.deadline.noDeadline}</dd></div><div><dt>Pendentes vencidos</dt><dd>{model.deadline.pendingOverdue}</dd></div><div><dt>Destacados</dt><dd>{model.highlights.total}</dd></div>
         </dl><div className={model.flow.reconciliationDifference ? "report-reconciliation warning" : "report-reconciliation ok"}><strong>Conciliação do estoque</strong><span>{model.flow.initialStock} + {model.flow.received} - {model.flow.sent} = {model.flow.finalStock}</span><small>{model.flow.reconciliationDifference ? "Há inconsistência histórica a conferir." : "Conciliação verificada."}</small></div></> : <div className="empty-state">Defina um período válido.</div>}
         <p>O PDF inclui definições metodológicas e informa os filtros, a versão do Práxis e a data e hora de geração.</p><small>Todos os indicadores são calculados no momento da geração; nenhum número é fixo.</small>
       </aside>

@@ -1,6 +1,6 @@
 # Práxis Online
 
-Versão atual: **0.7.0**, conectada ao projeto Atrium no Supabase.
+Versão atual: **0.7.1**, conectada ao projeto Atrium no Supabase.
 
 Versão web e multiusuário do **Práxis — Controle de Processos**, derivada da interface local 0.9.3. Este projeto é independente do Práxis Local e não altera o banco SQLite nem o instalador do Windows.
 

@@ -26,6 +26,15 @@ import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, ImportRecord, Page, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamMember, WorkflowStatus } from "./types";
 import { useIdleSession } from "./useIdleSession";
 import { acceptTeamInvite } from "./api";
+import { PRAXIS_VERSION } from "./version";
+
+function LoadingScreen({ message }: { message: string }) {
+  return <div className="splash-screen" role="status" aria-live="polite">
+    <img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" />
+    <div className="splash-version">Práxis Web · Versão {PRAXIS_VERSION}</div>
+    <div className="splash-progress"><span className="splash-spinner" /><span>{message}</span></div>
+  </div>;
+}
 
 function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme: "light" | "dark"; onToggleTheme: () => void }) {
   useIdleSession();
@@ -73,10 +82,7 @@ function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme:
   const isAdmin = currentMember?.role === "admin";
   const canWrite = Boolean(currentMember && currentMember.role !== "consulta");
 
-  if (loading) return <div className="splash-screen" role="status" aria-live="polite">
-    <img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" />
-    <div className="splash-progress"><span className="splash-spinner" /><span>Preparando seus processos...</span></div>
-  </div>;
+  if (loading) return <LoadingScreen message="Preparando seus processos..." />;
 
   const shell = <div className={sidebarOpen ? "app sidebar-visible" : "app"}>
     <Sidebar page={page} isAdmin={Boolean(isAdmin)} onChange={(next) => { setPage(next); setSidebarOpen(false); }} />
@@ -147,7 +153,7 @@ export default function App() {
   }, []);
 
   if (!supabaseConfigured) return <SetupPage />;
-  if (checking) return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><div className="splash-progress"><span className="splash-spinner" /><span>Verificando acesso seguro...</span></div></div>;
+  if (checking) return <LoadingScreen message="Verificando acesso seguro..." />;
   if (passwordRecovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setPasswordRecovery(false); }} />;
   if (inviteError) return <div className="auth-shell"><section className="auth-card"><h1>Não foi possível concluir o convite</h1><div className="auth-message">{inviteError}</div><button className="button primary auth-submit" onClick={() => { localStorage.removeItem("praxis-pending-invite"); void supabase?.auth.signOut(); setInviteError(""); }}>Voltar ao acesso</button></section></div>;
   if (!session) return <AuthPage />;

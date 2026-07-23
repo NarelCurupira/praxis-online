@@ -372,9 +372,9 @@ export async function saveExport(bytes: number[]): Promise<string> {
   return "Planilha baixada pelo navegador.";
 }
 
-export async function savePdf(bytes: number[]): Promise<string> {
-  download(new Uint8Array(bytes), "application/pdf", `relatorio-acompanhamento-${new Date().toISOString().slice(0, 10)}.pdf`);
-  return "Relatório PDF baixado pelo navegador.";
+export async function savePdf(bytes: number[], fileName: string): Promise<string> {
+  download(new Uint8Array(bytes), "application/pdf", fileName);
+  return `Relatório PDF baixado: ${fileName}`;
 }
 
 export async function listBackups(): Promise<BackupInfo[]> { return []; }

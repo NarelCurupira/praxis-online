@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildReportModel, calculateDeadlines, calculateDistribution, calculateFlow, percentile } from "./reporting";
+import { buildReportFileName, buildReportModel, calculateDeadlines, calculateDistribution, calculateFlow, categoryPresentation, percentile, reportScopeInfo } from "./reporting";
 import type { ProcessMovement, TeamMember } from "./types";
 
 const members: TeamMember[] = [
@@ -53,6 +53,26 @@ test("estatísticas de tramitação usam horas úteis já calculadas", () => {
   assert.equal(percentile([], .5), null);
 });
 
+test("tempo zero na mesma data é preservado como envio no mesmo dia útil", () => {
+  const result = calculateDistribution([
+    movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-05", workflowStatus: "Enviado", sentAt: "2026-01-05", elapsedHours: 0 }),
+  ], "2026-01-01", "2026-01-31");
+  assert.equal(result.median, 0);
+  assert.equal(result.zeroSameDate, 1);
+  assert.equal(result.withoutCompleteTime, 1);
+});
+
+test("ausência de prazo evita divisão por zero e permanece fora dos denominadores", () => {
+  const result = calculateDeadlines([
+    movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-05", deadlineAt: "" }),
+    movement({ movementId: 2, caseId: 2, receivedAt: "2026-01-06", deadlineAt: "", workflowStatus: "Enviado", sentAt: "2026-01-07", elapsedHours: 6 }),
+  ], "2026-01-01", "2026-01-31");
+  assert.equal(result.noDeadline, 2);
+  assert.equal(result.applicable, 0);
+  assert.equal(result.completionCompliance, null);
+  assert.equal(result.currentConformity, null);
+});
+
 test("categorias de destaque são exclusivas e ODS múltiplos são contados por processo", () => {
   const records = [
     movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-02", sociallyRelevant: true, sdgs: ["ODS 3", "ODS 16", "ODS 16"] }),
@@ -72,4 +92,30 @@ test("filtros de usuário, classe, providência e ambas as classificações afet
   ];
   const model = buildReportModel(records, members, { startDate: "2026-01-01", endDate: "2026-01-31", scope: "u1", className: "Apelação Cível", actionType: "Desnecessária Intervenção", highlight: "both" });
   assert.equal(model.population.length, 1); assert.equal(model.users.length, 1); assert.equal(model.users[0].userId, "u1");
+});
+
+test("escopo e nome do arquivo refletem modalidade, responsável e datas reais", () => {
+  const namedMembers: TeamMember[] = [{ ...members[0], fullName: "Marcos Antônio Santos Machado" }, members[1]];
+  const records = [movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-02", assignedTo: "u1" })];
+  const individual = buildReportModel(records, namedMembers, { startDate: "2026-01-01", endDate: "2026-07-22", scope: "u1", className: "all", actionType: "all", highlight: "all" });
+  assert.deepEqual(reportScopeInfo(individual, namedMembers), { kind: "individual", title: "Relatório individual", responsibleName: "Marcos Antônio Santos Machado", usersConsidered: 1 });
+  assert.equal(buildReportFileName("complete", individual, namedMembers), "praxis-relatorio-completo-masm-2026-01-01-a-2026-07-22.pdf");
+
+  const team = buildReportModel(records, namedMembers, { ...individual.filters, scope: "team" });
+  assert.equal(buildReportFileName("highlights", team, namedMembers), "praxis-anexo-processos-destacados-equipe-2026-01-01-a-2026-07-22.pdf");
+});
+
+test("campos livres sem repetição suficiente usam síntese em vez de ranking", () => {
+  assert.equal(categoryPresentation([
+    { label: "Tema A", value: 1, percentage: 25 },
+    { label: "Tema B", value: 1, percentage: 25 },
+    { label: "Tema C", value: 1, percentage: 25 },
+    { label: "Tema D", value: 1, percentage: 25 },
+  ], true), "insight");
+  assert.equal(categoryPresentation([
+    { label: "Saúde", value: 4, percentage: 50 },
+    { label: "Educação", value: 3, percentage: 37.5 },
+    { label: "Outro", value: 1, percentage: 12.5 },
+  ], true), "chart");
+  assert.equal(categoryPresentation([{ label: "Direto", value: 8, percentage: 100 }]), "single");
 });

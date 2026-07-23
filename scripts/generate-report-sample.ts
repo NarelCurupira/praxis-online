@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { buildReportModel } from "../src/reporting";
+import { buildReportFileName, buildReportModel } from "../src/reporting";
 import { generateManagementReportPdf } from "../src/reportPdf";
 import type { ProcessMovement, TeamMember } from "../src/types";
 
@@ -30,4 +30,4 @@ const records = Array.from({ length: 48 }, (_, index) => record(index + 1));
 const model = buildReportModel(records, members, { startDate: "2026-06-01", endDate: "2026-06-30", scope: "team", className: "all", actionType: "all", highlight: "all", nearDueDays: 3 });
 const bytes = generateManagementReportPdf(model, { mode: "complete", members, generatedAt: new Date("2026-07-22T10:30:00-03:00") });
 mkdirSync("output/pdf", { recursive: true });
-writeFileSync("output/pdf/praxis-v0.7-relatorio-exemplo.pdf", new Uint8Array(bytes));
+writeFileSync(`output/pdf/${buildReportFileName("complete", model, members)}`, new Uint8Array(bytes));
