@@ -106,7 +106,13 @@ export interface EfficiencyModel {
 }
 
 export function dateKey(value: string | null | undefined): string {
-  return value?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return localDateKey(parsed);
+
+  return value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
 }
 
 export function hasCompleteTime(value: string | null | undefined): boolean {
@@ -114,8 +120,8 @@ export function hasCompleteTime(value: string | null | undefined): boolean {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return false;
 
-  // O Supabase devolve timestamps em UTC. Assim, 00:00 UTC pode corresponder
-  // a 21:00 do dia anterior no Brasil e não pode ser tratado como data sem hora.
+  // Datas importadas sem horário são normalizadas para meia-noite local e
+  // permanecem fora das métricas que dependem de precisão horária.
   return parsed.getHours() !== 0 || parsed.getMinutes() !== 0 || parsed.getSeconds() !== 0;
 }
 

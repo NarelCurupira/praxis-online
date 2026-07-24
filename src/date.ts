@@ -3,6 +3,17 @@ export function toLocalInput(date = new Date()): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+export function toStorageTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? `${value}T00:00:00`
+    : value;
+
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 export function addDays(value: string, days: number): string {
   const date = value ? new Date(value) : new Date();
   date.setDate(date.getDate() + days);
@@ -24,13 +35,15 @@ export function addBusinessDays(value: string, days: number, excludedDates: stri
 
 export function formatDate(value: string | null, includeTime = false): string {
   if (!value) return "—";
-  const date = new Date(value);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(dateOnly ? `${value}T12:00:00` : value);
   if (Number.isNaN(date.getTime())) return value;
+  const hasMeaningfulTime = date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0;
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+    ...(includeTime && !dateOnly && hasMeaningfulTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   }).format(date);
 }
 
@@ -59,15 +72,10 @@ export function usefulElapsedHours(receivedAt: string, sentAt: string | null, ex
 
   const elapsed = (end.getTime() - start.getTime()) / 3_600_000;
 
-  // Regra central do Práxis: quando o envio ocorre antes de completar 24 horas
-  // corridas, descontam-se as 18 horas não úteis de uma jornada diária de 6 horas.
   if (elapsed < 24) {
     return isUsefulDay(start, excludedDates) ? Math.max(0, elapsed - 18) : 0;
   }
 
-  // Para períodos maiores, mantém-se a metodologia histórica de 6 horas por
-  // dia útil, mas usando as datas locais reais, sem truncar o recebimento para
-  // meia-noite UTC.
   const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12);
   const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 12);
   let usefulHours = 0;

@@ -1,26 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { usefulElapsedHours } from "./date";
-import { hasCompleteTime } from "./efficiency";
+import { formatDate, toStorageTimestamp } from "./date";
+import { dateKey, hasCompleteTime } from "./efficiency";
 
-test("timestamp UTC à meia-noite é reconhecido pelo horário local", () => {
-  const value = "2026-07-24T00:00:00.000Z";
-  const parsed = new Date(value);
-  const expected = parsed.getHours() !== 0 || parsed.getMinutes() !== 0 || parsed.getSeconds() !== 0;
-  assert.equal(hasCompleteTime(value), expected);
+test("datetime-local é convertido para o instante UTC correspondente", () => {
+  assert.equal(toStorageTimestamp("2026-07-24T15:30"), "2026-07-24T18:30:00.000Z");
 });
 
-test("data local artificial à meia-noite continua sem horário preciso", () => {
-  assert.equal(hasCompleteTime("2026-07-24T00:00:00"), false);
+test("timestamp UTC é agrupado pela data local de Belém", () => {
+  assert.equal(dateKey("2026-07-24T00:00:00.000Z"), "2026-07-23");
 });
 
-test("processo recebido às 21h e enviado às 11h19 do dia seguinte fica até duas horas úteis", () => {
-  const hours = usefulElapsedHours("2026-07-23T21:00:00-03:00", "2026-07-24T11:19:00-03:00");
-  assert.ok(hours != null);
-  assert.ok(hours <= 2);
+test("registro histórico migrado para meia-noite local não finge possuir horário", () => {
+  assert.equal(hasCompleteTime("2026-07-24T03:00:00.000Z"), false);
+  assert.equal(formatDate("2026-07-24T03:00:00.000Z", true), "24/07/2026");
 });
 
-test("cálculo usa o horário real do recebimento, e não a meia-noite", () => {
-  const hours = usefulElapsedHours("2026-07-23T21:00:00-03:00", "2026-07-24T11:19:00-03:00");
-  assert.equal(Number(hours?.toFixed(2)), 0);
+test("registro novo preserva e apresenta o horário real", () => {
+  assert.equal(hasCompleteTime("2026-07-24T18:30:00.000Z"), true);
+  assert.match(formatDate("2026-07-24T18:30:00.000Z", true), /24\/07\/2026.*15:30/);
 });

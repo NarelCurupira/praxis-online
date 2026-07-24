@@ -1,11 +1,29 @@
 import { requireSupabase } from "./supabase";
-import { usefulElapsedHours } from "./date";
+import { toStorageTimestamp, usefulElapsedHours } from "./date";
 import type { AdminAuditEntry, BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
 
 let workspacePromise: Promise<string> | null = null;
 
 function fail(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
+}
+
+function requiredTimestamp(value: string, fieldName: string): string {
+  const timestamp = toStorageTimestamp(value);
+  if (!timestamp) throw new Error(`${fieldName} possui data ou horário inválido.`);
+  return timestamp;
+}
+
+function timestampKey(value: string | null | undefined): string {
+  return toStorageTimestamp(value) ?? "";
+}
+
+function localDatePart(value: string | null | undefined): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 async function context() {
@@ -71,7 +89,7 @@ export async function listMovements(): Promise<ProcessMovement[]> {
   const { client, workspaceId } = await context();
   const { data: exclusions, error: exclusionsError } = await client.from("calendar_exclusions").select("date").eq("workspace_id", workspaceId);
   fail(exclusionsError);
-  const excludedDates = new Set((exclusions ?? []).map((item) => item.date));
+  const excludedDates = new Set<string>((exclusions ?? []).map((item: { date: string }) => item.date));
   const rows: Record<string, any>[] = [];
   const pageSize = 1000;
   for (let start = 0; ; start += pageSize) {
@@ -91,7 +109,7 @@ function filterRecords(records: ProcessMovement[], filters: MovementQuery, curre
     if (record.deletedAt) return false;
     if (filters.queueOnly && (record.workflowStatus === "Enviado" || record.assignedTo !== currentUserId)) return false;
     if (filters.status !== "Todos" && record.workflowStatus !== filters.status) return false;
-    if (filters.year !== "Todos" && new Date(record.receivedAt).getFullYear() !== Number(filters.year)) return false;
+    if (filters.year !== "Todos" && Number(localDatePart(record.receivedAt).slice(0, 4)) !== Number(filters.year)) return false;
     if (filters.classification === "Relevância social" && !record.sociallyRelevant) return false;
     if (filters.classification === "Alta complexidade" && !record.extremelyComplex) return false;
     if (filters.classification === "Ambos" && !(record.sociallyRelevant && record.extremelyComplex)) return false;
@@ -113,7 +131,7 @@ export async function listMovementPage(filters: MovementQuery): Promise<PagedMov
   const all = await listMovements();
   const filtered = filterRecords(all, filters, user.id);
   const start = (filters.page - 1) * filters.pageSize;
-  const years = [...new Set(all.map((record) => new Date(record.receivedAt).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a);
+  const years = [...new Set(all.map((record) => Number(localDatePart(record.receivedAt).slice(0, 4))).filter(Number.isFinite))].sort((a, b) => b - a);
   return { records: filtered.slice(start, start + filters.pageSize), total: filtered.length, years };
 }
 
@@ -138,8 +156,9 @@ async function findOrCreateCase(data: ProcessFormData | ImportRecord): Promise<{
 export async function createMovement(data: ProcessFormData): Promise<ProcessMovement> {
   const { client, user, workspaceId } = await context();
   const found = await findOrCreateCase(data);
+  const receivedAt = requiredTimestamp(data.receivedAt, "A entrada");
   const { data: row, error } = await client.from("movements").insert({
-    workspace_id: workspaceId, case_id: found.id, received_at: data.receivedAt,
+    workspace_id: workspaceId, case_id: found.id, received_at: receivedAt,
     deadline_at: data.deadlineAt || null, action_type: data.actionType, notes: data.notes,
     priority: data.priority, document_path: data.documentPath,
     assigned_to: data.assignedTo || user.id,
@@ -224,7 +243,7 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
   const old = movementFromRow(current!);
   const { error: caseError } = await client.from("cases").update({ ...caseValues(data), updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("id", old.caseId);
   fail(caseError);
-  const sentAt = data.sentAt || null;
+  const sentAt = toStorageTimestamp(data.sentAt);
   const elapsedHours = usefulElapsedHours(old.receivedAt, sentAt);
   const movementValues: Record<string, unknown> = { deadline_at: data.deadlineAt || null, sent_at: sentAt, elapsed_hours: elapsedHours, action_type: data.actionType, notes: data.notes, priority: data.priority, document_path: data.documentPath, updated_by: user.id, updated_at: new Date().toISOString() };
   if (data.assignedTo && data.assignedTo !== old.assignedTo) movementValues.assigned_to = data.assignedTo;
@@ -233,7 +252,7 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
   const changes: Array<[string, unknown, unknown]> = [
     ["Classe", old.className, data.className], ["Assunto", old.subject, data.subject],
     ["Prazo", old.deadlineAt, data.deadlineAt], ["Providência", old.actionType, data.actionType],
-    ["Data de envio", old.sentAt, data.sentAt],
+    ["Data de envio", old.sentAt, sentAt],
     ["Observações", old.notes, data.notes], ["Prioridade", old.priority, data.priority],
     ["Responsável", old.assignedTo, data.assignedTo],
     ["Relevância social", old.sociallyRelevant, data.sociallyRelevant],
@@ -314,25 +333,30 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
     const { data, error } = await client.from("movements").select("case_id, received_at, workflow_status")
       .eq("workspace_id", workspaceId).in("case_id", ids).limit(10000);
     fail(error);
-    for (const item of data ?? []) existingMovements.add(`${item.case_id}|${item.received_at}|${item.workflow_status}`);
+    for (const item of data ?? []) existingMovements.add(`${item.case_id}|${timestampKey(item.received_at)}|${item.workflow_status}`);
   }
 
   const movementRows: Record<string, unknown>[] = [];
   for (const record of records) {
     const caseId = caseIds.get(record.judicialNumber);
     if (!caseId) throw new Error(`Não foi possível localizar o processo ${record.judicialNumber}.`);
-    const duplicateKey = `${caseId}|${record.receivedAt}|${record.workflowStatus}`;
+
+    const receivedAt = requiredTimestamp(record.receivedAt, `A entrada do processo ${record.judicialNumber}`);
+    const informedSentAt = toStorageTimestamp(record.sentAt);
+    const duplicateKey = `${caseId}|${timestampKey(receivedAt)}|${record.workflowStatus}`;
     if (existingMovements.has(duplicateKey)) { ignoredRows += 1; continue; }
     existingMovements.add(duplicateKey);
-    const automaticSentAt = record.workflowStatus === "Enviado" && !record.sentAt
-      ? new Date(new Date(record.receivedAt).getTime() + 10 * 86_400_000).toISOString()
-      : record.sentAt;
+
+    const automaticSentAt = record.workflowStatus === "Enviado" && !informedSentAt
+      ? new Date(new Date(receivedAt).getTime() + 10 * 86_400_000).toISOString()
+      : informedSentAt;
+
     movementRows.push({
-      workspace_id: workspaceId, case_id: caseId, received_at: record.receivedAt,
+      workspace_id: workspaceId, case_id: caseId, received_at: receivedAt,
       deadline_at: record.deadlineAt || null, draft_status: record.draftStatus,
       workflow_status: record.workflowStatus, sent_at: automaticSentAt,
       action_type: record.actionType, notes: record.notes, priority: record.priority,
-      document_path: record.documentPath, elapsed_hours: usefulElapsedHours(record.receivedAt, automaticSentAt),
+      document_path: record.documentPath, elapsed_hours: usefulElapsedHours(receivedAt, automaticSentAt),
       assigned_to: record.assignedTo || user.id,
       created_by: user.id, updated_by: user.id,
     });
@@ -386,7 +410,7 @@ export async function restoreBackup(file: File): Promise<string> {
   const activeMemberIds = new Set((await listTeamMembers()).filter((item) => item.active).map((item) => item.userId));
   const records: ImportRecord[] = parsed.records.map((item) => ({
     assignedTo: activeMemberIds.has(item.assignedTo) ? item.assignedTo : undefined, mpNumber: item.mpNumber, judicialNumber: item.judicialNumber,
-    className: item.className, subject: item.subject, receivedAt: item.receivedAt.slice(0, 10), deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
+    className: item.className, subject: item.subject, receivedAt: item.receivedAt, deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
     draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt,
     actionType: item.actionType, notes: item.notes, priority: item.priority, documentPath: item.documentPath,
     sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,
@@ -525,7 +549,7 @@ export async function sendMemberPasswordReset(member: TeamMember): Promise<void>
 export async function teamComparativeReport(startDate: string, endDate: string): Promise<TeamComparison[]> {
   const [members, records] = await Promise.all([listTeamMembers(), listMovements()]);
   return members.filter((member) => member.active).map((member) => {
-    const items = records.filter((record) => record.assignedTo === member.userId && record.receivedAt.slice(0, 10) >= startDate && record.receivedAt.slice(0, 10) <= endDate);
+    const items = records.filter((record) => record.assignedTo === member.userId && localDatePart(record.receivedAt) >= startDate && localDatePart(record.receivedAt) <= endDate);
     const sent = items.filter((record) => record.workflowStatus === "Enviado");
     const elapsed = sent.map((record) => record.elapsedHours).filter((value): value is number => value !== null);
     return {
