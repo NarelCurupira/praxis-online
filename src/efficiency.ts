@@ -110,7 +110,13 @@ export function dateKey(value: string | null | undefined): string {
 }
 
 export function hasCompleteTime(value: string | null | undefined): boolean {
-  return Boolean(value && /T\d{2}:\d{2}/.test(value) && !/T00:00(?::00)?(?:[Z+-]|$)/.test(value));
+  if (!value || !/T\d{2}:\d{2}/.test(value)) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+
+  // O Supabase devolve timestamps em UTC. Assim, 00:00 UTC pode corresponder
+  // a 21:00 do dia anterior no Brasil e não pode ser tratado como data sem hora.
+  return parsed.getHours() !== 0 || parsed.getMinutes() !== 0 || parsed.getSeconds() !== 0;
 }
 
 function parseDate(value: string): Date {

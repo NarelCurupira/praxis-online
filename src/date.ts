@@ -41,26 +41,48 @@ export function formatElapsedTime(hours: number | null): string {
   return `${days.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
 }
 
+function localDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isUsefulDay(date: Date, excludedDates: ReadonlySet<string>): boolean {
+  return date.getDay() !== 0 && date.getDay() !== 6 && !excludedDates.has(localDateKey(date));
+}
+
 export function usefulElapsedHours(receivedAt: string, sentAt: string | null, excludedDates: ReadonlySet<string> = new Set()): number | null {
   if (!receivedAt || !sentAt) return null;
-  const receivedDate = receivedAt.slice(0, 10);
-  const start = new Date(`${receivedDate}T00:00:00`);
+
+  const start = new Date(receivedAt);
   const end = new Date(sentAt);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  const elapsed = Math.max(0, (end.getTime() - start.getTime()) / 3_600_000);
-  const cursor = new Date(`${receivedDate}T12:00:00`);
-  if (elapsed < 24) return cursor.getDay() === 0 || cursor.getDay() === 6 || excludedDates.has(receivedDate) ? 0 : Math.max(0, elapsed - 18);
+  if (end.getTime() <= start.getTime()) return 0;
 
-  const fullDays = Math.floor(elapsed / 24);
-  const remainder = elapsed % 24;
+  const elapsed = (end.getTime() - start.getTime()) / 3_600_000;
+
+  // Regra central do Práxis: quando o envio ocorre antes de completar 24 horas
+  // corridas, descontam-se as 18 horas não úteis de uma jornada diária de 6 horas.
+  if (elapsed < 24) {
+    return isUsefulDay(start, excludedDates) ? Math.max(0, elapsed - 18) : 0;
+  }
+
+  // Para períodos maiores, mantém-se a metodologia histórica de 6 horas por
+  // dia útil, mas usando as datas locais reais, sem truncar o recebimento para
+  // meia-noite UTC.
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate(), 12);
+  const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate(), 12);
   let usefulHours = 0;
-  for (let day = 0; day < fullDays; day += 1) {
-    const dateKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-    if (cursor.getDay() !== 0 && cursor.getDay() !== 6 && !excludedDates.has(dateKey)) usefulHours += 6;
+  const cursor = new Date(startDay);
+
+  while (cursor < endDay) {
+    if (isUsefulDay(cursor, excludedDates)) usefulHours += 6;
     cursor.setDate(cursor.getDate() + 1);
   }
-  const remainderDate = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
-  if (remainder > 0 && cursor.getDay() !== 0 && cursor.getDay() !== 6 && !excludedDates.has(remainderDate)) usefulHours += Math.min(6, remainder);
+
+  if (isUsefulDay(endDay, excludedDates)) {
+    const endHour = end.getHours() + end.getMinutes() / 60 + end.getSeconds() / 3600;
+    usefulHours += Math.min(6, Math.max(0, endHour));
+  }
+
   return usefulHours;
 }
 
