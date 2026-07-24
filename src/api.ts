@@ -301,6 +301,44 @@ function batches<T>(items: T[], size = 100): T[][] {
   return result;
 }
 
+const LEGACY_TIME_SHIFT_MS = 3 * 60 * 60 * 1000;
+const LEGACY_TIME_SHIFT_TOLERANCE_MS = 10 * 60 * 1000;
+
+function timestampMillis(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const millis = new Date(value).getTime();
+  return Number.isNaN(millis) ? null : millis;
+}
+
+/**
+ * Antes da correção de fuso, horários de planilhas podiam ser gravados como
+ * UTC puro. No Pará, isso os fazia aparecer três horas antes.
+ *
+ * A reimportação pode corrigir esse caso mesmo que a migração antiga tenha
+ * marcado equivocadamente o horário como "preciso".
+ */
+export function isLikelyLegacyTimezoneShift(
+  storedValue: string | null | undefined,
+  importedValue: string | null | undefined,
+): boolean {
+  const stored = timestampMillis(storedValue);
+  const imported = timestampMillis(importedValue);
+  if (stored === null || imported === null) return false;
+
+  const difference = Math.abs(imported - stored);
+  return Math.abs(difference - LEGACY_TIME_SHIFT_MS) <= LEGACY_TIME_SHIFT_TOLERANCE_MS;
+}
+
+function shouldRefreshImportedTimestamp(
+  storedValue: string | null | undefined,
+  importedValue: string | null | undefined,
+  storedPrecise: boolean | null | undefined,
+): boolean {
+  if (!importedValue) return false;
+  if (!storedPrecise) return true;
+  return isLikelyLegacyTimezoneShift(storedValue, importedValue);
+}
+
 export async function importRecords(records: ImportRecord[], onProgress?: (message: string) => void): Promise<ImportResult> {
   const { client, user, workspaceId } = await context();
   let casesCreated = 0, movementsCreated = 0, movementsUpdated = 0, ignoredRows = 0;
@@ -359,11 +397,26 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
 
     if (existing) {
       const values: Record<string, unknown> = {};
-      if (record.receivedTimePrecise && !existing.received_time_precise) {
+      if (
+        record.receivedTimePrecise
+        && shouldRefreshImportedTimestamp(
+          existing.received_at,
+          receivedAt,
+          existing.received_time_precise,
+        )
+      ) {
         values.received_at = receivedAt;
         values.received_time_precise = true;
       }
-      if (record.sentTimePrecise && informedSentAt && !existing.sent_time_precise) {
+      if (
+        record.sentTimePrecise
+        && informedSentAt
+        && shouldRefreshImportedTimestamp(
+          existing.sent_at,
+          informedSentAt,
+          existing.sent_time_precise,
+        )
+      ) {
         values.sent_at = informedSentAt;
         values.sent_time_precise = true;
       }

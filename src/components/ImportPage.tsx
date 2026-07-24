@@ -93,7 +93,10 @@ function dateTimeColumns(headers: string[], base: "entrada" | "envio") {
 }
 
 async function parseWorkbook(file: File, classes: ClassSetting[], exclusions: CalendarExclusion[]): Promise<{ records: ImportRecord[]; ignored: number; template: string }> {
-  const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: true });
+  // Datas permanecem como números seriais do Excel. Converter previamente
+  // para Date faz o navegador aplicar o fuso local e pode deslocar o horário
+  // importado em três horas.
+  const workbook = XLSX.read(await file.arrayBuffer(), { cellDates: false });
   const records: ImportRecord[] = [];
   let ignored = 0;
   const sheets = workbook.SheetNames.map((name) => ({ name, rows: boundedRows(workbook.Sheets[name]) }));

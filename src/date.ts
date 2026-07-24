@@ -205,10 +205,27 @@ export function excelDateTime(value: unknown, separateTime?: unknown): Spreadshe
     date = new Date(value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes(), value.getSeconds());
     explicitTime = value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
   } else if (typeof value === "number") {
-    const utcDays = Math.floor(value - 25569);
-    const base = new Date(utcDays * 86_400_000);
-    const seconds = Math.round((((value % 1) + 1) % 1) * 86_400) % 86_400;
-    date = new Date(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), Math.floor(seconds / 3600), Math.floor((seconds % 3600) / 60), seconds % 60);
+    // Interpreta diretamente o número serial do Excel. Não cria uma data
+    // intermediária no fuso do navegador, evitando o deslocamento UTC−3.
+    const wholeDays = Math.floor(value);
+    let seconds = Math.round((value - wholeDays) * 86_400);
+    let dayOffset = wholeDays;
+
+    // Protege contra arredondamentos como 23:59:59,999 → 24:00:00.
+    if (seconds >= 86_400) {
+      seconds -= 86_400;
+      dayOffset += 1;
+    }
+
+    const base = new Date(Date.UTC(1899, 11, 30) + dayOffset * 86_400_000);
+    date = new Date(
+      base.getUTCFullYear(),
+      base.getUTCMonth(),
+      base.getUTCDate(),
+      Math.floor(seconds / 3600),
+      Math.floor((seconds % 3600) / 60),
+      seconds % 60,
+    );
     explicitTime = seconds !== 0;
   } else if (typeof value === "string" && value.trim()) {
     const text = value.trim();
@@ -234,7 +251,10 @@ export function excelDateTime(value: unknown, separateTime?: unknown): Spreadshe
     explicitTime = true;
   }
 
-  return { value: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`, precise: explicitTime };
+  return {
+    value: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+    precise: explicitTime,
+  };
 }
 
 export function excelDateToIso(value: unknown): string {
