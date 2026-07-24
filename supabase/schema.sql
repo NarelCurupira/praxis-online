@@ -63,10 +63,12 @@ create table if not exists public.movements (
   workspace_id uuid not null references public.workspaces(id) on delete cascade,
   case_id bigint not null references public.cases(id) on delete cascade,
   received_at timestamptz not null,
+  received_time_precise boolean not null default false,
   deadline_at date,
   draft_status text not null default 'Pendente',
   workflow_status text not null default 'Recebido' check (workflow_status in ('Recebido', 'Em análise', 'Minutado', 'Enviado', 'Sobrestado')),
   sent_at timestamptz,
+  sent_time_precise boolean not null default false,
   action_type text not null default '',
   notes text not null default '',
   priority text not null default 'Normal' check (priority in ('Baixa', 'Normal', 'Alta', 'Urgente')),
@@ -163,6 +165,43 @@ end $$;
 drop trigger if exists on_auth_user_created_praxis on auth.users;
 create trigger on_auth_user_created_praxis
 after insert on auth.users for each row execute procedure public.handle_new_praxis_user();
+
+
+create or replace function public.default_missing_sent_at()
+returns trigger language plpgsql set search_path = public
+as $$
+begin
+  if new.workflow_status = 'Enviado' and new.sent_at is null then
+    new.sent_at := new.received_at + interval '10 days';
+    new.sent_time_precise := false;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists default_missing_sent_at_trigger on public.movements;
+create trigger default_missing_sent_at_trigger
+before insert or update of workflow_status, sent_at, received_at on public.movements
+for each row execute function public.default_missing_sent_at();
+
+create or replace function public.sync_member_historical_coverage()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  if new.assigned_to is not null then
+    update public.workspace_members
+       set historico_disponivel_desde = least(
+         coalesce(historico_disponivel_desde, (new.received_at at time zone 'America/Belem')::date),
+         (new.received_at at time zone 'America/Belem')::date
+       )
+     where workspace_id = new.workspace_id and user_id = new.assigned_to;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists sync_member_historical_coverage_trigger on public.movements;
+create trigger sync_member_historical_coverage_trigger
+after insert or update of assigned_to, received_at on public.movements
+for each row execute function public.sync_member_historical_coverage();
 
 alter table public.profiles enable row level security;
 alter table public.workspaces enable row level security;

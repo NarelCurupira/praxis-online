@@ -1,3 +1,4 @@
+import { localDatePart } from "./date";
 import { WORKDAY_HOURS, percentile } from "./reporting";
 import type { ProcessMovement, TeamMember } from "./types";
 
@@ -184,7 +185,9 @@ export function calculateEfficiencyFlow(records: ProcessMovement[], range: DateR
 export function calculateEfficiencyTime(records: ProcessMovement[], range: DateRange): EfficiencyTimeMetrics {
   const sent = records.filter((record) => inRange(sentDate(record), range));
   const measured = sent.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours));
-  const precise = measured.filter((record) => hasCompleteTime(record.receivedAt) && hasCompleteTime(record.sentAt));
+  const precise = measured.filter((record) =>
+    (record.receivedTimePrecise ?? hasCompleteTime(record.receivedAt))
+    && (record.sentTimePrecise ?? hasCompleteTime(record.sentAt)));
   const values = measured.map((record) => record.elapsedHours as number);
   const preciseValues = precise.map((record) => record.elapsedHours as number);
   return {

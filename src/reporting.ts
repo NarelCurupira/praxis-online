@@ -1,3 +1,4 @@
+import { localDatePart } from "./date";
 import { actionLabel } from "./labels";
 import { inspectDataQuality } from "./dataQuality";
 import type { ProcessMovement, TeamMember } from "./types";
@@ -10,166 +11,62 @@ export type ReportScope = "team" | string;
 export type HighlightFilter = "all" | "social" | "complex" | "both";
 export type DeadlineStatus = "completedOnTime" | "completedLate" | "pendingOnTime" | "pendingNear" | "pendingOverdue" | "noDeadline";
 
-export interface ReportFilters {
-  startDate: string;
-  endDate: string;
-  scope: ReportScope;
-  className: string;
-  actionType: string;
-  highlight: HighlightFilter;
-  nearDueDays?: number;
-}
-
+export interface ReportFilters { startDate: string; endDate: string; scope: ReportScope; className: string; actionType: string; highlight: HighlightFilter; nearDueDays?: number; }
 export interface DistributionStats {
-  count: number;
-  mean: number | null;
-  median: number | null;
-  p75: number | null;
-  p90: number | null;
-  min: number | null;
-  max: number | null;
-  sameBusinessDay: number;
-  withinOneBusinessDay: number;
-  withinThreeBusinessDays: number;
-  zeroSameDate: number;
-  withoutCompleteTime: number;
+  count: number; mean: number | null; median: number | null; p75: number | null; p90: number | null;
+  min: number | null; max: number | null; sameBusinessDay: number; withinOneBusinessDay: number;
+  withinThreeBusinessDays: number; zeroSameDate: number; withoutCompleteTime: number;
 }
-
 export interface DeadlineBreakdown {
-  completedOnTime: number;
-  completedLate: number;
-  pendingOnTime: number;
-  pendingNear: number;
-  pendingOverdue: number;
-  noDeadline: number;
-  completedApplicable: number;
-  applicable: number;
-  completionCompliance: number | null;
-  currentConformity: number | null;
+  completedOnTime: number; completedLate: number; pendingOnTime: number; pendingNear: number; pendingOverdue: number;
+  noDeadline: number; completedApplicable: number; applicable: number; completionCompliance: number | null; currentConformity: number | null;
 }
-
-export interface FlowMetrics {
-  initialStock: number;
-  received: number;
-  sent: number;
-  balance: number;
-  finalStock: number;
-  reconciliationDifference: number;
-  sentReceivedRatio: number | null;
-}
-
+export interface FlowMetrics { initialStock: number; received: number; sent: number; balance: number; finalStock: number; reconciliationDifference: number; sentReceivedRatio: number | null; }
 export interface UserReportMetrics extends FlowMetrics {
-  userId: string;
-  name: string;
-  deadline: DeadlineBreakdown;
-  transit: DistributionStats;
-  common: number;
-  socialOnly: number;
-  complexOnly: number;
-  both: number;
-  classes: Array<{ label: string; value: number }>;
-  actions: Array<{ label: string; value: number }>;
-  qualityIssues: number;
-  qualityChecked: number;
+  userId: string; name: string; deadline: DeadlineBreakdown; transit: DistributionStats; common: number;
+  socialOnly: number; complexOnly: number; both: number; classes: Array<{ label: string; value: number }>;
+  actions: Array<{ label: string; value: number }>; qualityIssues: number; qualityChecked: number;
 }
-
 export interface FlowPoint { label: string; startDate: string; endDate: string; received: number; sent: number; stock: number; }
 export interface CategoryMetric { label: string; value: number; percentage: number; }
 export type CategoryPresentation = "empty" | "single" | "insight" | "chart";
-
 export interface ReportModel {
-  filters: ReportFilters;
-  scopedRecords: ProcessMovement[];
-  population: ProcessMovement[];
-  highlightedProcesses: ProcessMovement[];
-  flow: FlowMetrics;
-  deadline: DeadlineBreakdown;
-  transit: DistributionStats;
-  users: UserReportMetrics[];
-  trend: FlowPoint[];
-  actions: CategoryMetric[];
-  classes: CategoryMetric[];
+  filters: ReportFilters; scopedRecords: ProcessMovement[]; population: ProcessMovement[]; highlightedProcesses: ProcessMovement[];
+  flow: FlowMetrics; deadline: DeadlineBreakdown; transit: DistributionStats; users: UserReportMetrics[]; trend: FlowPoint[];
+  actions: CategoryMetric[]; classes: CategoryMetric[];
   highlights: { socialOnly: number; complexOnly: number; both: number; socialTotal: number; complexTotal: number; total: number };
-  relevance: {
-    reach: CategoryMetric[];
-    territory: CategoryMetric[];
-    impact: CategoryMetric[];
-    rights: CategoryMetric[];
-    groups: CategoryMetric[];
-    themes: CategoryMetric[];
-    sdgs: CategoryMetric[];
-  };
-  synthesis: string;
-  warnings: string[];
-  coverage: {
-    available: number;
-    total: number;
-    partial: number;
-    unavailable: number;
-    complete: boolean;
-  };
+  relevance: { reach: CategoryMetric[]; territory: CategoryMetric[]; impact: CategoryMetric[]; rights: CategoryMetric[]; groups: CategoryMetric[]; themes: CategoryMetric[]; sdgs: CategoryMetric[] };
+  synthesis: string; warnings: string[];
+  coverage: { available: number; total: number; partial: number; unavailable: number; complete: boolean };
+}
+export interface ReportScopeInfo { kind: "individual" | "team"; title: string; responsibleName: string | null; usersConsidered: number; }
+
+function dateKey(value: string | null | undefined): string { return localDatePart(value); }
+function parseDateKey(value: string): Date { return new Date(`${value}T12:00:00-03:00`); }
+function localDateKey(date: Date): string { return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`; }
+function addDays(value: string, days: number): string { const date = parseDateKey(value); date.setUTCDate(date.getUTCDate() + days); return localDateKey(date); }
+function sentDate(record: ProcessMovement): string { return record.workflowStatus === "Enviado" ? dateKey(record.sentAt) : ""; }
+function isReceivedBy(record: ProcessMovement, boundary: string): boolean { const received = dateKey(record.receivedAt); return Boolean(received && received <= boundary); }
+function isPendingAt(record: ProcessMovement, boundary: string): boolean { if (!isReceivedBy(record, boundary)) return false; const sent = sentDate(record); return !sent || sent > boundary; }
+function inRange(value: string, start: string, end: string): boolean { return Boolean(value && value >= start && value <= end); }
+
+export function effectiveCoverageSince(records: ProcessMovement[], member: TeamMember): string | null {
+  const configured = dateKey(member.historicalCoverageSince);
+  const inferred = records
+    .filter((record) => !record.deletedAt && record.assignedTo === member.userId)
+    .map((record) => dateKey(record.receivedAt)).filter(Boolean).sort()[0] ?? "";
+  if (!configured) return inferred || null;
+  if (!inferred) return configured;
+  return configured <= inferred ? configured : inferred;
 }
 
-export interface ReportScopeInfo {
-  kind: "individual" | "team";
-  title: string;
-  responsibleName: string | null;
-  usersConsidered: number;
-}
-
-function dateKey(value: string | null | undefined): string {
-  if (!value) return "";
-  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
-  return match ? match[0] : "";
-}
-
-function parseDateKey(value: string): Date {
-  return new Date(`${value}T12:00:00`);
-}
-
-function addDays(value: string, days: number): string {
-  const date = parseDateKey(value);
-  date.setDate(date.getDate() + days);
-  return localDateKey(date);
-}
-
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function sentDate(record: ProcessMovement): string {
-  return record.workflowStatus === "Enviado" ? dateKey(record.sentAt) : "";
-}
-
-function isReceivedBy(record: ProcessMovement, boundary: string): boolean {
-  const received = dateKey(record.receivedAt);
-  return Boolean(received && received <= boundary);
-}
-
-function isPendingAt(record: ProcessMovement, boundary: string): boolean {
-  if (!isReceivedBy(record, boundary)) return false;
-  const sent = sentDate(record);
-  return !sent || sent > boundary;
-}
-
-function inRange(value: string, start: string, end: string): boolean {
-  return Boolean(value && value >= start && value <= end);
-}
-
-function memberCoverageStatus(member: TeamMember, startDate: string, endDate: string): "covered" | "partial" | "unavailable" {
-  const since = member.historicalCoverageSince;
+function memberCoverageStatus(since: string | null, startDate: string, endDate: string): "covered" | "partial" | "unavailable" {
   if (!since || since > endDate) return "unavailable";
   return since > startDate ? "partial" : "covered";
 }
 
-function cleanCategorySpacing(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-function foldText(value: string): string {
-  return cleanCategorySpacing(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
-}
-
+function cleanCategorySpacing(value: string): string { return value.trim().replace(/\s+/g, " "); }
+function foldText(value: string): string { return cleanCategorySpacing(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR"); }
 function closedCategoryLabel(value: string): string {
   const cleaned = cleanCategorySpacing(value);
   const lowerWords = new Set(["a", "as", "o", "os", "da", "das", "de", "do", "dos", "e", "em", "para", "por", "com"]);
@@ -190,10 +87,7 @@ function matchesFilters(record: ProcessMovement, filters: ReportFilters): boolea
   return true;
 }
 
-export function scopedReportRecords(records: ProcessMovement[], filters: ReportFilters): ProcessMovement[] {
-  return records.filter((record) => !record.deletedAt && matchesFilters(record, filters));
-}
-
+export function scopedReportRecords(records: ProcessMovement[], filters: ReportFilters): ProcessMovement[] { return records.filter((record) => !record.deletedAt && matchesFilters(record, filters)); }
 export function uniqueProcesses(records: ProcessMovement[]): ProcessMovement[] {
   const result = new Map<number, ProcessMovement>();
   [...records].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt) || b.movementId - a.movementId)
@@ -207,15 +101,7 @@ export function calculateFlow(records: ProcessMovement[], startDate: string, end
   const sent = records.filter((record) => inRange(sentDate(record), startDate, endDate) && isReceivedBy(record, endDate)).length;
   const finalStockObserved = records.filter((record) => isPendingAt(record, endDate)).length;
   const reconciledFinalStock = initialStock + received - sent;
-  return {
-    initialStock,
-    received,
-    sent,
-    balance: received - sent,
-    finalStock: reconciledFinalStock,
-    reconciliationDifference: finalStockObserved - reconciledFinalStock,
-    sentReceivedRatio: received ? sent / received * 100 : null,
-  };
+  return { initialStock, received, sent, balance: received - sent, finalStock: reconciledFinalStock, reconciliationDifference: finalStockObserved - reconciledFinalStock, sentReceivedRatio: received ? sent / received * 100 : null };
 }
 
 function deadlineStatus(record: ProcessMovement, endDate: string, nearDueDays: number, completed: boolean): DeadlineStatus {
@@ -228,16 +114,10 @@ function deadlineStatus(record: ProcessMovement, endDate: string, nearDueDays: n
 }
 
 export function calculateDeadlines(records: ProcessMovement[], startDate: string, endDate: string, nearDueDays = DEFAULT_NEAR_DUE_DAYS): DeadlineBreakdown {
-  const result: DeadlineBreakdown = {
-    completedOnTime: 0, completedLate: 0, pendingOnTime: 0, pendingNear: 0, pendingOverdue: 0, noDeadline: 0,
-    completedApplicable: 0, applicable: 0, completionCompliance: null, currentConformity: null,
-  };
+  const result: DeadlineBreakdown = { completedOnTime: 0, completedLate: 0, pendingOnTime: 0, pendingNear: 0, pendingOverdue: 0, noDeadline: 0, completedApplicable: 0, applicable: 0, completionCompliance: null, currentConformity: null };
   const completed = records.filter((record) => inRange(sentDate(record), startDate, endDate));
   const pending = records.filter((record) => isPendingAt(record, endDate));
-  [...completed.map((record) => [record, true] as const), ...pending.map((record) => [record, false] as const)].forEach(([record, isCompleted]) => {
-    const status = deadlineStatus(record, endDate, nearDueDays, isCompleted);
-    result[status] += 1;
-  });
+  [...completed.map((record) => [record, true] as const), ...pending.map((record) => [record, false] as const)].forEach(([record, isCompleted]) => { result[deadlineStatus(record, endDate, nearDueDays, isCompleted)] += 1; });
   result.completedApplicable = result.completedOnTime + result.completedLate;
   result.applicable = result.completedApplicable + result.pendingOnTime + result.pendingNear + result.pendingOverdue;
   result.completionCompliance = result.completedApplicable ? result.completedOnTime / result.completedApplicable * 100 : null;
@@ -249,246 +129,105 @@ export function percentile(values: number[], probability: number): number | null
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
   if (sorted.length === 1) return sorted[0];
-  const position = (sorted.length - 1) * probability;
-  const lower = Math.floor(position);
-  const fraction = position - lower;
+  const position = (sorted.length - 1) * probability; const lower = Math.floor(position); const fraction = position - lower;
   return sorted[lower] + (sorted[Math.min(lower + 1, sorted.length - 1)] - sorted[lower]) * fraction;
+}
+
+function fallbackCompleteTime(value: string | null | undefined): boolean {
+  return Boolean(value && /T\d{2}:\d{2}/.test(value) && !/T00:00(?::00)?(?:[Z+-]|$)/.test(value));
 }
 
 export function calculateDistribution(records: ProcessMovement[], startDate: string, endDate: string): DistributionStats {
   const completed = records.filter((record) => inRange(sentDate(record), startDate, endDate));
   const measured = completed.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours));
   const values = measured.map((record) => record.elapsedHours as number);
+  const precise = (record: ProcessMovement) => (record.receivedTimePrecise ?? fallbackCompleteTime(record.receivedAt)) && (record.sentTimePrecise ?? fallbackCompleteTime(record.sentAt));
   return {
     count: values.length,
     mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
     median: percentile(values, .5), p75: percentile(values, .75), p90: percentile(values, .9),
     min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null,
     sameBusinessDay: measured.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
-    withinOneBusinessDay: values.filter((value) => value <= WORKDAY_HOURS).length,
-    withinThreeBusinessDays: values.filter((value) => value <= WORKDAY_HOURS * 3).length,
+    withinOneBusinessDay: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= WORKDAY_HOURS).length,
+    withinThreeBusinessDays: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= WORKDAY_HOURS * 3).length,
     zeroSameDate: measured.filter((record) => record.elapsedHours === 0 && dateKey(record.receivedAt) === sentDate(record)).length,
-    withoutCompleteTime: measured.filter((record) => !hasCompleteTime(record.receivedAt) || !hasCompleteTime(record.sentAt)).length,
+    withoutCompleteTime: measured.filter((record) => !precise(record)).length,
   };
-}
-
-function hasCompleteTime(value: string | null | undefined): boolean {
-  return Boolean(value && /T\d{2}:\d{2}/.test(value) && !/T00:00(?::00)?(?:[Z+-]|$)/.test(value));
 }
 
 function countCategories(values: string[], denominator: number, closed = false): CategoryMetric[] {
   const counts = new Map<string, { label: string; value: number }>();
   values.map(cleanCategorySpacing).filter(Boolean).forEach((value) => {
-    const key = closed ? foldText(value) : value;
-    const current = counts.get(key);
-    if (current) current.value += 1;
-    else counts.set(key, { label: closed ? closedCategoryLabel(value) : value, value: 1 });
+    const key = closed ? foldText(value) : value; const current = counts.get(key);
+    if (current) current.value += 1; else counts.set(key, { label: closed ? closedCategoryLabel(value) : value, value: 1 });
   });
-  return [...counts.values()].map(({ label, value }) => ({ label, value, percentage: denominator ? value / denominator * 100 : 0 }))
-    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"));
+  return [...counts.values()].map(({ label, value }) => ({ label, value, percentage: denominator ? value / denominator * 100 : 0 })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "pt-BR"));
 }
-
-export function countClosedCategories(values: string[], denominator = values.length): CategoryMetric[] {
-  return countCategories(values, denominator, true);
-}
-
+export function countClosedCategories(values: string[], denominator = values.length): CategoryMetric[] { return countCategories(values, denominator, true); }
 export function pluralize(count: number, singular: string, plural: string): string { return count === 1 ? singular : plural; }
 
 function summaryText(flow: FlowMetrics, deadline: DeadlineBreakdown, social: number, complex: number): string {
-  const compliance = deadline.completionCompliance == null
-    ? "não houve processos concluídos com prazo aplicável"
-    : `${deadline.completionCompliance.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% dos processos concluídos com prazo aplicável foram enviados tempestivamente`;
-  const pending = flow.finalStock;
+  const compliance = deadline.completionCompliance == null ? "não houve processos concluídos com prazo aplicável" : `${deadline.completionCompliance.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% dos processos concluídos com prazo aplicável foram enviados tempestivamente`;
   const socialText = `${social} ${pluralize(social, "processo socialmente relevante", "processos socialmente relevantes")}`;
   const complexText = `${complex} ${pluralize(complex, "processo de alta complexidade", "processos de alta complexidade")}`;
-  return `No período selecionado, ${flow.received} ${pluralize(flow.received, "processo foi recebido", "processos foram recebidos")} e ${flow.sent} ${pluralize(flow.sent, "foi enviado", "foram enviados")}, encerrando o intervalo com ${pending} ${pluralize(pending, "pendência", "pendências")}. ${compliance.charAt(0).toUpperCase()}${compliance.slice(1)}. Foram identificados ${socialText} e ${complexText}.`;
+  return `No período selecionado, ${flow.received} ${pluralize(flow.received, "processo foi recebido", "processos foram recebidos")} e ${flow.sent} ${pluralize(flow.sent, "foi enviado", "foram enviados")}, encerrando o intervalo com ${flow.finalStock} ${pluralize(flow.finalStock, "pendência", "pendências")}. ${compliance.charAt(0).toUpperCase()}${compliance.slice(1)}. Foram identificados ${socialText} e ${complexText}.`;
 }
 
-function periodPopulation(records: ProcessMovement[], startDate: string, endDate: string): ProcessMovement[] {
-  return records.filter((record) => inRange(dateKey(record.receivedAt), startDate, endDate) || inRange(sentDate(record), startDate, endDate) || isPendingAt(record, endDate));
-}
-
+function periodPopulation(records: ProcessMovement[], startDate: string, endDate: string): ProcessMovement[] { return records.filter((record) => inRange(dateKey(record.receivedAt), startDate, endDate) || inRange(sentDate(record), startDate, endDate) || isPendingAt(record, endDate)); }
 function userMetrics(records: ProcessMovement[], member: TeamMember, filters: ReportFilters): UserReportMetrics {
-  const items = records.filter((record) => record.assignedTo === member.userId);
-  const population = periodPopulation(items, filters.startDate, filters.endDate);
-  const cases = uniqueProcesses(population);
-  const flow = calculateFlow(items, filters.startDate, filters.endDate);
-  const quality = inspectDataQuality(population);
-  return {
-    userId: member.userId,
-    name: member.fullName || member.email,
-    ...flow,
-    deadline: calculateDeadlines(items, filters.startDate, filters.endDate, filters.nearDueDays),
-    transit: calculateDistribution(items, filters.startDate, filters.endDate),
-    common: cases.filter((item) => !item.sociallyRelevant && !item.extremelyComplex).length,
-    socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length,
-    complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length,
-    both: cases.filter((item) => item.sociallyRelevant && item.extremelyComplex).length,
-    classes: countCategories(population.map((item) => item.className), population.length, true).map(({ label, value }) => ({ label, value })),
-    actions: countCategories(population.map((item) => actionLabel(item.actionType)), population.length, true).map(({ label, value }) => ({ label, value })),
-    qualityIssues: quality.length,
-    qualityChecked: population.length,
-  };
+  const items = records.filter((record) => record.assignedTo === member.userId); const population = periodPopulation(items, filters.startDate, filters.endDate); const cases = uniqueProcesses(population); const flow = calculateFlow(items, filters.startDate, filters.endDate); const quality = inspectDataQuality(population);
+  return { userId: member.userId, name: member.fullName || member.email, ...flow, deadline: calculateDeadlines(items, filters.startDate, filters.endDate, filters.nearDueDays), transit: calculateDistribution(items, filters.startDate, filters.endDate), common: cases.filter((item) => !item.sociallyRelevant && !item.extremelyComplex).length, socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length, complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length, both: cases.filter((item) => item.sociallyRelevant && item.extremelyComplex).length, classes: countCategories(population.map((item) => item.className), population.length, true).map(({ label, value }) => ({ label, value })), actions: countCategories(population.map((item) => actionLabel(item.actionType)), population.length, true).map(({ label, value }) => ({ label, value })), qualityIssues: quality.length, qualityChecked: population.length };
 }
 
 function bucketLabel(start: string, end: string, type: "day" | "week" | "month"): string {
-  const format = (value: string) => new Intl.DateTimeFormat("pt-BR", type === "month" ? { month: "short", year: "2-digit" } : { day: "2-digit", month: "2-digit" }).format(parseDateKey(value));
+  const format = (value: string) => new Intl.DateTimeFormat("pt-BR", type === "month" ? { month: "short", year: "2-digit", timeZone: "America/Belem" } : { day: "2-digit", month: "2-digit", timeZone: "America/Belem" }).format(parseDateKey(value));
   return type === "day" ? format(start) : type === "week" ? `${format(start)}–${format(end)}` : format(start).replace(" de ", "/");
 }
-
 export function buildFlowTrend(records: ProcessMovement[], startDate: string, endDate: string): FlowPoint[] {
   const days = Math.round((parseDateKey(endDate).getTime() - parseDateKey(startDate).getTime()) / 86_400_000) + 1;
   const type: "day" | "week" | "month" = days <= 31 ? "day" : days < 90 ? "week" : "month";
-  const buckets: Array<{ start: string; end: string }> = [];
-  let cursor = startDate;
+  const buckets: Array<{ start: string; end: string }> = []; let cursor = startDate;
   while (cursor <= endDate) {
     let bucketEnd = cursor;
     if (type === "week") bucketEnd = addDays(cursor, 6);
-    if (type === "month") {
-      const date = parseDateKey(cursor);
-      bucketEnd = localDateKey(new Date(date.getFullYear(), date.getMonth() + 1, 0, 12));
-    }
-    if (bucketEnd > endDate) bucketEnd = endDate;
-    buckets.push({ start: cursor, end: bucketEnd });
-    cursor = addDays(bucketEnd, 1);
+    if (type === "month") { const date = parseDateKey(cursor); bucketEnd = localDateKey(new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 12))); }
+    if (bucketEnd > endDate) bucketEnd = endDate; buckets.push({ start: cursor, end: bucketEnd }); cursor = addDays(bucketEnd, 1);
   }
-  return buckets.map((bucket) => ({
-    label: bucketLabel(bucket.start, bucket.end, type), startDate: bucket.start, endDate: bucket.end,
-    received: records.filter((record) => inRange(dateKey(record.receivedAt), bucket.start, bucket.end)).length,
-    sent: records.filter((record) => inRange(sentDate(record), bucket.start, bucket.end)).length,
-    stock: records.filter((record) => isPendingAt(record, bucket.end)).length,
-  }));
+  return buckets.map((bucket) => ({ label: bucketLabel(bucket.start, bucket.end, type), startDate: bucket.start, endDate: bucket.end, received: records.filter((record) => inRange(dateKey(record.receivedAt), bucket.start, bucket.end)).length, sent: records.filter((record) => inRange(sentDate(record), bucket.start, bucket.end)).length, stock: records.filter((record) => isPendingAt(record, bucket.end)).length }));
 }
 
 export function buildReportModel(records: ProcessMovement[], members: TeamMember[], filters: ReportFilters): ReportModel {
   if (!filters.startDate || !filters.endDate || filters.startDate > filters.endDate) throw new Error("Período inválido para o relatório.");
   const selectedMembers = members.filter((member) => member.active && (filters.scope === "team" || member.userId === filters.scope));
-  const coverageItems = selectedMembers.map((member) => ({ member, status: memberCoverageStatus(member, filters.startDate, filters.endDate), since: member.historicalCoverageSince ?? null }));
-  const coverageConfigured = coverageItems.some((item) => item.since != null);
-  const includedMembers = coverageConfigured
-    ? coverageItems.filter((item) => item.status !== "unavailable").map((item) => item.member)
-    : selectedMembers;
+  const coverageItems = selectedMembers.map((member) => { const since = effectiveCoverageSince(records, member); return { member, since, status: memberCoverageStatus(since, filters.startDate, filters.endDate) }; });
+  const includedMembers = coverageItems.filter((item) => item.status !== "unavailable").map((item) => item.member);
   const includedIds = new Set(includedMembers.map((member) => member.userId));
-  const coverageByUser = new Map(includedMembers.map((member) => [member.userId, member.historicalCoverageSince ?? ""]));
-  const scoped = scopedReportRecords(records, filters).filter((record) => {
-    if (!includedIds.has(record.assignedTo)) return false;
-    const since = coverageConfigured ? coverageByUser.get(record.assignedTo) ?? "" : "";
-    return !since || dateKey(record.receivedAt) >= since;
-  });
-  const population = periodPopulation(scoped, filters.startDate, filters.endDate);
-  const cases = uniqueProcesses(population);
-  const highlighted = cases.filter((item) => item.sociallyRelevant || item.extremelyComplex);
-  const social = cases.filter((item) => item.sociallyRelevant);
-  const complex = cases.filter((item) => item.extremelyComplex);
-  const flow = calculateFlow(scoped, filters.startDate, filters.endDate);
-  const deadline = calculateDeadlines(scoped, filters.startDate, filters.endDate, filters.nearDueDays);
-  const activeMembers = includedMembers;
-  const actionValues = population.map((item) => actionLabel(item.actionType));
+  const coverageByUser = new Map(coverageItems.map((item) => [item.member.userId, item.since ?? ""]));
+  const scoped = scopedReportRecords(records, filters).filter((record) => { if (!includedIds.has(record.assignedTo)) return false; const since = coverageByUser.get(record.assignedTo) ?? ""; return !since || dateKey(record.receivedAt) >= since; });
+  const population = periodPopulation(scoped, filters.startDate, filters.endDate); const cases = uniqueProcesses(population); const highlighted = cases.filter((item) => item.sociallyRelevant || item.extremelyComplex); const social = cases.filter((item) => item.sociallyRelevant); const complex = cases.filter((item) => item.extremelyComplex); const flow = calculateFlow(scoped, filters.startDate, filters.endDate); const deadline = calculateDeadlines(scoped, filters.startDate, filters.endDate, filters.nearDueDays); const actionValues = population.map((item) => actionLabel(item.actionType));
   const warnings: string[] = [];
   if (flow.reconciliationDifference) warnings.push(`A conciliação encontrou diferença de ${flow.reconciliationDifference} ${pluralize(Math.abs(flow.reconciliationDifference), "registro", "registros")}, normalmente causada por dados históricos sem data de envio coerente.`);
   if (population.some((item) => item.workflowStatus === "Enviado" && !item.sentAt)) warnings.push("Há registros marcados como enviados sem data de envio; eles não entram nas métricas temporais.");
-  const unavailable = coverageConfigured ? coverageItems.filter((item) => item.status === "unavailable").length : 0;
-  const partial = coverageConfigured ? coverageItems.filter((item) => item.status === "partial").length : 0;
+  const unavailable = coverageItems.filter((item) => item.status === "unavailable").length; const partial = coverageItems.filter((item) => item.status === "partial").length;
   if (unavailable || partial) warnings.push("A cobertura histórica não abrange todos os usuários durante todo o período; ausência de histórico não foi tratada como zero.");
-  const socialDenominator = social.length;
-  const splitMulti = (values: string[]) => values.flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean));
-  return {
-    filters,
-    scopedRecords: scoped,
-    population,
-    highlightedProcesses: highlighted,
-    flow,
-    deadline,
-    transit: calculateDistribution(scoped, filters.startDate, filters.endDate),
-    users: activeMembers.map((member) => userMetrics(scoped, member, filters)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
-    trend: buildFlowTrend(scoped, filters.startDate, filters.endDate),
-    actions: countCategories(actionValues, actionValues.length, true),
-    classes: countCategories(population.map((item) => item.className), population.length, true),
-    highlights: {
-      socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length,
-      complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length,
-      both: cases.filter((item) => item.sociallyRelevant && item.extremelyComplex).length,
-      socialTotal: social.length, complexTotal: complex.length, total: highlighted.length,
-    },
-    relevance: {
-      reach: countCategories(social.map((item) => item.reach), socialDenominator, true),
-      territory: countCategories(social.map((item) => item.territorialScope), socialDenominator, true),
-      impact: countCategories(social.map((item) => item.impactType), socialDenominator, true),
-      rights: countCategories(splitMulti(social.map((item) => item.fundamentalRight)), socialDenominator),
-      groups: countCategories(splitMulti(social.map((item) => item.affectedGroup)), socialDenominator),
-      themes: countCategories(splitMulti(social.map((item) => item.socialTheme)), socialDenominator),
-      sdgs: countCategories(social.flatMap((item) => [...new Set(item.sdgs)]), socialDenominator, true),
-    },
-    synthesis: summaryText(flow, deadline, social.length, complex.length),
-    warnings,
-    coverage: {
-      available: coverageConfigured ? coverageItems.filter((item) => item.status !== "unavailable").length : selectedMembers.length,
-      total: selectedMembers.length,
-      partial,
-      unavailable,
-      complete: !unavailable && !partial,
-    },
-  };
+  const socialDenominator = social.length; const splitMulti = (values: string[]) => values.flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean));
+  return { filters, scopedRecords: scoped, population, highlightedProcesses: highlighted, flow, deadline, transit: calculateDistribution(scoped, filters.startDate, filters.endDate), users: includedMembers.map((member) => userMetrics(scoped, member, filters)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR")), trend: buildFlowTrend(scoped, filters.startDate, filters.endDate), actions: countCategories(actionValues, actionValues.length, true), classes: countCategories(population.map((item) => item.className), population.length, true), highlights: { socialOnly: cases.filter((item) => item.sociallyRelevant && !item.extremelyComplex).length, complexOnly: cases.filter((item) => !item.sociallyRelevant && item.extremelyComplex).length, both: cases.filter((item) => item.sociallyRelevant && item.extremelyComplex).length, socialTotal: social.length, complexTotal: complex.length, total: highlighted.length }, relevance: { reach: countCategories(social.map((item) => item.reach), socialDenominator, true), territory: countCategories(social.map((item) => item.territorialScope), socialDenominator, true), impact: countCategories(social.map((item) => item.impactType), socialDenominator, true), rights: countCategories(splitMulti(social.map((item) => item.fundamentalRight)), socialDenominator), groups: countCategories(splitMulti(social.map((item) => item.affectedGroup)), socialDenominator), themes: countCategories(splitMulti(social.map((item) => item.socialTheme)), socialDenominator), sdgs: countCategories(social.flatMap((item) => [...new Set(item.sdgs)]), socialDenominator, true) }, synthesis: summaryText(flow, deadline, social.length, complex.length), warnings, coverage: { available: coverageItems.filter((item) => item.status !== "unavailable").length, total: selectedMembers.length, partial, unavailable, complete: !unavailable && !partial } };
 }
 
 export function reportFilterDescription(filters: ReportFilters, members: TeamMember[]): string[] {
   const member = members.find((item) => item.userId === filters.scope);
-  return [
-    `Período: ${filters.startDate} a ${filters.endDate}`,
-    `Escopo: ${filters.scope === "team" ? "equipe inteira" : member?.fullName || member?.email || "usuário específico"}`,
-    `Classe: ${filters.className === "all" ? "todas" : filters.className}`,
-    `Providência: ${filters.actionType === "all" ? "todas" : filters.actionType}`,
-    `Classificação: ${{ all: "todas", social: "relevância social", complex: "alta complexidade", both: "ambas" }[filters.highlight]}`,
-  ];
+  return [`Período: ${filters.startDate} a ${filters.endDate}`, `Escopo: ${filters.scope === "team" ? "equipe inteira" : member?.fullName || member?.email || "usuário específico"}`, `Classe: ${filters.className === "all" ? "todas" : filters.className}`, `Providência: ${filters.actionType === "all" ? "todas" : filters.actionType}`, `Classificação: ${{ all: "todas", social: "relevância social", complex: "alta complexidade", both: "ambas" }[filters.highlight]}`];
 }
-
 export function normalizeCategory(value: string): string { return foldText(value); }
-
-export function categoryPresentation(data: CategoryMetric[], freeText = false): CategoryPresentation {
-  if (!data.length) return "empty";
-  if (data.length === 1) return "single";
-  if (freeText && data.filter((item) => item.value > 1).length < 2) return "insight";
-  return "chart";
-}
-
+export function categoryPresentation(data: CategoryMetric[], freeText = false): CategoryPresentation { if (!data.length) return "empty"; if (data.length === 1) return "single"; if (freeText && data.filter((item) => item.value > 1).length < 2) return "insight"; return "chart"; }
 export function reportScopeInfo(model: ReportModel, members: TeamMember[]): ReportScopeInfo {
-  if (model.filters.scope === "team") {
-    return {
-      kind: "team",
-      title: "Relatório da equipe",
-      responsibleName: null,
-      usersConsidered: model.users.length,
-    };
-  }
+  if (model.filters.scope === "team") return { kind: "team", title: "Relatório da equipe", responsibleName: null, usersConsidered: model.users.length };
   const member = members.find((item) => item.userId === model.filters.scope);
-  return {
-    kind: "individual",
-    title: "Relatório individual",
-    responsibleName: member?.fullName || member?.email || model.users[0]?.name || "Usuário não identificado",
-    usersConsidered: 1,
-  };
+  return { kind: "individual", title: "Relatório individual", responsibleName: member?.fullName || member?.email || model.users[0]?.name || "Usuário não identificado", usersConsidered: 1 };
 }
-
-function safeInitials(value: string): string {
-  const withoutAccents = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const words = withoutAccents.match(/[A-Za-z0-9]+/g) ?? [];
-  if (!words.length) return "usuario";
-  const initials = words.map((word) => word[0]).join("").toLowerCase();
-  return initials.replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || "usuario";
-}
-
+function safeInitials(value: string): string { const words = value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").match(/[A-Za-z0-9]+/g) ?? []; if (!words.length) return "usuario"; return words.map((word) => word[0]).join("").toLowerCase().replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-") || "usuario"; }
 export function buildReportFileName(mode: ReportMode, model: ReportModel, members: TeamMember[]): string {
-  const prefix: Record<ReportMode, string> = {
-    executive: "praxis-relatorio-executivo",
-    complete: "praxis-relatorio-completo",
-    highlights: "praxis-anexo-processos-destacados",
-  };
-  const scope = reportScopeInfo(model, members);
-  const scopePart = scope.kind === "team" ? "equipe" : safeInitials(scope.responsibleName ?? "");
-  return `${prefix[mode]}-${scopePart}-${model.filters.startDate}-a-${model.filters.endDate}.pdf`
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9.-]+/g, "-")
-    .replace(/-+/g, "-")
-    .toLowerCase();
+  const prefix: Record<ReportMode, string> = { executive: "praxis-relatorio-executivo", complete: "praxis-relatorio-completo", highlights: "praxis-anexo-processos-destacados" };
+  const scope = reportScopeInfo(model, members); const scopePart = scope.kind === "team" ? "equipe" : safeInitials(scope.responsibleName ?? "");
+  return `${prefix[mode]}-${scopePart}-${model.filters.startDate}-a-${model.filters.endDate}.pdf`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]+/g, "-").replace(/-+/g, "-").toLowerCase();
 }

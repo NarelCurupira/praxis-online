@@ -1,5 +1,5 @@
 import { requireSupabase } from "./supabase";
-import { toStorageTimestamp, usefulElapsedHours } from "./date";
+import { localDatePart, toStorageTimestamp, usefulElapsedHours } from "./date";
 import type { AdminAuditEntry, BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
 
 let workspacePromise: Promise<string> | null = null;
@@ -12,18 +12,6 @@ function requiredTimestamp(value: string, fieldName: string): string {
   const timestamp = toStorageTimestamp(value);
   if (!timestamp) throw new Error(`${fieldName} possui data ou horário inválido.`);
   return timestamp;
-}
-
-function timestampKey(value: string | null | undefined): string {
-  return toStorageTimestamp(value) ?? "";
-}
-
-function localDatePart(value: string | null | undefined): string {
-  if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 async function context() {
@@ -56,9 +44,9 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
     movementId: Number(row.id), caseId: Number(row.case_id),
     mpNumber: item.mp_number ?? "", judicialNumber: item.judicial_number ?? "",
     className: item.class_name ?? "", subject: item.subject ?? "",
-    receivedAt: row.received_at, deadlineAt: row.deadline_at ?? "",
+    receivedAt: row.received_at, receivedTimePrecise: Boolean(row.received_time_precise), deadlineAt: row.deadline_at ?? "",
     draftStatus: row.draft_status ?? "Pendente", workflowStatus: row.workflow_status,
-    sentAt: row.sent_at, actionType: row.action_type ?? "", notes: row.notes ?? "",
+    sentAt: row.sent_at, sentTimePrecise: Boolean(row.sent_time_precise), actionType: row.action_type ?? "", notes: row.notes ?? "",
     priority: row.priority ?? "Normal", documentPath: row.document_path ?? "",
     elapsedHours: usefulElapsedHours(row.received_at, row.sent_at, excludedDates),
     sociallyRelevant: Boolean(item.socially_relevant), extremelyComplex: Boolean(item.extremely_complex),
@@ -158,7 +146,7 @@ export async function createMovement(data: ProcessFormData): Promise<ProcessMove
   const found = await findOrCreateCase(data);
   const receivedAt = requiredTimestamp(data.receivedAt, "A entrada");
   const { data: row, error } = await client.from("movements").insert({
-    workspace_id: workspaceId, case_id: found.id, received_at: receivedAt,
+    workspace_id: workspaceId, case_id: found.id, received_at: receivedAt, received_time_precise: data.receivedTimePrecise ?? true,
     deadline_at: data.deadlineAt || null, action_type: data.actionType, notes: data.notes,
     priority: data.priority, document_path: data.documentPath,
     assigned_to: data.assignedTo || user.id,
@@ -178,7 +166,8 @@ export async function updateMovementStatus(movementId: number, status: WorkflowS
   delete values.row_version;
   if (actionType !== undefined) values.action_type = actionType;
   if (status === "Minutado" || status === "Enviado") values.draft_status = "Minutado";
-  if (status === "Enviado") { values.sent_at = sentAt; values.elapsed_hours = elapsed; }
+  if (status === "Enviado") { values.sent_at = sentAt; values.sent_time_precise = true; values.elapsed_hours = elapsed; }
+  else { values.sent_at = null; values.sent_time_precise = false; values.elapsed_hours = null; }
   const { error } = await client.from("movements").update(values).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
   await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: "Status", old_value: old!.workflow_status, new_value: status });
@@ -203,7 +192,7 @@ export async function updateMovementAssignments(movementIds: number[], assignedT
   fail(currentError);
   const { error } = await client.from("movements").update({ assigned_to: assignedTo, updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).in("id", movementIds);
   fail(error);
-  const names = new Map((current ?? []).map((item) => [Number(item.id), item.assigned_to ?? ""]));
+  const names = new Map((current ?? []).map((item: Record<string, any>) => [Number(item.id), item.assigned_to ?? ""]));
   const history = movementIds.filter((id) => names.get(id) !== assignedTo).map((id) => ({
     workspace_id: workspaceId, movement_id: id, changed_by: user.id, field_name: "Responsável",
     old_value: names.get(id) ?? "", new_value: assignedTo,
@@ -221,7 +210,7 @@ export async function listDeletedMovements(): Promise<ProcessMovement[]> {
   const { client, workspaceId } = await context();
   const { data, error } = await client.from("movements").select(SELECT_MOVEMENT).eq("workspace_id", workspaceId).not("deleted_at", "is", null).order("deleted_at", { ascending: false });
   fail(error);
-  return (data ?? []).map((row) => movementFromRow(row));
+  return (data ?? []).map((row: Record<string, any>) => movementFromRow(row));
 }
 
 export async function restoreDeletedMovement(movementId: number): Promise<void> {
@@ -243,15 +232,29 @@ export async function updateMovement(movementId: number, data: ProcessEditData):
   const old = movementFromRow(current!);
   const { error: caseError } = await client.from("cases").update({ ...caseValues(data), updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("id", old.caseId);
   fail(caseError);
+  const receivedAt = requiredTimestamp(data.receivedAt, "A entrada");
   const sentAt = toStorageTimestamp(data.sentAt);
-  const elapsedHours = usefulElapsedHours(old.receivedAt, sentAt);
-  const movementValues: Record<string, unknown> = { deadline_at: data.deadlineAt || null, sent_at: sentAt, elapsed_hours: elapsedHours, action_type: data.actionType, notes: data.notes, priority: data.priority, document_path: data.documentPath, updated_by: user.id, updated_at: new Date().toISOString() };
+  const elapsedHours = usefulElapsedHours(receivedAt, sentAt);
+  const movementValues: Record<string, unknown> = {
+    received_at: receivedAt,
+    received_time_precise: Boolean(data.receivedTimePrecise),
+    deadline_at: data.deadlineAt || null,
+    sent_at: sentAt,
+    sent_time_precise: Boolean(sentAt && data.sentTimePrecise),
+    elapsed_hours: elapsedHours,
+    action_type: data.actionType,
+    notes: data.notes,
+    priority: data.priority,
+    document_path: data.documentPath,
+    updated_by: user.id,
+    updated_at: new Date().toISOString(),
+  };
   if (data.assignedTo && data.assignedTo !== old.assignedTo) movementValues.assigned_to = data.assignedTo;
   const { error } = await client.from("movements").update(movementValues).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
   const changes: Array<[string, unknown, unknown]> = [
     ["Classe", old.className, data.className], ["Assunto", old.subject, data.subject],
-    ["Prazo", old.deadlineAt, data.deadlineAt], ["Providência", old.actionType, data.actionType],
+    ["Entrada", old.receivedAt, receivedAt], ["Prazo", old.deadlineAt, data.deadlineAt], ["Providência", old.actionType, data.actionType],
     ["Data de envio", old.sentAt, sentAt],
     ["Observações", old.notes, data.notes], ["Prioridade", old.priority, data.priority],
     ["Responsável", old.assignedTo, data.assignedTo],
@@ -277,7 +280,7 @@ export async function listClassSettings(): Promise<ClassSetting[]> {
   const { client, workspaceId } = await context();
   const { data, error } = await client.from("class_settings").select("name, business_days").eq("workspace_id", workspaceId).order("name");
   fail(error);
-  return (data ?? []).map((item) => ({ name: item.name, businessDays: item.business_days }));
+  return (data ?? []).map((item: Record<string, any>) => ({ name: item.name, businessDays: item.business_days }));
 }
 
 export async function saveClassSetting(setting: ClassSetting): Promise<void> {
@@ -300,7 +303,7 @@ function batches<T>(items: T[], size = 100): T[][] {
 
 export async function importRecords(records: ImportRecord[], onProgress?: (message: string) => void): Promise<ImportResult> {
   const { client, user, workspaceId } = await context();
-  let casesCreated = 0, movementsCreated = 0, ignoredRows = 0;
+  let casesCreated = 0, movementsCreated = 0, movementsUpdated = 0, ignoredRows = 0;
   const uniqueCases = new Map<string, ImportRecord>();
   for (const record of records) if (!uniqueCases.has(record.judicialNumber)) uniqueCases.set(record.judicialNumber, record);
 
@@ -326,14 +329,22 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
     casesCreated += data?.length ?? 0;
   }
 
+  type ExistingMovement = {
+    id: number; case_id: number; received_at: string; sent_at: string | null; workflow_status: WorkflowStatus;
+    received_time_precise: boolean | null; sent_time_precise: boolean | null;
+  };
+  const existingMovements = new Map<string, ExistingMovement>();
   const relevantCaseIds = [...new Set(caseIds.values())];
-  const existingMovements = new Set<string>();
-  onProgress?.("Verificando movimentações já importadas...");
+  onProgress?.("Verificando movimentações e horários já cadastrados...");
   for (const ids of batches(relevantCaseIds)) {
-    const { data, error } = await client.from("movements").select("case_id, received_at, workflow_status")
+    const { data, error } = await client.from("movements")
+      .select("id, case_id, received_at, sent_at, workflow_status, received_time_precise, sent_time_precise")
       .eq("workspace_id", workspaceId).in("case_id", ids).limit(10000);
     fail(error);
-    for (const item of data ?? []) existingMovements.add(`${item.case_id}|${timestampKey(item.received_at)}|${item.workflow_status}`);
+    for (const item of (data ?? []) as ExistingMovement[]) {
+      const key = `${item.case_id}|${localDatePart(item.received_at)}|${item.workflow_status}`;
+      if (!existingMovements.has(key)) existingMovements.set(key, item);
+    }
   }
 
   const movementRows: Record<string, unknown>[] = [];
@@ -343,22 +354,53 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
 
     const receivedAt = requiredTimestamp(record.receivedAt, `A entrada do processo ${record.judicialNumber}`);
     const informedSentAt = toStorageTimestamp(record.sentAt);
-    const duplicateKey = `${caseId}|${timestampKey(receivedAt)}|${record.workflowStatus}`;
-    if (existingMovements.has(duplicateKey)) { ignoredRows += 1; continue; }
-    existingMovements.add(duplicateKey);
+    const duplicateKey = `${caseId}|${localDatePart(receivedAt)}|${record.workflowStatus}`;
+    const existing = existingMovements.get(duplicateKey);
+
+    if (existing) {
+      const values: Record<string, unknown> = {};
+      if (record.receivedTimePrecise && !existing.received_time_precise) {
+        values.received_at = receivedAt;
+        values.received_time_precise = true;
+      }
+      if (record.sentTimePrecise && informedSentAt && !existing.sent_time_precise) {
+        values.sent_at = informedSentAt;
+        values.sent_time_precise = true;
+      }
+      if (Object.keys(values).length) {
+        const finalReceived = String(values.received_at ?? existing.received_at);
+        const finalSent = (values.sent_at ?? existing.sent_at) as string | null;
+        values.elapsed_hours = usefulElapsedHours(finalReceived, finalSent);
+        values.updated_by = user.id;
+        values.updated_at = new Date().toISOString();
+        const { error } = await client.from("movements").update(values)
+          .eq("workspace_id", workspaceId).eq("id", existing.id);
+        fail(error);
+        movementsUpdated += 1;
+      } else {
+        ignoredRows += 1;
+      }
+      continue;
+    }
 
     const automaticSentAt = record.workflowStatus === "Enviado" && !informedSentAt
       ? new Date(new Date(receivedAt).getTime() + 10 * 86_400_000).toISOString()
       : informedSentAt;
-
     movementRows.push({
-      workspace_id: workspaceId, case_id: caseId, received_at: receivedAt,
+      workspace_id: workspaceId, case_id: caseId,
+      received_at: receivedAt, received_time_precise: Boolean(record.receivedTimePrecise),
       deadline_at: record.deadlineAt || null, draft_status: record.draftStatus,
       workflow_status: record.workflowStatus, sent_at: automaticSentAt,
+      sent_time_precise: Boolean(informedSentAt && record.sentTimePrecise),
       action_type: record.actionType, notes: record.notes, priority: record.priority,
       document_path: record.documentPath, elapsed_hours: usefulElapsedHours(receivedAt, automaticSentAt),
       assigned_to: record.assignedTo || user.id,
       created_by: user.id, updated_by: user.id,
+    });
+    existingMovements.set(duplicateKey, {
+      id: -1, case_id: caseId, received_at: receivedAt, sent_at: automaticSentAt,
+      workflow_status: record.workflowStatus, received_time_precise: Boolean(record.receivedTimePrecise),
+      sent_time_precise: Boolean(informedSentAt && record.sentTimePrecise),
     });
   }
 
@@ -370,7 +412,7 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
   }
   const duplicatesLinked = records.length - casesCreated;
   onProgress?.("Importação concluída.");
-  return { casesCreated, movementsCreated, duplicatesLinked, ignoredRows };
+  return { casesCreated, movementsCreated, movementsUpdated, duplicatesLinked, ignoredRows };
 }
 
 function download(bytes: BlobPart, type: string, fileName: string) {
@@ -410,8 +452,8 @@ export async function restoreBackup(file: File): Promise<string> {
   const activeMemberIds = new Set((await listTeamMembers()).filter((item) => item.active).map((item) => item.userId));
   const records: ImportRecord[] = parsed.records.map((item) => ({
     assignedTo: activeMemberIds.has(item.assignedTo) ? item.assignedTo : undefined, mpNumber: item.mpNumber, judicialNumber: item.judicialNumber,
-    className: item.className, subject: item.subject, receivedAt: item.receivedAt, deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
-    draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt,
+    className: item.className, subject: item.subject, receivedAt: item.receivedAt, receivedTimePrecise: item.receivedTimePrecise, deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
+    draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt, sentTimePrecise: item.sentTimePrecise,
     actionType: item.actionType, notes: item.notes, priority: item.priority, documentPath: item.documentPath,
     sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,
     relevanceReason: item.relevanceReason, fundamentalRight: item.fundamentalRight, affectedGroup: item.affectedGroup,
@@ -453,7 +495,7 @@ export async function listChangeHistory(movementId: number): Promise<ChangeHisto
   const { client, workspaceId } = await context();
   const { data, error } = await client.from("change_history").select("id, movement_id, changed_at, field_name, old_value, new_value").eq("workspace_id", workspaceId).eq("movement_id", movementId).order("changed_at", { ascending: false });
   fail(error);
-  return (data ?? []).map((item) => ({ id: Number(item.id), movementId: Number(item.movement_id), changedAt: item.changed_at, fieldName: item.field_name, oldValue: item.old_value, newValue: item.new_value }));
+  return (data ?? []).map((item: Record<string, any>) => ({ id: Number(item.id), movementId: Number(item.movement_id), changedAt: item.changed_at, fieldName: item.field_name, oldValue: item.old_value, newValue: item.new_value }));
 }
 
 export async function getStorageSettings(): Promise<StorageSettings> {

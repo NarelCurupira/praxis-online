@@ -20,7 +20,10 @@ const standardActions = ["Manifestação", "DI", "Diligência", "Prevenção", "
 export function EditProcessModal({ record, classes, members, isAdmin, onClose, onSave }: Props) {
   const [form, setForm] = useState<ProcessEditData>({
     assignedTo: record.assignedTo,
+    receivedAt: toLocalInput(new Date(record.receivedAt)),
+    receivedTimePrecise: Boolean(record.receivedTimePrecise),
     sentAt: record.sentAt ? toLocalInput(new Date(record.sentAt)) : null,
+    sentTimePrecise: Boolean(record.sentTimePrecise),
     className: record.className,
     subject: record.subject,
     deadlineAt: record.deadlineAt.slice(0, 10),
@@ -49,14 +52,19 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
   useEffect(() => { listChangeHistory(record.movementId).then(setHistory).catch(() => setHistory([])); }, [record.movementId]);
 
   function change<K extends keyof ProcessEditData>(key: K, value: ProcessEditData[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    setForm((current) => {
+      const next = { ...current, [key]: value };
+      if (key === "receivedAt") next.receivedTimePrecise = true;
+      if (key === "sentAt") next.sentTimePrecise = Boolean(value);
+      return next;
+    });
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
-    await onSave(record.movementId, form);
-    setSaving(false);
+    try { await onSave(record.movementId, form); }
+    finally { setSaving(false); }
   }
 
   return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -65,13 +73,13 @@ export function EditProcessModal({ record, classes, members, isAdmin, onClose, o
       <div className="locked-fields">
         <div><LockKeyhole size={15} /><span><small>Número MP</small><strong>{record.mpNumber}</strong></span></div>
         <div><LockKeyhole size={15} /><span><small>Número Judicial</small><strong>{record.judicialNumber}</strong></span></div>
-        <div><LockKeyhole size={15} /><span><small>Entrada</small><strong>{formatDate(record.receivedAt, true)}</strong></span></div>
       </div>
       <div className="form-grid">
+        <label>Data e hora de entrada<input required type="datetime-local" value={form.receivedAt} onChange={(event) => change("receivedAt", event.target.value)} /><small>{form.receivedTimePrecise ? "Horário confirmado para os cálculos de eficiência." : "Registro histórico sem horário confirmado. Altere o campo para confirmar a hora correta."}</small></label>
         <label>Classe<select value={form.className} onChange={(event) => change("className", event.target.value)}>{classNames.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label>Providência<select required={record.workflowStatus === "Enviado"} value={form.actionType} onChange={(event) => change("actionType", event.target.value)}><option value="">Ainda não definida</option>{actions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></label>
         <label>{record.workflowStatus === "Enviado" ? "Prazo (histórico)" : "Prazo"}<input type="date" value={form.deadlineAt} onChange={(event) => change("deadlineAt", event.target.value)} /><small>Deixe vazio quando não houver prazo aplicável.</small></label>
-        {record.workflowStatus === "Enviado" && <label>Data de envio<input required type="datetime-local" value={form.sentAt ?? ""} onChange={(event) => change("sentAt", event.target.value || null)} /><small>Quando ausente, o sistema sugere 10 dias corridos após a entrada.</small></label>}
+        {record.workflowStatus === "Enviado" && <label>Data e hora de envio<input required type="datetime-local" value={form.sentAt ?? ""} onChange={(event) => change("sentAt", event.target.value || null)} /><small>{form.sentTimePrecise ? "Horário confirmado para os cálculos de eficiência." : "Informe o horário real para habilitar as métricas em horas."}</small></label>}
         <label>Prioridade<select value={form.priority} onChange={(event) => change("priority", event.target.value as Priority)}><option>Baixa</option><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
         {isAdmin ? <label>Responsável<select value={form.assignedTo} onChange={(event) => change("assignedTo", event.target.value)}>{members.filter((member) => member.active).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select></label> : <label>Responsável<input value={record.assignedName || "Não identificado"} disabled /></label>}
         <label className="full">Assunto/observação da fila<textarea required rows={3} value={form.subject} onChange={(event) => change("subject", event.target.value)} /></label>
