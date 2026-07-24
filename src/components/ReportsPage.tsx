@@ -64,13 +64,19 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
   const filters = useMemo(() => ({ startDate, endDate, scope: isAdmin ? scope : currentUserId, className, actionType, highlight, nearDueDays: 3 }), [actionType, className, currentUserId, endDate, highlight, isAdmin, scope, startDate]);
   const model = useMemo(() => invalidPeriod ? null : buildReportModel(records, members, filters), [filters, invalidPeriod, members, records]);
   const previousStart = previousYear(startDate); const previousEnd = previousYear(endDate);
-  const previousModel = useMemo(() => !compare || invalidPeriod ? undefined : buildReportModel(records, members, { ...filters, startDate: previousStart, endDate: previousEnd }), [compare, filters, invalidPeriod, members, previousEnd, previousStart, records]);
+  const comparableMembers = useMemo(() => {
+    const configured = members.some((member) => member.historicalCoverageSince);
+    if (!configured) return members;
+    return members.filter((member) => member.active && member.historicalCoverageSince && member.historicalCoverageSince <= startDate && member.historicalCoverageSince <= previousStart);
+  }, [members, previousStart, startDate]);
+  const previousModel = useMemo(() => !compare || invalidPeriod || !comparableMembers.length ? undefined : buildReportModel(records, comparableMembers, { ...filters, startDate: previousStart, endDate: previousEnd }), [compare, comparableMembers, filters, invalidPeriod, previousEnd, previousStart, records]);
+  const comparisonCurrentModel = useMemo(() => !compare || invalidPeriod || !comparableMembers.length ? undefined : buildReportModel(records, comparableMembers, filters), [compare, comparableMembers, filters, invalidPeriod, records]);
 
   async function generate() {
     if (!model) return;
     setBusy(true); setMessage("");
     try {
-      const bytes = generateManagementReportPdf(model, { mode, members, comparisonModel: previousModel });
+      const bytes = generateManagementReportPdf(model, { mode, members, comparisonModel: previousModel, comparisonCurrentModel });
       setMessage(await onSave(bytes, buildReportFileName(mode, model, members)));
     } catch (error) { setMessage(`Não foi possível gerar o relatório: ${String(error)}`); }
     finally { setBusy(false); }
@@ -97,6 +103,7 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
           <label>Classificação<select value={highlight} onChange={(event) => setHighlight(event.target.value as HighlightFilter)}><option value="all">Todas</option><option value="social">Relevância social</option><option value="complex">Alta complexidade</option><option value="both">Ambas as classificações</option></select></label>
         </div>
         <label className="comparison-option"><input type="checkbox" checked={compare} onChange={(event) => setCompare(event.target.checked)} /><CalendarRange size={18} /><span><strong>Comparar com o mesmo período do ano anterior</strong><small>{shortDate(previousStart)} a {shortDate(previousEnd)}</small></span></label>
+        {compare && <div className="comparison-preview"><strong>Equipe comparável: {comparableMembers.length} {comparableMembers.length === 1 ? "usuário com cobertura nos dois períodos" : "usuários com cobertura nos dois períodos"}</strong><span>Quando a composição histórica difere, esta é a comparação principal; usuários sem histórico não aparecem como zero.</span></div>}
         {!isAdmin && <div className="report-access-note"><ShieldCheck size={17} /><span>Seu perfil gera somente o relatório individual. O comparativo da equipe permanece restrito ao administrador.</span></div>}
         <button className="button primary report-button" disabled={busy || !model || !records.length} onClick={generate}><FileDown size={18} />{busy ? "Gerando e conferindo o PDF..." : "Gerar relatório PDF"}</button>
         {message && <div className="info-box">{message}</div>}
@@ -107,6 +114,7 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
         {model ? <><dl>
           <div><dt>Período</dt><dd>{shortDate(startDate)} a {shortDate(endDate)}</dd></div>
           <div><dt>Escopo</dt><dd>{reportScopeInfo(model, members).title}</dd></div>
+          <div><dt>Cobertura histórica</dt><dd>{model.coverage.available} de {model.coverage.total} usuários</dd></div>
           {reportScopeInfo(model, members).kind === "individual"
             ? <div><dt>Responsável</dt><dd>{reportScopeInfo(model, members).responsibleName}</dd></div>
             : <div><dt>Usuários considerados</dt><dd>{reportScopeInfo(model, members).usersConsidered}</dd></div>}

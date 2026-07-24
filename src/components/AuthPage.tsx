@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Mail, TicketCheck } from "lucide-react";
-import { acceptTeamInvite, validateTeamInvite } from "../api";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { requireSupabase } from "../supabase";
 
 declare global { interface Window { turnstile?: { render: (element: HTMLElement, options: Record<string, unknown>) => string; reset: (id?: string) => void }; } }
@@ -18,7 +17,7 @@ function Turnstile({ onToken }: { onToken: (token: string) => void }) {
 }
 
 export function AuthPage() {
-  const [mode, setMode] = useState<"login" | "invite" | "forgot">("login"); const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [invite, setInvite] = useState(""); const [captchaToken, setCaptchaToken] = useState(""); const [showPassword, setShowPassword] = useState(false); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
+  const [mode, setMode] = useState<"login" | "forgot">("login"); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [captchaToken, setCaptchaToken] = useState(""); const [showPassword, setShowPassword] = useState(false); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setMessage(""); const client = requireSupabase();
     try {
@@ -26,13 +25,6 @@ export function AuthPage() {
         const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin, captchaToken: captchaToken || undefined });
         if (error) throw error;
         setMessage("Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha. Verifique também a caixa de spam.");
-      } else if (mode === "invite") {
-        if (!(await validateTeamInvite(email, invite))) throw new Error("Convite inválido, expirado ou pertencente a outro e-mail.");
-        localStorage.setItem("praxis-pending-invite", invite.toUpperCase());
-        const result = await client.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, captchaToken: captchaToken || undefined } });
-        if (result.error) throw result.error;
-        if (result.data.session) await acceptTeamInvite(invite);
-        else setMessage("Cadastro realizado. Confirme o e-mail e, depois, entre normalmente para concluir o convite.");
       } else {
         const result = await client.auth.signInWithPassword({ email, password, options: { captchaToken: captchaToken || undefined } });
         if (result.error) throw result.error;
@@ -40,7 +32,7 @@ export function AuthPage() {
     } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
   }
-  const title = mode === "login" ? "Entre no Práxis Online" : mode === "invite" ? "Cadastro por convite" : "Recuperar senha";
-  const description = mode === "login" ? "Use sua conta individual para acessar o espaço compartilhado." : mode === "invite" ? "Informe o mesmo e-mail para o qual o administrador gerou o convite." : "Informe seu e-mail para receber um link seguro de recuperação.";
-  return <div className="auth-shell"><section className="auth-card"><img src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><p className="eyebrow">Acesso seguro</p><h1>{title}</h1><p>{description}</p><form onSubmit={submit}>{mode === "invite" && <><label>Nome completo<input required value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label><label>Código do convite<div className="input-with-icon"><TicketCheck size={18} /><input required value={invite} onChange={(event) => setInvite(event.target.value.toUpperCase())} maxLength={12} /></div></label></>}<label>E-mail<div className="input-with-icon"><Mail size={18} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></div></label>{mode !== "forgot" && <label>Senha<div className="input-with-icon"><LockKeyhole size={18} /><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar ou ocultar senha">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>}<Turnstile onToken={setCaptchaToken} />{message && <div className="auth-message">{message}</div>}<button className="button primary auth-submit" disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}>{busy ? "Aguarde..." : mode === "login" ? "Entrar" : mode === "invite" ? "Cadastrar com convite" : "Enviar link de recuperação"}</button></form>{mode === "login" && <button className="forgot-password" onClick={() => { setMode("forgot"); setMessage(""); }}>Esqueci minha senha</button>}<button className="auth-switch" onClick={() => { setMode(mode === "login" ? "invite" : "login"); setMessage(""); }}>{mode === "login" ? "Tenho um convite" : "Voltar para o acesso"}</button><small>O cadastro público está desativado. Novas contas só entram no gabinete por convite administrativo.</small></section></div>;
+  const title = mode === "login" ? "Entre no Práxis Online" : "Recuperar senha";
+  const description = mode === "login" ? "Use sua conta individual para acessar o espaço compartilhado." : "Informe seu e-mail para receber um link seguro de recuperação.";
+  return <div className="auth-shell"><section className="auth-card"><img src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><p className="eyebrow">Acesso seguro</p><h1>{title}</h1><p>{description}</p><form onSubmit={submit}><label>E-mail<div className="input-with-icon"><Mail size={18} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></div></label>{mode !== "forgot" && <label>Senha<div className="input-with-icon"><LockKeyhole size={18} /><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar ou ocultar senha">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>}<Turnstile onToken={setCaptchaToken} />{message && <div className="auth-message">{message}</div>}<button className="button primary auth-submit" disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}>{busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar link de recuperação"}</button></form>{mode === "login" && <button className="forgot-password" onClick={() => { setMode("forgot"); setMessage(""); }}>Esqueci minha senha</button>}<button className="auth-switch" onClick={() => { setMode(mode === "login" ? "forgot" : "login"); setMessage(""); }}>{mode === "login" ? "Recuperar acesso" : "Voltar para o acesso"}</button><small>Novas contas são cadastradas exclusivamente pelo administrador do gabinete.</small></section></div>;
 }

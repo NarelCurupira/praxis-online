@@ -10,7 +10,7 @@ export function ResetPasswordPage({ onDone }: { onDone: () => Promise<void> }) {
     setBusy(true);
     try {
       const client = requireSupabase();
-      const { error } = await client.auth.updateUser({ password });
+      const { error } = await client.auth.updateUser({ password, data: { must_set_password: false } });
       if (error) throw error;
       await client.auth.signOut({ scope: "others" });
       setSuccess(true);

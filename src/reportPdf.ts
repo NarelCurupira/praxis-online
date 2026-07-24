@@ -14,7 +14,7 @@ const GREY: [number, number, number] = [98, 125, 152];
 const LIGHT: [number, number, number] = [241, 245, 249];
 const disclaimer = "Relatório gerencial auxiliar; não substitui os sistemas oficiais da Instituição.";
 
-export interface ReportPdfOptions { mode: ReportMode; members: TeamMember[]; generatedAt?: Date; comparisonModel?: ReportModel; }
+export interface ReportPdfOptions { mode: ReportMode; members: TeamMember[]; generatedAt?: Date; comparisonModel?: ReportModel; comparisonCurrentModel?: ReportModel; }
 
 function text(value: unknown): string {
   return String(value ?? "").replace(/[—–]/g, "-").replace(/[“”]/g, '"').replace(/’/g, "'");
@@ -559,7 +559,8 @@ function historicalComparisonPage(builder: PdfBuilder, current: ReportModel, pre
   });
   const y = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 90) + 9;
   doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GREY);
-  doc.text(doc.splitTextToSize("A comparação repete os mesmos filtros no intervalo equivalente do ano anterior. Estoque é reconstruído em cada data; portanto, a comparação não usa apenas recebidos menos enviados.", 182), 14, y);
+  const comparableUsers = Math.min(current.users.length, previous.users.length);
+  doc.text(doc.splitTextToSize(`Equipe comparável: ${comparableUsers} ${pluralize(comparableUsers, "usuário com cobertura", "usuários com cobertura")} nos dois períodos. A comparação repete os mesmos filtros no intervalo equivalente do ano anterior. Estoque é reconstruído em cada data; portanto, a comparação não usa apenas recebidos menos enviados.`, 182), 14, y);
 }
 
 function notesPage(builder: PdfBuilder, model: ReportModel, members: TeamMember[]) {
@@ -569,6 +570,7 @@ function notesPage(builder: PdfBuilder, model: ReportModel, members: TeamMember[
   const notes = [
     ["Período considerado", `${fmtDate(model.filters.startDate)} a ${fmtDate(model.filters.endDate)}, inclusive. Datas e cortes seguem o horário local da aplicação.`],
     ["Escopo", scope.kind === "individual" ? `Relatório individual. Responsável: ${scope.responsibleName}.` : `Relatório da equipe. Foram considerados ${scope.usersConsidered} ${pluralize(scope.usersConsidered, "usuário ativo", "usuários ativos")} no escopo selecionado.`],
+    ["Cobertura histórica", `${model.coverage.available} de ${model.coverage.total} ${pluralize(model.coverage.total, "usuário possui", "usuários possuem")} dados disponíveis no período. Ausência de histórico não é preenchida com zero. Datas de início são confirmadas administrativamente e não inferidas do primeiro processo encontrado.`],
     ["Recebido", "Movimentação cuja data de entrada está dentro do período. Retornos do mesmo número processual são movimentações distintas para fins de fluxo."],
     ["Enviado", "Movimentação com status Enviado e data de envio dentro do período, mesmo que tenha sido recebida anteriormente."],
     ["Estoque", "Estoque inicial são os registros já pendentes antes do início. Estoque final = estoque inicial + recebidos - enviados. O saldo do período não é tratado isoladamente como estoque."],
@@ -730,7 +732,7 @@ export function generateManagementReportPdf(model: ReportModel, options: ReportP
     highlightedAnnex(builder, model);
   } else {
     executivePage(builder, model, options.members, options.mode);
-    if (options.comparisonModel) historicalComparisonPage(builder, model, options.comparisonModel);
+    if (options.comparisonModel) historicalComparisonPage(builder, options.comparisonCurrentModel ?? model, options.comparisonModel);
     flowAndProductivityPage(builder, model);
     if (includeTeam) teamComparisonPage(builder, model);
     deadlinesAndTransitPage(builder, model, includeTeam);

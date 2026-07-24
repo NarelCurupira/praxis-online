@@ -184,6 +184,7 @@ export interface TeamMember {
   role: PraxisRole;
   active: boolean;
   mfaRequired: boolean;
+  historicalCoverageSince?: string | null;
 }
 
 export interface TeamComparison {

@@ -143,3 +143,30 @@ test("categorias fechadas equivalentes são consolidadas sem aproximação semâ
   assert.deepEqual(model.classes.map((item) => [item.label, item.value]), [["Agravo de Instrumento", 2]]);
   assert.deepEqual(model.actions.map((item) => [item.label, item.value]), [["Manifestação", 2]]);
 });
+
+test("relatório da equipe exclui ausência histórica sem preencher zeros", () => {
+  const coveredMembers: TeamMember[] = [
+    { ...members[0], historicalCoverageSince: "2024-01-01" },
+    { ...members[1], historicalCoverageSince: "2026-01-01" },
+  ];
+  const records = [
+    movement({ movementId: 1, caseId: 1, receivedAt: "2025-02-01", assignedTo: "u1" }),
+    movement({ movementId: 2, caseId: 2, receivedAt: "2025-02-01", assignedTo: "u2" }),
+  ];
+  const model = buildReportModel(records, coveredMembers, { startDate: "2025-01-01", endDate: "2025-12-31", scope: "team", className: "all", actionType: "all", highlight: "all" });
+  assert.deepEqual(model.users.map((item) => item.userId), ["u1"]);
+  assert.deepEqual(model.coverage, { available: 1, total: 2, partial: 0, unavailable: 1, complete: false });
+  assert.equal(model.flow.received, 1);
+  assert.equal(model.warnings.some((warning) => warning.includes("ausência de histórico")), true);
+});
+
+test("relatório individual anterior à cobertura retorna estado sem histórico", () => {
+  const coveredMembers: TeamMember[] = [{ ...members[1], historicalCoverageSince: "2026-01-01" }];
+  const model = buildReportModel([
+    movement({ movementId: 1, caseId: 1, receivedAt: "2025-02-01", assignedTo: "u2" }),
+  ], coveredMembers, { startDate: "2025-01-01", endDate: "2025-12-31", scope: "u2", className: "all", actionType: "all", highlight: "all" });
+  assert.equal(model.population.length, 0);
+  assert.equal(model.users.length, 0);
+  assert.equal(model.coverage.available, 0);
+  assert.equal(model.coverage.unavailable, 1);
+});

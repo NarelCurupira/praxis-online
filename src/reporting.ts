@@ -101,6 +101,13 @@ export interface ReportModel {
   };
   synthesis: string;
   warnings: string[];
+  coverage: {
+    available: number;
+    total: number;
+    partial: number;
+    unavailable: number;
+    complete: boolean;
+  };
 }
 
 export interface ReportScopeInfo {
@@ -147,6 +154,12 @@ function isPendingAt(record: ProcessMovement, boundary: string): boolean {
 
 function inRange(value: string, start: string, end: string): boolean {
   return Boolean(value && value >= start && value <= end);
+}
+
+function memberCoverageStatus(member: TeamMember, startDate: string, endDate: string): "covered" | "partial" | "unavailable" {
+  const since = member.historicalCoverageSince;
+  if (!since || since > endDate) return "unavailable";
+  return since > startDate ? "partial" : "covered";
 }
 
 function cleanCategorySpacing(value: string): string {
@@ -349,7 +362,19 @@ export function buildFlowTrend(records: ProcessMovement[], startDate: string, en
 
 export function buildReportModel(records: ProcessMovement[], members: TeamMember[], filters: ReportFilters): ReportModel {
   if (!filters.startDate || !filters.endDate || filters.startDate > filters.endDate) throw new Error("Período inválido para o relatório.");
-  const scoped = scopedReportRecords(records, filters);
+  const selectedMembers = members.filter((member) => member.active && (filters.scope === "team" || member.userId === filters.scope));
+  const coverageItems = selectedMembers.map((member) => ({ member, status: memberCoverageStatus(member, filters.startDate, filters.endDate), since: member.historicalCoverageSince ?? null }));
+  const coverageConfigured = coverageItems.some((item) => item.since != null);
+  const includedMembers = coverageConfigured
+    ? coverageItems.filter((item) => item.status !== "unavailable").map((item) => item.member)
+    : selectedMembers;
+  const includedIds = new Set(includedMembers.map((member) => member.userId));
+  const coverageByUser = new Map(includedMembers.map((member) => [member.userId, member.historicalCoverageSince ?? ""]));
+  const scoped = scopedReportRecords(records, filters).filter((record) => {
+    if (!includedIds.has(record.assignedTo)) return false;
+    const since = coverageConfigured ? coverageByUser.get(record.assignedTo) ?? "" : "";
+    return !since || dateKey(record.receivedAt) >= since;
+  });
   const population = periodPopulation(scoped, filters.startDate, filters.endDate);
   const cases = uniqueProcesses(population);
   const highlighted = cases.filter((item) => item.sociallyRelevant || item.extremelyComplex);
@@ -357,11 +382,14 @@ export function buildReportModel(records: ProcessMovement[], members: TeamMember
   const complex = cases.filter((item) => item.extremelyComplex);
   const flow = calculateFlow(scoped, filters.startDate, filters.endDate);
   const deadline = calculateDeadlines(scoped, filters.startDate, filters.endDate, filters.nearDueDays);
-  const activeMembers = members.filter((member) => member.active && (filters.scope === "team" || member.userId === filters.scope));
+  const activeMembers = includedMembers;
   const actionValues = population.map((item) => actionLabel(item.actionType));
   const warnings: string[] = [];
   if (flow.reconciliationDifference) warnings.push(`A conciliação encontrou diferença de ${flow.reconciliationDifference} ${pluralize(Math.abs(flow.reconciliationDifference), "registro", "registros")}, normalmente causada por dados históricos sem data de envio coerente.`);
   if (population.some((item) => item.workflowStatus === "Enviado" && !item.sentAt)) warnings.push("Há registros marcados como enviados sem data de envio; eles não entram nas métricas temporais.");
+  const unavailable = coverageConfigured ? coverageItems.filter((item) => item.status === "unavailable").length : 0;
+  const partial = coverageConfigured ? coverageItems.filter((item) => item.status === "partial").length : 0;
+  if (unavailable || partial) warnings.push("A cobertura histórica não abrange todos os usuários durante todo o período; ausência de histórico não foi tratada como zero.");
   const socialDenominator = social.length;
   const splitMulti = (values: string[]) => values.flatMap((value) => value.split(/[;,]/).map((item) => item.trim()).filter(Boolean));
   return {
@@ -393,6 +421,13 @@ export function buildReportModel(records: ProcessMovement[], members: TeamMember
     },
     synthesis: summaryText(flow, deadline, social.length, complex.length),
     warnings,
+    coverage: {
+      available: coverageConfigured ? coverageItems.filter((item) => item.status !== "unavailable").length : selectedMembers.length,
+      total: selectedMembers.length,
+      partial,
+      unavailable,
+      complete: !unavailable && !partial,
+    },
   };
 }
 

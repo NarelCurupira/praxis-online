@@ -442,28 +442,40 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
   const { client } = await context();
   const { data, error } = await client.rpc("list_current_workspace_members");
   fail(error);
-  return (data ?? []).map((item: Record<string, any>) => ({ userId: item.user_id, fullName: item.full_name, email: item.email, role: item.role, active: item.active, mfaRequired: Boolean(item.mfa_required) }));
+  return (data ?? []).map((item: Record<string, any>) => ({
+    userId: item.user_id,
+    fullName: item.full_name,
+    email: item.email,
+    role: item.role,
+    active: item.active,
+    mfaRequired: Boolean(item.mfa_required),
+    historicalCoverageSince: item.historico_disponivel_desde ?? null,
+  }));
 }
 
-export async function createTeamInvite(email: string, role: PraxisRole): Promise<string> {
+export async function createManagedTeamMember(values: {
+  fullName: string;
+  email: string;
+  role: PraxisRole;
+  historicalCoverageSince: string | null;
+  delivery: "email" | "link";
+}): Promise<{ link: string | null; emailSent: boolean }> {
   const { client } = await context();
-  const { data, error } = await client.rpc("create_workspace_invite", { invited_email: email, invited_role: role });
-  fail(error);
-  return String(data);
-}
-
-export async function acceptTeamInvite(token: string): Promise<void> {
-  const client = requireSupabase();
-  const { error } = await client.rpc("accept_workspace_invite", { invite_token: token });
-  fail(error);
+  const { data, error } = await client.functions.invoke("admin-manage-user", {
+    body: {
+      action: "create_member",
+      fullName: values.fullName.trim(),
+      email: values.email.trim(),
+      role: values.role,
+      historicalCoverageSince: values.historicalCoverageSince || null,
+      delivery: values.delivery,
+      redirectTo: window.location.origin,
+    },
+  });
+  if (error) throw new Error(`Não foi possível cadastrar o usuário. ${error.message}`);
+  if (data?.error) throw new Error(String(data.error));
   workspacePromise = null;
-  window.location.reload();
-}
-
-export async function validateTeamInvite(email: string, token: string): Promise<boolean> {
-  const client = requireSupabase();
-  const { data, error } = await client.rpc("validate_workspace_invite", { invited_email: email, invite_token: token });
-  fail(error); return Boolean(data);
+  return { link: data?.link ?? null, emailSent: Boolean(data?.emailSent) };
 }
 
 export async function recordAdminAudit(eventType: string, details: Record<string, unknown> = {}): Promise<void> {
@@ -484,7 +496,7 @@ export async function updateTeamMember(userId: string, role: PraxisRole, active:
   fail(error);
 }
 
-export async function updateTeamMemberProfile(member: TeamMember, values: { fullName: string; email: string; role: PraxisRole; active: boolean; mfaRequired: boolean }): Promise<void> {
+export async function updateTeamMemberProfile(member: TeamMember, values: { fullName: string; email: string; role: PraxisRole; active: boolean; mfaRequired: boolean; historicalCoverageSince: string | null }): Promise<void> {
   const { client } = await context();
   if (values.email.trim().toLocaleLowerCase("pt-BR") !== member.email.trim().toLocaleLowerCase("pt-BR")) {
     const { error: functionError } = await client.functions.invoke("admin-manage-user", {
@@ -498,6 +510,7 @@ export async function updateTeamMemberProfile(member: TeamMember, values: { full
     new_role: values.role,
     new_active: values.active,
     new_mfa_required: values.mfaRequired,
+    new_historico_disponivel_desde: values.historicalCoverageSince || null,
   });
   fail(error);
 }

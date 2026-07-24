@@ -25,7 +25,6 @@ import { SetupPage } from "./components/SetupPage";
 import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, ImportRecord, Page, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamMember, WorkflowStatus } from "./types";
 import { useIdleSession } from "./useIdleSession";
-import { acceptTeamInvite } from "./api";
 import { PRAXIS_VERSION } from "./version";
 
 function LoadingScreen({ message }: { message: string }) {
@@ -119,8 +118,7 @@ export default function App() {
   });
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
-  const [passwordRecovery, setPasswordRecovery] = useState(() => window.location.hash.includes("type=recovery"));
-  const [inviteError, setInviteError] = useState("");
+  const [passwordRecovery, setPasswordRecovery] = useState(() => window.location.hash.includes("type=recovery") || window.location.hash.includes("type=invite"));
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -130,23 +128,15 @@ export default function App() {
   useEffect(() => {
     if (!supabase) { setChecking(false); return; }
     supabase.auth.getSession().then(({ data }) => {
-      const pending = localStorage.getItem("praxis-pending-invite");
-      if (data.session && pending) {
-        acceptTeamInvite(pending).then(() => { localStorage.removeItem("praxis-pending-invite"); window.location.reload(); }).catch((error) => { setSession(data.session); setInviteError(String(error)); setChecking(false); });
-        return;
-      }
-      setSession(data.session); setChecking(false);
+      setSession(data.session);
+      if (data.session?.user.user_metadata?.must_set_password) setPasswordRecovery(true);
+      setChecking(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === "PASSWORD_RECOVERY") {
         setPasswordRecovery(true); setSession(nextSession); setChecking(false); return;
       }
-      const pending = localStorage.getItem("praxis-pending-invite");
-      if (nextSession && pending) {
-        setChecking(true);
-        acceptTeamInvite(pending).then(() => { localStorage.removeItem("praxis-pending-invite"); window.location.reload(); }).catch((error) => { setInviteError(String(error)); setChecking(false); });
-        return;
-      }
+      if (nextSession?.user.user_metadata?.must_set_password) setPasswordRecovery(true);
       setSession(nextSession); setChecking(false);
     });
     return () => listener.subscription.unsubscribe();
@@ -155,7 +145,6 @@ export default function App() {
   if (!supabaseConfigured) return <SetupPage />;
   if (checking) return <LoadingScreen message="Verificando acesso seguro..." />;
   if (passwordRecovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setPasswordRecovery(false); }} />;
-  if (inviteError) return <div className="auth-shell"><section className="auth-card"><h1>Não foi possível concluir o convite</h1><div className="auth-message">{inviteError}</div><button className="button primary auth-submit" onClick={() => { localStorage.removeItem("praxis-pending-invite"); void supabase?.auth.signOut(); setInviteError(""); }}>Voltar ao acesso</button></section></div>;
   if (!session) return <AuthPage />;
   return <PraxisApp session={session} theme={theme} onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")} />;
 }

@@ -26,6 +26,7 @@ create table if not exists public.workspace_members (
   user_id uuid not null references auth.users(id) on delete cascade,
   role public.praxis_role not null default 'consulta',
   active boolean not null default true,
+  historico_disponivel_desde date,
   created_at timestamptz not null default now(),
   primary key (workspace_id, user_id)
 );
