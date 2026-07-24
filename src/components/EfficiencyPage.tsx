@@ -140,7 +140,18 @@ export function EfficiencyPage({ records, members, currentUserId, isAdmin }: Pro
       <div className="section-label"><span>Tempo de tramitação</span><small>Horas úteis seguem a jornada configurada de 6 horas.</small></div>
       <div className="stats-grid efficiency-time-stats">
         <StatCard label="Mesmo dia" value={percentage(model.time!.sameDay, model.time!.sentCount)} helper={`${model.time!.sameDay} de ${model.time!.sentCount} envios`} icon={Send} tone="green" />
-        <StatCard label="Até 2 horas úteis" value={percentage(model.time!.withinTwoHours, model.time!.preciseCount)} helper={`${model.time!.preciseCount} de ${model.time!.sentCount} envios com horário disponível`} icon={Gauge} />
+        <StatCard
+          label="Até 2 horas úteis"
+          value={percentage(model.time!.withinTwoHours, model.time!.preciseCount)}
+          helper={
+            model.time!.preciseCount > 0
+              ? `${model.time!.withinTwoHours} de ${model.time!.preciseCount} envios com horários completos`
+              : model.time!.sentCount > 0
+                ? `Nenhum dos ${model.time!.sentCount} envios possui horários completos de recebimento e envio`
+                : "Não houve envios no período"
+          }
+          icon={Gauge}
+        />
         <StatCard label="Tempo mediano" value={formatEfficiencyDuration(model.time!.median, model.time)} helper={model.time!.measuredCount ? `${model.time!.measuredCount} medições válidas` : "Não há medições suficientes"} icon={Activity} />
         <StatCard label="P90" value={formatEfficiencyDuration(model.time!.p90, model.time)} helper="90% dos envios ocorreram até este tempo" icon={Clock3} tone="amber" />
       </div>
@@ -185,6 +196,6 @@ export function EfficiencyPage({ records, members, currentUserId, isAdmin }: Pro
       <div className="comparison-summary"><span>Recebidos: <strong>{model.comparable.previous.received} → {model.comparable.current.received}</strong></span><span>Enviados: <strong>{model.comparable.previous.sent} → {model.comparable.current.sent}</strong></span><span>Saldo: <strong>{model.comparable.previous.balance} → {model.comparable.current.balance}</strong></span></div>
     </section>}
 
-    <div className="metric-note"><strong>Notas metodológicas:</strong> “Mesmo dia” usa as datas de recebimento e envio. “Até 2 horas” e “Até 1 dia útil” usam apenas registros com horário suficientemente preciso. A mediana e o P90 reutilizam as horas úteis do Práxis; registros importados apenas com data podem indicar “Mesmo dia útil”, sem afirmar duração exata em horas. Pendências atuais e distribuição dos últimos 30 dias não mudam com o filtro histórico.</div>
+    <div className="metric-note"><strong>Notas metodológicas:</strong> “Mesmo dia” usa as datas de recebimento e envio. “Até 2 horas” e “Até 1 dia útil” usam somente registros que tenham horários completos tanto no recebimento quanto no envio. Quando os processos importados possuem apenas a data, esses indicadores são exibidos como indisponíveis, e não como zero. A mediana e o P90 reutilizam as horas úteis registradas pelo Práxis; registros apenas com data podem indicar “Mesmo dia útil”, sem afirmar duração exata em horas. Pendências atuais e distribuição dos últimos 30 dias não mudam com o filtro histórico.</div>
   </div>;
 }
