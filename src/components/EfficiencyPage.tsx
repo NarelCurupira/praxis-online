@@ -58,7 +58,7 @@ export function EfficiencyPage({ records, members, currentUserId, isAdmin }: Pro
   const todayKey = localDateKey(today);
   const initial = useMemo(initialRange, []);
   const [scope, setScope] = useState(isAdmin ? "team" : currentUserId);
-  const [periodType, setPeriodType] = useState("year-current");
+  const [periodType, setPeriodType] = useState(`year-${today.getFullYear()}`);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
   const [efficiencyMetric, setEfficiencyMetric] = useState<EfficiencyMetric>("sameDay");

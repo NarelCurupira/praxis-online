@@ -74,10 +74,18 @@ test("período coberto sem movimentação preserva zero real", () => {
   const model = buildEfficiencyModel([], [marcos], "marcos", { startDate: "2025-08-01", endDate: "2025-08-31" }, "2026-07-24");
   assert.deepEqual(model.flow, { received: 0, sent: 0, balance: 0, currentPending: 0 });
 });
-test("cobertura não configurada produz ausência histórica", () => {
+test("cobertura não configurada é inferida pelos registros existentes", () => {
   const unknown = { ...hurias, historicalCoverageSince: null };
   const model = buildEfficiencyModel(records, [unknown], "hurias", { startDate: "2026-01-01", endDate: "2026-12-31" }, "2026-07-24");
-  assert.equal(model.flow, null);
+  assert.equal(model.coverage.covered, 1);
+  assert.equal(model.rows[0].coverage.since, "2026-02-10");
+  assert.equal(model.flow?.received, 2);
+});
+test("data configurada posterior não oculta movimentações já cadastradas", () => {
+  const lateCoverage = { ...marcos, historicalCoverageSince: "2026-07-24" };
+  const model = buildEfficiencyModel(records, [lateCoverage], "marcos", { startDate: "2025-01-01", endDate: "2025-12-31" }, "2026-07-24");
+  assert.equal(model.rows[0].coverage.since, "2025-02-03");
+  assert.equal(model.flow?.received, 2);
 });
 test("envio na mesma data com zero é apresentado como mesmo dia útil", () => {
   const time = calculateEfficiencyTime(records.slice(0, 1), { startDate: "2025-01-01", endDate: "2025-12-31" });
@@ -120,4 +128,3 @@ test("visão individual não mistura dados do outro usuário", () => {
   const model = buildEfficiencyModel(records, [marcos, hurias], "marcos", { startDate: "2026-01-01", endDate: "2026-07-24" }, "2026-07-24");
   assert.equal(model.selectedRecords.every((record) => record.assignedTo === "marcos"), true);
 });
-

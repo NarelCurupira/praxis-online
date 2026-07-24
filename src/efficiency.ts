@@ -138,7 +138,7 @@ export function previousEquivalentRange(range: DateRange): DateRange {
 }
 
 export function coverageFor(member: TeamMember, range: DateRange): CoverageResult {
-  const since = member.historicalCoverageSince ?? null;
+  const since = dateKey(member.historicalCoverageSince) || null;
   if (!since || since > range.endDate) return { status: "unavailable", since };
   if (since > range.startDate) return { status: "partial", since };
   return { status: "covered", since };
@@ -250,9 +250,30 @@ function recordsForMembers(records: ProcessMovement[], members: TeamMember[]): P
   return records.filter((record) => !record.deletedAt && ids.has(record.assignedTo));
 }
 
+function effectiveCoverageSince(records: ProcessMovement[], member: TeamMember): string | null {
+  const configured = dateKey(member.historicalCoverageSince);
+  const inferred = recordsForMembers(records, [member])
+    .map((record) => dateKey(record.receivedAt))
+    .filter(Boolean)
+    .sort()[0] ?? "";
+
+  if (!configured) return inferred || null;
+  if (!inferred) return configured;
+
+  // A configuração administrativa não pode ocultar movimentações existentes.
+  return configured <= inferred ? configured : inferred;
+}
+
+function coverageForRecords(records: ProcessMovement[], member: TeamMember, range: DateRange): CoverageResult {
+  return coverageFor(
+    { ...member, historicalCoverageSince: effectiveCoverageSince(records, member) },
+    range,
+  );
+}
+
 function historicalRecordsForMembers(records: ProcessMovement[], members: TeamMember[]): ProcessMovement[] {
   return members.flatMap((member) => {
-    const since = member.historicalCoverageSince ?? "";
+    const since = effectiveCoverageSince(records, member) ?? "";
     return recordsForMembers(records, [member]).filter((record) => !since || dateKey(record.receivedAt) >= since);
   });
 }
@@ -260,8 +281,8 @@ function historicalRecordsForMembers(records: ProcessMovement[], members: TeamMe
 function comparableSummary(records: ProcessMovement[], members: TeamMember[], currentRange: DateRange, today: string): ComparableSummary | null {
   const previousRange = previousEquivalentRange(currentRange);
   const comparable = members.filter((member) =>
-    coverageFor(member, currentRange).status === "covered"
-    && coverageFor(member, previousRange).status === "covered");
+    coverageForRecords(records, member, currentRange).status === "covered"
+    && coverageForRecords(records, member, previousRange).status === "covered");
   if (!comparable.length) return null;
   const comparableRecords = recordsForMembers(records, comparable);
   return {
@@ -281,11 +302,11 @@ export function buildEfficiencyModel(
   today = localDateKey(new Date()),
 ): EfficiencyModel {
   const scopeMembers = activeScopeMembers(members, scope);
-  const coverageItems = scopeMembers.map((member) => coverageFor(member, range));
-  const includedMembers = scopeMembers.filter((member) => coverageFor(member, range).status !== "unavailable");
+  const coverageItems = scopeMembers.map((member) => coverageForRecords(records, member, range));
+  const includedMembers = scopeMembers.filter((member) => coverageForRecords(records, member, range).status !== "unavailable");
   const selectedRecords = historicalRecordsForMembers(records, includedMembers);
   const rows = scopeMembers.map((member): EfficiencyUserRow => {
-    const coverage = coverageFor(member, range);
+    const coverage = coverageForRecords(records, member, range);
     const allMemberRecords = recordsForMembers(records, [member]);
     const memberRecords = historicalRecordsForMembers(records, [member]);
     const pending = allMemberRecords.filter((record) => pendingAt(record, today));
