@@ -1,5 +1,36 @@
 export const PRAXIS_TIME_ZONE = "America/Belem";
 const PRAXIS_OFFSET = "-03:00";
+const MAX_LOCAL_DATE_CACHE = 20_000;
+
+const ZONED_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PRAXIS_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+const DATE_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: PRAXIS_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: PRAXIS_TIME_ZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const localDateCache = new Map<string, string>();
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -7,17 +38,14 @@ function pad(value: number): string {
 
 function zonedParts(date: Date): Record<string, string> {
   return Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: PRAXIS_TIME_ZONE,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(date).map((part) => [part.type, part.value]),
+    ZONED_PARTS_FORMATTER.formatToParts(date).map((part) => [part.type, part.value]),
   );
+}
+
+function rememberLocalDate(source: string, value: string): string {
+  if (localDateCache.size >= MAX_LOCAL_DATE_CACHE) localDateCache.clear();
+  localDateCache.set(source, value);
+  return value;
 }
 
 export function toLocalInput(date = new Date()): string {
@@ -44,10 +72,15 @@ export function localDatePart(value: string | null | undefined): string {
   if (!value) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)) return value.slice(0, 10);
+
+  const cached = localDateCache.get(value);
+  if (cached !== undefined) return cached;
+
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  if (Number.isNaN(date.getTime())) return rememberLocalDate(value, value.slice(0, 10));
+
   const parts = zonedParts(date);
-  return `${parts.year}-${parts.month}-${parts.day}`;
+  return rememberLocalDate(value, `${parts.year}-${parts.month}-${parts.day}`);
 }
 
 export function addDays(value: string, days: number): string {
@@ -82,13 +115,9 @@ export function formatDate(value: string | null, includeTime = false, timePrecis
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: PRAXIS_TIME_ZONE,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    ...(includeTime && timePrecise ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
-  }).format(date);
+  return includeTime && timePrecise
+    ? DATE_TIME_FORMATTER.format(date)
+    : DATE_FORMATTER.format(date);
 }
 
 export function formatElapsedTime(hours: number | null): string {

@@ -55,15 +55,27 @@ export function ReportsPage({ records, members, currentUserId, onSave, isAdmin }
     const since = effectiveCoverageSince(records, member);
     return Boolean(since && since <= startDate && since <= previousStart);
   }), [members, previousStart, records, startDate]);
-  const previousModel = useMemo(() => !compare || invalidPeriod || !comparableMembers.length ? undefined : buildReportModel(records, comparableMembers, { ...filters, startDate: previousStart, endDate: previousEnd }), [compare, comparableMembers, filters, invalidPeriod, previousEnd, previousStart, records]);
-  const comparisonCurrentModel = useMemo(() => !compare || invalidPeriod || !comparableMembers.length ? undefined : buildReportModel(records, comparableMembers, filters), [compare, comparableMembers, filters, invalidPeriod, records]);
-
   async function generate() {
     if (!model) return;
     setBusy(true); setMessage("");
-    try { const bytes = generateManagementReportPdf(model, { mode, members, comparisonModel: previousModel, comparisonCurrentModel }); setMessage(await onSave(bytes, buildReportFileName(mode, model, members))); }
-    catch (error) { setMessage(`Não foi possível gerar o relatório: ${String(error)}`); }
-    finally { setBusy(false); }
+
+    // Permite que o navegador desenhe o estado "Gerando..." antes do cálculo pesado.
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+    try {
+      const comparisonModel = compare && !invalidPeriod && comparableMembers.length
+        ? buildReportModel(records, comparableMembers, { ...filters, startDate: previousStart, endDate: previousEnd })
+        : undefined;
+      const comparisonCurrentModel = compare && !invalidPeriod && comparableMembers.length
+        ? buildReportModel(records, comparableMembers, filters)
+        : undefined;
+      const bytes = generateManagementReportPdf(model, { mode, members, comparisonModel, comparisonCurrentModel });
+      setMessage(await onSave(bytes, buildReportFileName(mode, model, members)));
+    } catch (error) {
+      setMessage(`Não foi possível gerar o relatório: ${String(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <div className="page-stack">

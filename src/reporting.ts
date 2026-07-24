@@ -52,9 +52,14 @@ function inRange(value: string, start: string, end: string): boolean { return Bo
 
 export function effectiveCoverageSince(records: ProcessMovement[], member: TeamMember): string | null {
   const configured = dateKey(member.historicalCoverageSince);
-  const inferred = records
-    .filter((record) => !record.deletedAt && record.assignedTo === member.userId)
-    .map((record) => dateKey(record.receivedAt)).filter(Boolean).sort()[0] ?? "";
+  let inferred = "";
+
+  for (const record of records) {
+    if (record.deletedAt || record.assignedTo !== member.userId) continue;
+    const received = dateKey(record.receivedAt);
+    if (received && (!inferred || received < inferred)) inferred = received;
+  }
+
   if (!configured) return inferred || null;
   if (!inferred) return configured;
   return configured <= inferred ? configured : inferred;
