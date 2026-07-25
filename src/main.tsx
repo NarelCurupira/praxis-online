@@ -1,6 +1,14 @@
-import { StrictMode } from "react";
+import { StrictMode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { installGlobalErrorHandlers } from "./errorReporting";
 import "./styles.css";
 import "./governance.css";
-createRoot(document.getElementById("root")!).render(<StrictMode><App /></StrictMode>);
+
+function ReliableApp() {
+  useEffect(() => installGlobalErrorHandlers(), []);
+  return <ErrorBoundary><App /></ErrorBoundary>;
+}
+
+createRoot(document.getElementById("root")!).render(<StrictMode><ReliableApp /></StrictMode>);

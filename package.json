@@ -1,7 +1,7 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.9.5",
+  "version": "0.10.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
@@ -11,9 +11,10 @@
     "test:reports": "node --import tsx --test src/reporting.test.ts",
     "test:efficiency": "node --import tsx --test src/efficiency.test.ts",
     "test:time": "node --import tsx --test src/time-regression.test.ts",
-    "test": "npm run test:reports && npm run test:efficiency && npm run test:time",
+    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability",
     "report:sample": "node --import tsx scripts/generate-report-sample.ts",
-    "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts"
+    "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts",
+    "test:reliability": "node --import tsx --test src/reliability.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",

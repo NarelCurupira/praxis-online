@@ -1,66 +1,45 @@
-PRÁXIS WEB 0.9.5 — ACABAMENTO E INTEGRAÇÃO DOS RELATÓRIOS
-
-ARQUIVOS COMPLETOS PARA SUBSTITUIR
-- package.json
-- src/version.ts
-- src/App.tsx
-- src/governance.css
-- src/reportPdfConfigured.ts
-- src/components/AboutPage.tsx
-- src/components/ProcessModal.tsx
-- src/components/EditProcessModal.tsx
-- src/components/ReportsPage.tsx
-- src/components/SettingsPage.tsx
-
-NÃO É NECESSÁRIO EXECUTAR SQL.
-NÃO HOUVE ALTERAÇÃO DE DEPENDÊNCIAS; O package-lock.json PODE SER MANTIDO.
-
-ALTERAÇÕES
-
-1. CADASTRO E EDIÇÃO DE PROCESSOS
-- Campos reorganizados em duas colunas simétricas.
-- Números MP e judicial passam a ocupar duas colunas iguais.
-- Responsável e Documento relacionado ficam na mesma linha.
-- Entrada/Classe, Providência/Prazo e Envio/Prioridade ficam alinhados.
-- Campos e textos auxiliares recebem alturas coerentes.
-- Em telas pequenas, o formulário passa automaticamente para uma coluna.
-
-2. VISÃO GERAL
-- O painel de movimentação mensal passa a aproveitar a altura criada pela
-  ampliação da lista de providências.
-- O gráfico mensal cresce junto com o painel, eliminando o espaço vazio.
-- A legenda de providências usa duas colunas em monitores largos e uma coluna
-  em telas menores.
-- Nenhuma providência é ocultada.
-
-3. ABA SOBRE
-- Restaurado e ampliado o aviso de natureza e finalidade de uso.
-- Registra que o software é privado, não comercial, não lucrativo, não
-  institucional, não destinado à distribuição e restrito às pessoas
-  expressamente autorizadas pelo criador.
-- Mantida a indicação de que os dados e relatórios são auxiliares e devem ser
-  conferidos nos sistemas oficiais.
-
-4. RELATÓRIOS E PRIVACIDADE
-- Nome da unidade, procurador responsável e rodapé personalizado passam a ser
-  utilizados nos PDFs.
-- O disclaimer obrigatório continua presente.
-- Modalidade-padrão e período-padrão passam a definir a seleção inicial da aba.
-- A autorização de comparações nominais passa a ser respeitada: quando
-  desativada, os nomes da equipe são substituídos por identificadores neutros
-  nos relatórios coletivos.
-- A página de Configurações explica a finalidade de cada campo.
-
-5. PERÍODOS DOS RELATÓRIOS
-- “Ano atual até hoje” permanece disponível.
-- “Ano completo” passa a listar somente anos anteriores ao ano atual.
-- O ano corrente deixa de aparecer em duas opções equivalentes.
-- Intervalos futuros continuam disponíveis por meio de “Intervalo personalizado”.
-- A comparação anual conserva o mesmo dia e mês no período anterior.
+PRÁXIS WEB 0.10.0 — CONFIABILIDADE E ENGENHARIA
 
 ORDEM DE INSTALAÇÃO
-1. Substitua todos os arquivos do pacote no GitHub, preservando os caminhos.
-2. Aguarde a publicação do Cloudflare Pages.
-3. Recarregue a aplicação sem cache.
-4. Gere um relatório de teste para conferir unidade, procurador, rodapé e
-   privacidade nominal.
+
+1. Faça backup do banco no Supabase.
+2. Execute no Supabase SQL Editor:
+   supabase/migrations/20260725_praxis_v010_confiabilidade.sql
+3. Somente após o SQL terminar sem erro, substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+4. Aguarde a publicação do Cloudflare Pages.
+5. No GitHub, abra a aba Actions e confirme que “Qualidade do Práxis” concluiu com sucesso.
+
+ARQUIVOS PRINCIPAIS
+
+- package.json
+- vite.config.ts
+- src/main.tsx
+- src/App.tsx
+- src/version.ts
+- src/buildInfo.ts
+- src/reliability.ts
+- src/errorReporting.ts
+- src/components/ErrorBoundary.tsx
+- src/components/AboutPage.tsx
+- src/governance.css
+- src/reliability.test.ts
+- .github/workflows/quality.yml
+- supabase/migrations/20260725_praxis_v010_confiabilidade.sql
+- CHANGELOG.md
+- CRITERIOS_VERSAO_1.0.md
+- HISTORIA_DO_PRAXIS.md
+
+O QUE MUDA
+
+- erros inesperados deixam de produzir apenas tela vazia;
+- a aplicação mostra código, página, versão e compilação;
+- o usuário pode copiar um diagnóstico técnico;
+- erros são registrados no Supabase sem conteúdo processual;
+- cada push executa verificação TypeScript, testes e build;
+- a aba Sobre informa compilação e data de publicação.
+
+OBSERVAÇÕES
+
+- Não é necessário substituir o package-lock.json: não houve alteração de dependências.
+- A tabela technical_errors só pode ser consultada por administrador do mesmo workspace.
+- A visualização desses logs será integrada à Auditoria e diagnóstico na versão 0.10.1.
