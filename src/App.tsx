@@ -37,7 +37,24 @@ function storedBoolean(key: string): boolean {
   catch { return false; }
 }
 
-function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme: "light" | "dark"; onToggleTheme: () => void }) {
+type UiFontSize = "small" | "normal" | "large";
+
+function storedFontSize(): UiFontSize {
+  try {
+    const value = localStorage.getItem("praxis-ui-font-size");
+    return value === "small" || value === "large" ? value : "normal";
+  } catch {
+    return "normal";
+  }
+}
+
+function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }: {
+  session: Session;
+  theme: "light" | "dark";
+  fontSize: UiFontSize;
+  onToggleTheme: () => void;
+  onFontSizeChange: (value: UiFontSize) => void;
+}) {
   useIdleSession();
   const [page, setPage] = useState<Page>("dashboard");
   const [records, setRecords] = useState<ProcessMovement[]>([]);
@@ -109,7 +126,12 @@ function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme:
         <div className="online-indicator"><Cloud size={17} /><span>Online</span></div>
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
-        <button className="icon-button" onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
+        <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">
+          <button type="button" className={fontSize === "small" ? "active" : ""} aria-label="Letra pequena" title="Letra pequena" onClick={() => onFontSizeChange("small")}>A−</button>
+          <button type="button" className={fontSize === "normal" ? "active" : ""} aria-label="Letra padrão" title="Letra padrão" onClick={() => onFontSizeChange("normal")}>A</button>
+          <button type="button" className={fontSize === "large" ? "active" : ""} aria-label="Letra grande" title="Letra grande" onClick={() => onFontSizeChange("large")}>A+</button>
+        </div>
+        <button className="icon-button" title={theme === "dark" ? "Usar modo claro" : "Usar modo noturno"} onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
         <button className="icon-button" onClick={() => supabase?.auth.signOut()}><LogOut /></button>
         {access.canCreateProcess && <button className="button primary" onClick={() => setModal(true)}><Plus />Novo processo</button>}
       </header>
@@ -137,11 +159,16 @@ function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme:
 
 export default function App() {
   const [theme, setTheme] = useState<"light" | "dark">(() => localStorage.getItem("praxis-theme") as "light" | "dark" || "dark");
+  const [fontSize, setFontSize] = useState<UiFontSize>(storedFontSize);
   const [session, setSession] = useState<Session | null>(null);
   const [checking, setChecking] = useState(true);
   const [recovery, setRecovery] = useState(() => location.hash.includes("type=recovery") || location.hash.includes("type=invite"));
 
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("praxis-theme", theme); }, [theme]);
+  useEffect(() => {
+    document.documentElement.dataset.fontSize = fontSize;
+    try { localStorage.setItem("praxis-ui-font-size", fontSize); } catch { /* Preferência não persistente. */ }
+  }, [fontSize]);
   useEffect(() => {
     if (!supabase) { setChecking(false); return; }
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
@@ -156,5 +183,11 @@ export default function App() {
   if (checking) return <LoadingScreen message="Verificando acesso seguro..." />;
   if (recovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setRecovery(false); }} />;
   if (!session) return <AuthPage />;
-  return <PraxisApp session={session} theme={theme} onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")} />;
+  return <PraxisApp
+    session={session}
+    theme={theme}
+    fontSize={fontSize}
+    onFontSizeChange={setFontSize}
+    onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")}
+  />;
 }

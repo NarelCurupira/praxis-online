@@ -34,7 +34,6 @@ interface Props {
   onExport: (bytes: number[]) => Promise<string>;
 }
 
-type TableFontSize = "small" | "normal" | "large";
 type TableDensity = "compact" | "comfortable" | "spacious";
 type HighlightFilter = "Todos" | "Relevância social" | "Alta complexidade" | "Ambos";
 type OptionalColumn = "subject" | "assignee" | "receivedAt" | "deadlineAt" | "action" | "status";
@@ -174,7 +173,6 @@ export function ProcessTable({
   const preferencePrefix = `praxis-table-${currentUserId || "anonymous"}`;
   const columnPreferenceKey = `${preferencePrefix}-${queueOnly ? "queue" : "processes"}-columns`;
   const allowedColumns = useMemo(() => optionalColumnOptions.filter((column) => !queueOnly || column.queue).map((column) => column.key), [queueOnly]);
-  const [fontSize, setFontSize] = useState<TableFontSize>(() => readPreference(`${preferencePrefix}-font`, ["small", "normal", "large"] as const, "normal"));
   const [density, setDensity] = useState<TableDensity>(() => readPreference(`${preferencePrefix}-density`, ["compact", "comfortable", "spacious"] as const, "comfortable"));
   const [visibleColumns, setVisibleColumns] = useState<OptionalColumn[]>(() => readColumnPreference(columnPreferenceKey, allowedColumns));
   const [query, setQuery] = useState("");
@@ -241,11 +239,6 @@ export function ProcessTable({
   const isDefaultEmptyQueue = queueOnly && !hasActiveFilters;
   const columnCount = 2 + allowedColumns.filter(showColumn).length;
 
-  function saveFontSize(value: TableFontSize) {
-    setFontSize(value);
-    try { localStorage.setItem(`${preferencePrefix}-font`, value); } catch { /* Preferência não persistente. */ }
-  }
-
   function saveDensity(value: TableDensity) {
     setDensity(value);
     try { localStorage.setItem(`${preferencePrefix}-density`, value); } catch { /* Preferência não persistente. */ }
@@ -308,10 +301,9 @@ export function ProcessTable({
     }
   }
 
-  return <section className={`panel table-panel table-panel-v091 table-panel-v092 table-font-${fontSize} table-density-${density} ${queueOnly ? "queue-table-panel" : "processes-table-panel"}`}>
+  return <section className={`panel table-panel table-panel-v091 table-panel-v092 table-density-${density} ${queueOnly ? "queue-table-panel" : "processes-table-panel"}`}>
     <div className="table-display-controls table-display-controls-v092">
       <div className="table-display-preferences">
-        <div className="display-control-group"><span>Tamanho da letra</span><div role="group" aria-label="Tamanho da letra da tabela"><button type="button" className={fontSize === "small" ? "active" : ""} onClick={() => saveFontSize("small")}>A−</button><button type="button" className={fontSize === "normal" ? "active" : ""} onClick={() => saveFontSize("normal")}>A</button><button type="button" className={fontSize === "large" ? "active" : ""} onClick={() => saveFontSize("large")}>A+</button></div></div>
         <div className="display-control-group"><span>Densidade</span><div role="group" aria-label="Densidade das linhas"><button type="button" title="Compacta" className={density === "compact" ? "active" : ""} onClick={() => saveDensity("compact")}>≡</button><button type="button" title="Confortável" className={density === "comfortable" ? "active" : ""} onClick={() => saveDensity("comfortable")}>☰</button><button type="button" title="Espaçosa" className={density === "spacious" ? "active" : ""} onClick={() => saveDensity("spacious")}>☷</button></div></div>
       </div>
       <div className="table-view-actions">
