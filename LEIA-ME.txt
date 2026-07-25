@@ -1,66 +1,66 @@
-PRÁXIS WEB 0.9.4 — CORREÇÕES DE CALENDÁRIO, TIPOGRAFIA E TEMPO ÚTIL
+PRÁXIS WEB 0.9.5 — ACABAMENTO E INTEGRAÇÃO DOS RELATÓRIOS
 
 ARQUIVOS COMPLETOS PARA SUBSTITUIR
-
 - package.json
+- src/version.ts
 - src/App.tsx
-- src/date.ts
 - src/governance.css
-- src/components/Dashboard.tsx
+- src/reportPdfConfigured.ts
+- src/components/AboutPage.tsx
+- src/components/ProcessModal.tsx
+- src/components/EditProcessModal.tsx
+- src/components/ReportsPage.tsx
 - src/components/SettingsPage.tsx
 
-ARQUIVO DE TESTE ATUALIZADO
-
-- src/time-regression.test.ts
-
 NÃO É NECESSÁRIO EXECUTAR SQL.
+NÃO HOUVE ALTERAÇÃO DE DEPENDÊNCIAS; O package-lock.json PODE SER MANTIDO.
 
-ALTERAÇÕES DESTA VERSÃO
+ALTERAÇÕES
 
-1. Configurações no modo noturno
-- Corrige o fundo claro dos anos de feriados e recessos.
-- Ajusta cores, bordas e contraste dos grupos e das datas internas.
-- Mantém leitura adequada com os anos abertos ou recolhidos.
+1. CADASTRO E EDIÇÃO DE PROCESSOS
+- Campos reorganizados em duas colunas simétricas.
+- Números MP e judicial passam a ocupar duas colunas iguais.
+- Responsável e Documento relacionado ficam na mesma linha.
+- Entrada/Classe, Providência/Prazo e Envio/Prioridade ficam alinhados.
+- Campos e textos auxiliares recebem alturas coerentes.
+- Em telas pequenas, o formulário passa automaticamente para uma coluna.
 
-2. Feriados, recessos e dias sem expediente
-- Agrupa os registros primeiro por ano e depois pela descrição.
-- Datas consecutivas com a mesma descrição são exibidas como intervalo.
-- Datas não consecutivas com a mesma descrição permanecem no mesmo grupo.
-- Cada grupo pode ser expandido para conferir e excluir datas individualmente.
-- A contagem do ano continua mostrando o total de dias cadastrados.
+2. VISÃO GERAL
+- O painel de movimentação mensal passa a aproveitar a altura criada pela
+  ampliação da lista de providências.
+- O gráfico mensal cresce junto com o painel, eliminando o espaço vazio.
+- A legenda de providências usa duas colunas em monitores largos e uma coluna
+  em telas menores.
+- Nenhuma providência é ocultada.
 
-3. Tamanho global da letra
-- A opção A− passa a reduzir efetivamente títulos, cartões, filtros,
-  botões, textos auxiliares, legendas e informações da Visão Geral.
-- A opção A continua sendo o tamanho padrão.
-- A opção A+ continua ampliando toda a interface.
-- Status e providências mantêm o tamanho visual aprovado na versão 0.9.2.
+3. ABA SOBRE
+- Restaurado e ampliado o aviso de natureza e finalidade de uso.
+- Registra que o software é privado, não comercial, não lucrativo, não
+  institucional, não destinado à distribuição e restrito às pessoas
+  expressamente autorizadas pelo criador.
+- Mantida a indicação de que os dados e relatórios são auxiliares e devem ser
+  conferidos nos sistemas oficiais.
 
-4. Tempo útil
-- Remove a antiga regra de subtrair 18 horas de todo intervalo inferior
-  a 24 horas.
-- Calcula a interseção real entre entrada, envio e expediente configurado.
-- Exclui horas noturnas, sábados, domingos, feriados e recessos.
-- Utiliza o início, o fim e a duração da jornada definidos em Configurações.
-- Processos enviados no mesmo dia preservam a duração real.
-- A alteração das configurações de jornada recalcula os registros carregados.
+4. RELATÓRIOS E PRIVACIDADE
+- Nome da unidade, procurador responsável e rodapé personalizado passam a ser
+  utilizados nos PDFs.
+- O disclaimer obrigatório continua presente.
+- Modalidade-padrão e período-padrão passam a definir a seleção inicial da aba.
+- A autorização de comparações nominais passa a ser respeitada: quando
+  desativada, os nomes da equipe são substituídos por identificadores neutros
+  nos relatórios coletivos.
+- A página de Configurações explica a finalidade de cada campo.
 
-5. Tempo médio da Visão Geral
-- Considera somente envios com horários completos de entrada e envio.
-- Exibe quantos envios compõem a média.
-- Quando não houver medições precisas, exibe “Não disponível”.
-- O comparativo anual passa a usar a mesma base metodológica.
+5. PERÍODOS DOS RELATÓRIOS
+- “Ano atual até hoje” permanece disponível.
+- “Ano completo” passa a listar somente anos anteriores ao ano atual.
+- O ano corrente deixa de aparecer em duas opções equivalentes.
+- Intervalos futuros continuam disponíveis por meio de “Intervalo personalizado”.
+- A comparação anual conserva o mesmo dia e mês no período anterior.
 
-COMO INSTALAR
-
-1. Substitua no GitHub os arquivos do pacote, preservando os caminhos.
+ORDEM DE INSTALAÇÃO
+1. Substitua todos os arquivos do pacote no GitHub, preservando os caminhos.
 2. Aguarde a publicação do Cloudflare Pages.
-3. Recarregue o Práxis sem cache.
-4. Confira a jornada na aba Configurações.
-5. Abra a Visão Geral e a aba Eficiência para verificar os tempos recalculados.
-
-OBSERVAÇÃO IMPORTANTE
-
-Os valores de tempo médio, mediana e Tempo de 90% dos envios podem aumentar
-após esta atualização. Isso é esperado: processos concluídos no mesmo dia
-deixam de ser reduzidos artificialmente a zero hora útil.
+3. Recarregue a aplicação sem cache.
+4. Gere um relatório de teste para conferir unidade, procurador, rodapé e
+   privacidade nominal.

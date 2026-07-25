@@ -353,6 +353,8 @@ export function SettingsPage(props: Props) {
           <ShieldCheck />
         </div>
 
+        <p className="report-settings-help">Estas informações passam a compor os PDFs: unidade e procurador aparecem na identificação do relatório; o rodapé personalizado complementa o aviso obrigatório; modalidade e período definem a seleção inicial; a opção de comparações nominais controla a exibição dos nomes da equipe.</p>
+
         <div className="settings-grid">
           <label>
             Nome da unidade

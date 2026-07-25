@@ -1,3 +1,1 @@
-import packageJson from "../package.json";
-
-export const PRAXIS_VERSION = packageJson.version;
+export const PRAXIS_VERSION = "0.9.5";

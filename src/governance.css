@@ -215,3 +215,86 @@ html[data-theme="dark"] .calendar-label-group .calendar-row{
     flex-direction:column;
   }
 }
+
+/* Práxis Web 0.9.5 — acabamento dos modais, gráficos e relatórios */
+.locked-fields{
+  grid-template-columns:1fr 1fr;
+}
+.process-form-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  align-items:start;
+}
+.process-form-grid>label,
+.process-form-grid>.classification-section,
+.process-form-grid>.classification-switches{
+  min-width:0;
+}
+.process-form-grid input,
+.process-form-grid select,
+.process-form-grid textarea{
+  width:100%;
+  box-sizing:border-box;
+}
+.process-form-grid input,
+.process-form-grid select{
+  min-height:40px;
+}
+.process-form-grid .field-with-help small{
+  min-height:30px;
+}
+.dashboard-grid{
+  align-items:stretch;
+}
+.dashboard-grid>.chart-panel{
+  display:flex;
+  min-height:480px;
+  flex-direction:column;
+}
+.dashboard-grid>.chart-panel .chart-box{
+  flex:1 1 auto;
+  min-height:280px;
+}
+.dashboard-grid>.chart-panel.wide .chart-box{
+  min-height:360px;
+}
+.dashboard-grid>.chart-panel:not(.wide) .pie-box{
+  flex:0 0 220px;
+  min-height:220px;
+}
+.dashboard-grid>.chart-panel:not(.wide) .legend-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  column-gap:14px;
+  row-gap:5px;
+  margin-top:8px;
+}
+.dashboard-grid>.chart-panel:not(.wide) .legend-list span{
+  min-width:0;
+}
+.about-disclaimer{
+  border-left:4px solid #b88a24;
+  background:#fff9e9;
+}
+.about-disclaimer p{
+  margin:8px 0 0;
+  line-height:1.6;
+}
+html[data-theme="dark"] .about-disclaimer{
+  background:#302815;
+  border-color:#d7a936;
+}
+.report-settings-help{
+  margin:-6px 0 14px;
+  color:var(--muted,#829ab1);
+  font-size:.88rem;
+  line-height:1.45;
+}
+@media(max-width:900px){
+  .dashboard-grid>.chart-panel{min-height:auto}
+  .dashboard-grid>.chart-panel.wide .chart-box{min-height:300px}
+  .dashboard-grid>.chart-panel:not(.wide) .legend-list{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .locked-fields,.process-form-grid{grid-template-columns:1fr}
+  .process-form-grid>div:empty{display:none}
+}
