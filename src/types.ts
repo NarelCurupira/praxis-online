@@ -128,6 +128,7 @@ export type AccessScope = "none" | "own" | "team";
 export interface TeamMember {
   userId: string;
   fullName: string;
+  displayName?: string;
   email: string;
   role: PraxisRole;
   active: boolean;

@@ -62,27 +62,65 @@ function settingsFromRow(row: Record<string, unknown> | null): WorkspaceSettings
   };
 }
 
-export async function listGovernanceMembers(): Promise<TeamMember[]> {
-  const { client } = await context();
-  const { data, error } = await client.rpc("list_current_workspace_members_v09");
-  fail(error);
-  return (data ?? []).map((item: Record<string, unknown>) => ({
-    userId: String(item.user_id), fullName: String(item.full_name ?? ""), email: String(item.email ?? ""),
-    role: item.role as TeamMember["role"], active: Boolean(item.active), mfaRequired: Boolean(item.mfa_required),
+function suggestedDisplayName(fullName: string, email: string): string {
+  const words = fullName.trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return email.split("@")[0] || "Usuário";
+  if (words.length === 1) return words[0];
+  return `${words[0]} ${words.at(-1)}`;
+}
+
+function mapGovernanceMember(item: Record<string, unknown>): TeamMember {
+  const fullName = String(item.full_name ?? "");
+  const email = String(item.email ?? "");
+  return {
+    userId: String(item.user_id),
+    fullName,
+    displayName: String(item.display_name ?? "").trim() || suggestedDisplayName(fullName, email),
+    email,
+    role: item.role as TeamMember["role"],
+    active: Boolean(item.active),
+    mfaRequired: Boolean(item.mfa_required),
     historicalCoverageSince: item.historico_disponivel_desde ? String(item.historico_disponivel_desde) : null,
     efficiencyAccess: item.efficiency_access as AccessScope,
     reportsAccess: item.reports_access as AccessScope,
-  }));
+  };
 }
 
-export async function saveMemberAccess(userId: string, efficiencyAccess: AccessScope, reportsAccess: AccessScope): Promise<void> {
+export async function listGovernanceMembers(): Promise<TeamMember[]> {
   const { client } = await context();
-  const { error } = await client.rpc("update_workspace_member_access_v09", {
+  const current = await client.rpc("list_current_workspace_members_v091");
+  if (!current.error) return (current.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
+
+  // Compatibilidade durante a implantação: a versão 0.9.0 continua abrindo
+  // enquanto a migração 0.9.1 ainda não tiver sido executada.
+  const legacy = await client.rpc("list_current_workspace_members_v09");
+  fail(legacy.error);
+  return (legacy.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
+}
+
+export async function saveMemberAccess(
+  userId: string,
+  efficiencyAccess: AccessScope,
+  reportsAccess: AccessScope,
+  displayName?: string | null,
+): Promise<void> {
+  const { client } = await context();
+  const current = await client.rpc("update_workspace_member_presentation_v091", {
+    target_user: userId,
+    new_display_name: displayName === undefined ? null : displayName.trim(),
+    new_efficiency_access: efficiencyAccess,
+    new_reports_access: reportsAccess,
+  });
+  if (!current.error) return;
+
+  // Sem a migração 0.9.1, apenas as permissões antigas podem ser salvas.
+  if (displayName !== undefined) throw new Error(`Não foi possível salvar o nome de exibição. Execute a migração da versão 0.9.1. ${current.error.message}`);
+  const legacy = await client.rpc("update_workspace_member_access_v09", {
     target_user: userId,
     new_efficiency_access: efficiencyAccess,
     new_reports_access: reportsAccess,
   });
-  fail(error);
+  fail(legacy.error);
 }
 
 export async function getWorkspaceSettings(): Promise<WorkspaceSettings> {

@@ -1,26 +1,49 @@
-PRÁXIS WEB 0.9.0 — GOVERNANÇA E CONFIGURAÇÕES
+PRÁXIS WEB 0.9.1 — USABILIDADE DAS TABELAS
 
-PACOTE PRONTO PARA SUBSTITUIÇÃO.
+Este pacote contém arquivos completos, prontos para substituir no GitHub.
 
-1. Execute primeiro no Supabase o arquivo:
-   supabase/migrations/20260725_praxis_v090_governanca.sql
+ORDEM DE INSTALAÇÃO
 
-2. Depois substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+1. Faça um backup do banco.
+2. No Supabase > SQL Editor, execute integralmente:
+   supabase/migrations/20260725_praxis_v091_usabilidade_tabelas.sql
+3. Depois, substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+4. Aguarde a publicação do Cloudflare Pages.
+5. Recarregue o Práxis sem cache.
 
-3. Aguarde a publicação do Cloudflare Pages e recarregue sem cache.
+ARQUIVOS MODIFICADOS
 
-PRINCIPAIS ALTERAÇÕES
-- Configurações contém apenas opções efetivamente configuráveis.
-- Calendário agrupado por ano.
-- Perfis: administrador, procurador, assessor, estagiário e consulta.
-- Eficiência e Relatórios configuráveis por usuário: nenhum, próprio ou equipe.
-- Procurador recebe visão integral de Eficiência e Relatórios.
-- Estagiário vê somente Visão geral, Minha fila, Processos e Sobre; no processo altera apenas status, providência e observação interna.
-- Apenas administrador altera data de entrada, com justificativa registrada.
-- Lixeira é visível aos perfis autorizados, mas restauração/exclusão definitiva são administrativas.
-- Fechamento mensal.
-- P90 passa a “Tempo de 90% dos envios”.
-- Mediana e tempo de 90% usam somente horários completos.
+- package.json
+- src/App.tsx
+- src/types.ts
+- src/governanceApi.ts
+- src/governance.css
+- src/components/ProcessTable.tsx
+- src/components/TeamPage.tsx
+- supabase/migrations/20260725_praxis_v091_usabilidade_tabelas.sql
+
+ALTERAÇÕES PRINCIPAIS
+
+- correção do posicionamento das setas de paginação;
+- paginação fora da área de rolagem horizontal;
+- paginação ocultada quando não há resultados;
+- mensagens amigáveis para fila vazia e filtros sem resultado;
+- retirada da coluna Responsável da aba Minha fila;
+- rótulos visíveis para todos os filtros;
+- separação visual entre filtros e ordenação;
+- ordem descrita em linguagem natural, como “Mais próximo primeiro”;
+- datas compactas no formato DD/MM/AA nas tabelas;
+- data completa e horário exibidos ao repousar o cursor;
+- nome curto configurável para o responsável na aba Equipe;
+- tamanho da letra configurável por usuário;
+- densidade compacta, confortável ou espaçosa;
+- preferências de letra e densidade gravadas no navegador;
+- marcadores dos filtros ativos e comando para limpar todos;
+- páginas Minha fila e Processos usando melhor a largura disponível;
+- primeira e última página adicionadas à paginação;
+- versão atualizada para 0.9.1.
 
 OBSERVAÇÃO
-Este pacote não altera a regra temporária de criação de data de envio estimada para importações sem data. O horário permanece marcado como impreciso.
+
+O nome de exibição é usado apenas nas tabelas e filtros compactos. O nome completo
+permanece nos relatórios, na auditoria e na administração da equipe.
