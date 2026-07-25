@@ -65,6 +65,7 @@ export interface ProcessFormData {
 }
 
 export interface ProcessEditData {
+  sensitiveChangeReason?: string;
   assignedTo: string;
   receivedAt: string;
   receivedTimePrecise?: boolean;
@@ -122,7 +123,58 @@ export type StorageDirectoryKind = "backup" | "export" | "report";
 export interface StorageSettings { backupDirectory: string; exportDirectory: string; reportDirectory: string; backupCustom: boolean; exportCustom: boolean; reportCustom: boolean; }
 export interface BackupStatus { hasValidBackup: boolean; lastValidAt: string | null; backupType: string | null; path: string | null; sizeBytes: number | null; integrityResult: string | null; lastAttemptAt: string | null; lastAttemptOk: boolean | null; message: string; }
 export type Page = "dashboard" | "queue" | "processes" | "efficiency" | "reports" | "quality" | "import" | "trash" | "team" | "settings" | "audit" | "about";
-export type PraxisRole = "admin" | "procurador" | "assessor" | "consulta";
-export interface TeamMember { userId: string; fullName: string; email: string; role: PraxisRole; active: boolean; mfaRequired: boolean; historicalCoverageSince?: string | null; }
+export type PraxisRole = "admin" | "procurador" | "assessor" | "estagiario" | "consulta";
+export type AccessScope = "none" | "own" | "team";
+export interface TeamMember {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: PraxisRole;
+  active: boolean;
+  mfaRequired: boolean;
+  historicalCoverageSince?: string | null;
+  efficiencyAccess?: AccessScope;
+  reportsAccess?: AccessScope;
+}
+export interface WorkspaceSettings {
+  workdayHours: number;
+  workdayStart: string;
+  workdayEnd: string;
+  defaultDeadlineBusinessDays: number;
+  countFromNextBusinessDay: boolean;
+  afterHoursPolicy: "keep" | "next_business_day";
+  unitName: string;
+  leadProsecutor: string;
+  reportFooter: string;
+  defaultReportMode: "executive" | "complete" | "highlights";
+  defaultReportPeriod: "month" | "30days" | "year";
+  allowNamedComparisons: boolean;
+  requireActionOnSend: boolean;
+  requireAssigneeOnProgress: boolean;
+  detectDuplicates: boolean;
+  requireDateChangeReason: boolean;
+  blockClosedPeriods: boolean;
+}
+export interface ClosedPeriod {
+  id: number;
+  year: number;
+  month: number;
+  closedAt: string;
+  closedByName: string;
+  reason: string;
+  reopenedAt: string | null;
+  reopenedByName: string;
+  reopenReason: string;
+}
+export interface ProcessPermissions {
+  canEditWorkflow: boolean;
+  canEditNotes: boolean;
+  canEditFull: boolean;
+  canChangeAssignment: boolean;
+  canChangeReceivedAt: boolean;
+  canChangeSentAt: boolean;
+  canDelete: boolean;
+  canExport: boolean;
+}
 export interface TeamComparison { userId: string; fullName: string; email: string; role: PraxisRole; received: number; sent: number; pending: number; onTime: number; averageHours: number | null; }
 export interface AdminAuditEntry { id: number; createdAt: string; eventType: string; actorName: string; actorEmail: string; details: Record<string, unknown>; }

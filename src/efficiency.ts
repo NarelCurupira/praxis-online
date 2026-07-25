@@ -197,9 +197,9 @@ export function calculateEfficiencyTime(records: ProcessMovement[], range: DateR
     sameDay: sent.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
     withinTwoHours: preciseValues.filter((value) => value <= 2).length,
     withinOneDay: preciseValues.filter((value) => value <= WORKDAY_HOURS).length,
-    median: percentile(values, .5),
-    mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
-    p90: percentile(values, .9),
+    median: percentile(preciseValues, .5),
+    mean: preciseValues.length ? preciseValues.reduce((sum, value) => sum + value, 0) / preciseValues.length : null,
+    p90: percentile(preciseValues, .9),
   };
 }
 

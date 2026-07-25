@@ -1,0 +1,26 @@
+PRÁXIS WEB 0.9.0 — GOVERNANÇA E CONFIGURAÇÕES
+
+PACOTE PRONTO PARA SUBSTITUIÇÃO.
+
+1. Execute primeiro no Supabase o arquivo:
+   supabase/migrations/20260725_praxis_v090_governanca.sql
+
+2. Depois substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+
+3. Aguarde a publicação do Cloudflare Pages e recarregue sem cache.
+
+PRINCIPAIS ALTERAÇÕES
+- Configurações contém apenas opções efetivamente configuráveis.
+- Calendário agrupado por ano.
+- Perfis: administrador, procurador, assessor, estagiário e consulta.
+- Eficiência e Relatórios configuráveis por usuário: nenhum, próprio ou equipe.
+- Procurador recebe visão integral de Eficiência e Relatórios.
+- Estagiário vê somente Visão geral, Minha fila, Processos e Sobre; no processo altera apenas status, providência e observação interna.
+- Apenas administrador altera data de entrada, com justificativa registrada.
+- Lixeira é visível aos perfis autorizados, mas restauração/exclusão definitiva são administrativas.
+- Fechamento mensal.
+- P90 passa a “Tempo de 90% dos envios”.
+- Mediana e tempo de 90% usam somente horários completos.
+
+OBSERVAÇÃO
+Este pacote não altera a regra temporária de criação de data de envio estimada para importações sem data. O horário permanece marcado como impreciso.

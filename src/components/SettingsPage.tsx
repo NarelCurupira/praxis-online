@@ -1,158 +1,19 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, Database, FolderOpen, HardDrive, Plus, RotateCcw, Save, ShieldCheck, Trash2 } from "lucide-react";
-import { chooseStorageDirectory } from "../api";
-import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, StorageDirectoryKind, StorageSettings } from "../types";
-
-interface Props {
-  info: string;
-  classes: ClassSetting[];
-  exclusions: CalendarExclusion[];
-  storage: StorageSettings;
-  onSaveClass: (setting: ClassSetting) => Promise<void>;
-  onDeleteClass: (name: string) => Promise<void>;
-  onSaveExclusion: (data: CalendarExclusionRange) => Promise<void>;
-  onDeleteExclusion: (date: string) => Promise<void>;
-  onSaveStorage: (kind: StorageDirectoryKind, path: string | null) => Promise<void>;
-}
-
-interface ExclusionGroup { startDate: string; endDate: string; label: string; dates: string[]; }
-
-function today(): string {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function displayDate(value: string): string { return new Intl.DateTimeFormat("pt-BR").format(new Date(`${value}T12:00:00`)); }
-
-function groupExclusions(items: CalendarExclusion[]): ExclusionGroup[] {
-  const sorted = [...items].sort((a, b) => a.date.localeCompare(b.date));
-  const groups: ExclusionGroup[] = [];
-  sorted.forEach((item) => {
-    const last = groups.at(-1);
-    const previous = last ? new Date(`${last.endDate}T12:00:00`) : null;
-    if (previous) previous.setDate(previous.getDate() + 1);
-    const expected = previous ? `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}-${String(previous.getDate()).padStart(2, "0")}` : "";
-    if (last && last.label === item.label && expected === item.date && last.startDate.slice(0, 4) === item.date.slice(0, 4)) {
-      last.endDate = item.date; last.dates.push(item.date);
-    } else groups.push({ startDate: item.date, endDate: item.date, label: item.label, dates: [item.date] });
-  });
-  return groups.reverse();
-}
-
-export function SettingsPage({ info, classes, exclusions, storage, onSaveClass, onDeleteClass, onSaveExclusion, onDeleteExclusion, onSaveStorage }: Props) {
-  const [name, setName] = useState("");
-  const [days, setDays] = useState(30);
-  const [startDate, setStartDate] = useState(today());
-  const [endDate, setEndDate] = useState(today());
-  const [label, setLabel] = useState("");
-  const [message, setMessage] = useState("");
-  const [storageMessage, setStorageMessage] = useState("");
-  const [busy, setBusy] = useState(false);
-  const grouped = useMemo(() => groupExclusions(exclusions), [exclusions]);
-
-  async function addClass(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true);
-    await onSaveClass({ name: name.trim(), businessDays: days });
-    setName(""); setDays(30); setMessage("Classe incluída."); setBusy(false);
-  }
-
-  async function updateDays(item: ClassSetting, businessDays: number) {
-    setBusy(true); await onSaveClass({ ...item, businessDays });
-    setMessage(`Prazo de ${item.name} atualizado.`); setBusy(false);
-  }
-
-  async function addExclusion(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage("");
-    try {
-      await onSaveExclusion({ startDate, endDate, label: label.trim() });
-      setLabel(""); setMessage(startDate === endDate ? "Feriado ou dia sem expediente incluído." : "Período de recesso incluído.");
-    } catch (error) { setMessage(`Não foi possível incluir: ${String(error)}`); }
-    finally { setBusy(false); }
-  }
-
-  async function removeGroup(group: ExclusionGroup) {
-    const description = group.startDate === group.endDate ? displayDate(group.startDate) : `${displayDate(group.startDate)} a ${displayDate(group.endDate)}`;
-    if (!confirm(`Excluir “${group.label}” (${description}) do calendário?`)) return;
-    setBusy(true);
-    for (const date of group.dates) await onDeleteExclusion(date);
-    setMessage("Exclusão removida do calendário."); setBusy(false);
-  }
-
-  async function selectFolder(kind: StorageDirectoryKind, current: string) {
-    const selected = await chooseStorageDirectory(current);
-    if (!selected) return;
-    setBusy(true); setStorageMessage("");
-    try { await onSaveStorage(kind, selected); setStorageMessage("Pasta de armazenamento atualizada."); }
-    catch (error) { setStorageMessage(`Não foi possível usar a pasta selecionada: ${String(error)}`); }
-    finally { setBusy(false); }
-  }
-
-  async function resetFolder(kind: StorageDirectoryKind) {
-    setBusy(true); setStorageMessage("");
-    try { await onSaveStorage(kind, null); setStorageMessage("Pasta padrão restaurada."); }
-    catch (error) { setStorageMessage(`Não foi possível restaurar a pasta padrão: ${String(error)}`); }
-    finally { setBusy(false); }
-  }
-
-  return <div className="page-stack">
-    <div className="page-heading"><div><p className="eyebrow">Aplicativo local</p><h1>Configurações</h1><p>Preferências, classes e regras de prazo.</p></div></div>
-    <section className="panel settings-list">
-      <div><Database /><span><strong>Banco de dados</strong><small>{info}</small></span></div>
-      <div><HardDrive /><span><strong>Regra geral de prazo</strong><small>Dias úteis a partir da entrada, descontando fins de semana e datas cadastradas.</small></span><b>Configurável</b></div>
-      <div><ShieldCheck /><span><strong>Proteção</strong><small>Aplicativo individual, protegido pela conta do Windows</small></span><b>Local</b></div>
-    </section>
-    <section className="panel storage-settings">
-      <div className="panel-title"><div><h2>Armazenamento</h2><p>Use pastas locais ou sincronizadas pelo Google Drive, OneDrive e serviços semelhantes.</p></div><FolderOpen size={22} /></div>
-      <div className="storage-list">
-        <StorageRow title="Backups do banco" path={storage.backupDirectory} custom={storage.backupCustom} disabled={busy} onChoose={() => selectFolder("backup", storage.backupDirectory)} onReset={() => resetFolder("backup")} />
-        <StorageRow title="Exportações em Excel" path={storage.exportDirectory} custom={storage.exportCustom} disabled={busy} onChoose={() => selectFolder("export", storage.exportDirectory)} onReset={() => resetFolder("export")} />
-        <StorageRow title="Relatórios em PDF" path={storage.reportDirectory} custom={storage.reportCustom} disabled={busy} onChoose={() => selectFolder("report", storage.reportDirectory)} onReset={() => resetFolder("report")} />
-      </div>
-      <p className="settings-note">O banco principal permanece local para evitar conflitos de sincronização. Se uma pasta compartilhada ficar indisponível, o Práxis salvará o arquivo na pasta local padrão.</p>
-      {storageMessage && <div className="info-box">{storageMessage}</div>}
-    </section>
-    <section className="panel">
-      <div className="panel-title"><div><h2>Classes e prazos</h2><p>O prazo é aplicado automaticamente em novos cadastros e continua editável.</p></div></div>
-      <form className="class-form" onSubmit={addClass}>
-        <label>Nova classe<input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Ação Rescisória" /></label>
-        <label>Dias úteis<input required type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /></label>
-        <button className="button primary" disabled={busy || !name.trim()}><Plus size={17} />Incluir classe</button>
-      </form>
-      <div className="class-list">
-        {classes.map((item) => <ClassRow key={item.name} item={item} disabled={busy} onSave={updateDays} onDelete={async () => {
-          if (!confirm(`Excluir a classe “${item.name}” das configurações? Os processos existentes não serão alterados.`)) return;
-          setBusy(true); await onDeleteClass(item.name); setMessage("Classe removida das configurações."); setBusy(false);
-        }} />)}
-      </div>
-    </section>
-    <section className="panel calendar-settings">
-      <div className="panel-title"><div><h2>Feriados, recessos e dias sem expediente</h2><p>Cadastre as datas de cada ano. Elas serão consideradas somente nos novos cálculos de prazo.</p></div><CalendarDays size={22} /></div>
-      <form className="calendar-form" onSubmit={addExclusion}>
-        <label>Descrição<input required value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Ex.: Recesso forense 2026" /></label>
-        <label>Data inicial<input required type="date" value={startDate} onChange={(event) => { setStartDate(event.target.value); if (endDate < event.target.value) setEndDate(event.target.value); }} /></label>
-        <label>Data final<input required type="date" min={startDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label>
-        <button className="button primary" disabled={busy || !label.trim() || !startDate || !endDate || endDate < startDate}><Plus size={17} />Incluir</button>
-      </form>
-      <p className="settings-note">Os feriados e recessos mudam a cada ano e não são incluídos automaticamente. Os prazos já cadastrados e os importados não serão recalculados.</p>
-      <div className="calendar-list">
-        {grouped.map((group) => <div className="calendar-row" key={`${group.startDate}-${group.endDate}-${group.label}`}><span><strong>{group.label}</strong><small>{group.startDate === group.endDate ? displayDate(group.startDate) : `${displayDate(group.startDate)} a ${displayDate(group.endDate)} · ${group.dates.length} dias`}</small></span><b>{group.startDate.slice(0, 4)}</b><button className="icon-button danger" title="Excluir do calendário" disabled={busy} onClick={() => removeGroup(group)}><Trash2 size={17} /></button></div>)}
-        {!grouped.length && <div className="empty-state">Nenhum feriado ou recesso cadastrado.</div>}
-      </div>
-      {message && <div className="info-box">{message}</div>}
-    </section>
-  </div>;
-}
-
-function StorageRow({ title, path, custom, disabled, onChoose, onReset }: { title: string; path: string; custom: boolean; disabled: boolean; onChoose: () => void; onReset: () => void }) {
-  return <div className="storage-row"><span><strong>{title}</strong><small title={path}>{path}</small></span><b>{custom ? "Personalizada" : "Padrão"}</b><button className="button secondary" disabled={disabled} onClick={onChoose}><FolderOpen size={16} />Escolher pasta</button>{custom && <button className="icon-button" disabled={disabled} title="Restaurar pasta padrão" onClick={onReset}><RotateCcw size={16} /></button>}</div>;
-}
-
-function ClassRow({ item, disabled, onSave, onDelete }: { item: ClassSetting; disabled: boolean; onSave: (item: ClassSetting, days: number) => Promise<void>; onDelete: () => Promise<void> }) {
-  const [days, setDays] = useState(item.businessDays);
-  return <div className="class-row">
-    <strong>{item.name}</strong>
-    <label><input type="number" min="1" max="365" value={days} onChange={(event) => setDays(Number(event.target.value))} /> dias úteis</label>
-    <button className="icon-button" title="Salvar prazo" disabled={disabled || days === item.businessDays} onClick={() => onSave(item, days)}><Save size={17} /></button>
-    <button className="icon-button danger" title="Excluir classe" disabled={disabled} onClick={onDelete}><Trash2 size={17} /></button>
-  </div>;
-}
+import { CalendarDays, LockKeyhole, Plus, Save, ShieldCheck, Trash2, Users } from "lucide-react";
+import type { AccessScope, CalendarExclusion, CalendarExclusionRange, ClassSetting, ClosedPeriod, TeamMember, WorkspaceSettings } from "../types";
+interface Props { classes:ClassSetting[]; exclusions:CalendarExclusion[]; members:TeamMember[]; settings:WorkspaceSettings; closedPeriods:ClosedPeriod[];
+ onSaveClass:(s:ClassSetting)=>Promise<void>; onDeleteClass:(n:string)=>Promise<void>; onSaveExclusion:(d:CalendarExclusionRange)=>Promise<void>; onDeleteExclusion:(d:string)=>Promise<void>;
+ onSaveMemberAccess:(id:string,e:AccessScope,r:AccessScope)=>Promise<void>; onSaveSettings:(s:WorkspaceSettings)=>Promise<void>; onClosePeriod:(y:number,m:number,r:string)=>Promise<void>; onReopenPeriod:(id:number,r:string)=>Promise<void>; }
+function today(){return new Date().toISOString().slice(0,10)}
+function fmt(d:string){return new Intl.DateTimeFormat("pt-BR").format(new Date(`${d}T12:00:00`))}
+export function SettingsPage(props:Props){const [draft,setDraft]=useState(props.settings);const [message,setMessage]=useState("");const [busy,setBusy]=useState(false);const [className,setClassName]=useState("");const [days,setDays]=useState(30);const [label,setLabel]=useState("");const [start,setStart]=useState(today());const [end,setEnd]=useState(today());const [period,setPeriod]=useState(today().slice(0,7));const [reason,setReason]=useState("");
+ const years=useMemo(()=>{const map=new Map<string,CalendarExclusion[]>();props.exclusions.forEach(x=>map.set(x.date.slice(0,4),[...(map.get(x.date.slice(0,4))??[]),x]));return [...map.entries()].sort((a,b)=>b[0].localeCompare(a[0]))},[props.exclusions]);
+ async function run(fn:()=>Promise<void>,ok:string){setBusy(true);setMessage("");try{await fn();setMessage(ok)}catch(e){setMessage(String(e))}finally{setBusy(false)}}
+ return <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Governança</p><h1>Configurações</h1><p>Perfis, prazos, calendário, relatórios e integridade.</p></div></div>
+ <section className="panel governance-section"><div className="panel-title"><div><h2>Perfis e permissões</h2><p>Eficiência e Relatórios podem ser liberados somente para dados próprios ou para toda a equipe.</p></div><Users/></div><div className="permission-table"><div className="permission-head"><span>Usuário</span><span>Perfil</span><span>Eficiência</span><span>Relatórios</span></div>{props.members.map(m=>{const fixed=m.role==="admin"||m.role==="procurador"||m.role==="estagiario"||m.role==="consulta";const e=fixed?(m.role==="admin"||m.role==="procurador"?"team":"none"):(m.efficiencyAccess??"own");const r=fixed?(m.role==="admin"||m.role==="procurador"?"team":"none"):(m.reportsAccess??"own");return <div className="permission-row" key={m.userId}><strong>{m.fullName||m.email}</strong><span>{m.role}</span><select disabled={fixed||busy} value={e} onChange={ev=>run(()=>props.onSaveMemberAccess(m.userId,ev.target.value as AccessScope,r),"Permissão atualizada.")}><option value="none">Sem acesso</option><option value="own">Somente próprios dados</option><option value="team">Toda a equipe</option></select><select disabled={fixed||busy} value={r} onChange={ev=>run(()=>props.onSaveMemberAccess(m.userId,e,ev.target.value as AccessScope),"Permissão atualizada.")}><option value="none">Sem acesso</option><option value="own">Somente relatório próprio</option><option value="team">Relatórios da equipe</option></select></div>})}</div></section>
+ <section className="panel governance-section"><div className="panel-title"><div><h2>Prazos e jornada</h2><p>Alterações futuras não recalculam o histórico automaticamente.</p></div><Save/></div><div className="settings-grid"><label>Horas úteis por dia<input type="number" min="1" max="12" step="0.5" value={draft.workdayHours} onChange={e=>setDraft({...draft,workdayHours:Number(e.target.value)})}/></label><label>Início do expediente<input type="time" value={draft.workdayStart} onChange={e=>setDraft({...draft,workdayStart:e.target.value})}/></label><label>Fim do expediente<input type="time" value={draft.workdayEnd} onChange={e=>setDraft({...draft,workdayEnd:e.target.value})}/></label><label>Prazo-padrão<input type="number" min="1" max="365" value={draft.defaultDeadlineBusinessDays} onChange={e=>setDraft({...draft,defaultDeadlineBusinessDays:Number(e.target.value)})}/></label><label>Recebimento fora do expediente<select value={draft.afterHoursPolicy} onChange={e=>setDraft({...draft,afterHoursPolicy:e.target.value as WorkspaceSettings["afterHoursPolicy"]})}><option value="next_business_day">Iniciar no próximo dia útil</option><option value="keep">Manter o instante real</option></select></label><label className="check-row"><input type="checkbox" checked={draft.countFromNextBusinessDay} onChange={e=>setDraft({...draft,countFromNextBusinessDay:e.target.checked})}/>Contar a partir do próximo dia útil</label></div></section>
+ <section className="panel governance-section"><div className="panel-title"><div><h2>Relatórios e privacidade</h2><p>Identificação institucional e prevenção de comparações depreciativas.</p></div><ShieldCheck/></div><div className="settings-grid"><label>Nome da unidade<input value={draft.unitName} onChange={e=>setDraft({...draft,unitName:e.target.value})}/></label><label>Procurador responsável<input value={draft.leadProsecutor} onChange={e=>setDraft({...draft,leadProsecutor:e.target.value})}/></label><label>Modalidade-padrão<select value={draft.defaultReportMode} onChange={e=>setDraft({...draft,defaultReportMode:e.target.value as WorkspaceSettings["defaultReportMode"]})}><option value="executive">Executivo</option><option value="complete">Completo</option><option value="highlights">Anexo de destaques</option></select></label><label>Período-padrão<select value={draft.defaultReportPeriod} onChange={e=>setDraft({...draft,defaultReportPeriod:e.target.value as WorkspaceSettings["defaultReportPeriod"]})}><option value="month">Mês atual</option><option value="30days">Últimos 30 dias</option><option value="year">Ano atual</option></select></label><label className="full">Rodapé<textarea rows={2} value={draft.reportFooter} onChange={e=>setDraft({...draft,reportFooter:e.target.value})}/></label><label className="check-row full"><input type="checkbox" checked={draft.allowNamedComparisons} onChange={e=>setDraft({...draft,allowNamedComparisons:e.target.checked})}/>Permitir comparações nominais nos relatórios da equipe</label></div></section>
+ <section className="panel governance-section"><div className="panel-title"><div><h2>Integridade dos dados</h2><p>Validações obrigatórias e proteção de períodos fechados.</p></div><LockKeyhole/></div><div className="check-grid">{([["requireActionOnSend","Exigir providência antes do envio"],["requireAssigneeOnProgress","Exigir responsável antes de avançar o status"],["detectDuplicates","Detectar possíveis duplicidades"],["requireDateChangeReason","Exigir justificativa para alteração de datas"],["blockClosedPeriods","Bloquear alterações em períodos fechados"]] as const).map(([k,l])=><label key={k}><input type="checkbox" checked={draft[k]} onChange={e=>setDraft({...draft,[k]:e.target.checked})}/>{l}</label>)}</div><button className="button primary" disabled={busy} onClick={()=>run(()=>props.onSaveSettings(draft),"Configurações salvas.")}><Save size={17}/>Salvar configurações</button></section>
+ <section className="panel"><div className="panel-title"><div><h2>Classes e prazos</h2></div></div><form className="class-form" onSubmit={e=>{e.preventDefault();run(()=>props.onSaveClass({name:className.trim(),businessDays:days}),"Classe incluída.");setClassName("")}}><label>Nova classe<input required value={className} onChange={e=>setClassName(e.target.value)}/></label><label>Dias úteis<input type="number" min="1" max="365" value={days} onChange={e=>setDays(Number(e.target.value))}/></label><button className="button primary"><Plus size={17}/>Incluir</button></form><div className="class-list">{props.classes.map(c=><div className="class-row" key={c.name}><strong>{c.name}</strong><span>{c.businessDays} dias úteis</span><button className="icon-button danger" onClick={()=>confirm(`Excluir ${c.name}?`)&&run(()=>props.onDeleteClass(c.name),"Classe removida.")}><Trash2 size={16}/></button></div>)}</div></section>
+ <section className="panel calendar-settings"><div className="panel-title"><div><h2>Feriados, recessos e dias sem expediente</h2><p>Organizados por ano para evitar listas extensas.</p></div><CalendarDays/></div><form className="calendar-form" onSubmit={e=>{e.preventDefault();run(()=>props.onSaveExclusion({startDate:start,endDate:end,label:label.trim()}),"Calendário atualizado.");setLabel("")}}><label>Descrição<input required value={label} onChange={e=>setLabel(e.target.value)}/></label><label>Data inicial<input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>Data final<input type="date" min={start} value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="button primary"><Plus size={17}/>Incluir</button></form><div className="calendar-years">{years.map(([year,items],i)=><details key={year} open={i===0}><summary><strong>{year}</strong><span>{items.length} datas cadastradas</span></summary><div className="calendar-list">{items.sort((a,b)=>a.date.localeCompare(b.date)).map(item=><div className="calendar-row" key={item.date}><span><strong>{item.label}</strong><small>{fmt(item.date)}</small></span><button className="icon-button danger" onClick={()=>run(()=>props.onDeleteExclusion(item.date),"Data removida.")}><Trash2 size={16}/></button></div>)}</div></details>)}</div></section>
+ <section className="panel governance-section"><div className="panel-title"><div><h2>Fechamento mensal</h2><p>Períodos fechados ficam estáveis e só podem ser reabertos pelo administrador.</p></div><LockKeyhole/></div><div className="period-close-form"><input type="month" value={period} onChange={e=>setPeriod(e.target.value)}/><input value={reason} onChange={e=>setReason(e.target.value)} placeholder="Justificativa"/><button className="button primary" disabled={!reason.trim()} onClick={()=>{const[y,m]=period.split("-").map(Number);run(()=>props.onClosePeriod(y,m,reason),"Período fechado.");setReason("")}}>Fechar período</button></div><div className="closed-period-list">{props.closedPeriods.map(p=><div key={p.id}><strong>{String(p.month).padStart(2,"0")}/{p.year}</strong><span>{p.reopenedAt?"Reaberto":"Fechado"} · {p.reason}</span>{!p.reopenedAt&&<button className="button secondary" onClick={()=>{const r=prompt("Justificativa para reabertura:");if(r)run(()=>props.onReopenPeriod(p.id,r),"Período reaberto.")}}>Reabrir</button>}</div>)}</div></section>{message&&<div className="info-box">{message}</div>}</div>}
