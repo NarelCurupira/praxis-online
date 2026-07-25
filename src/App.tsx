@@ -27,6 +27,7 @@ import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
 import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule } from "./date";
+import { measureAsync } from "./performanceMonitoring";
 import { PRAXIS_VERSION } from "./version";
 
 function LoadingScreen({ message }: { message: string }) {
@@ -72,14 +73,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
 
-  async function reload() { setRecords(await listMovements()); setDataVersion((value) => value + 1); }
+  async function reload() { setRecords(await measureAsync("movements.reload", () => listMovements())); setDataVersion((value) => value + 1); }
   async function reloadAll() {
-    const nextSettings = await getWorkspaceSettings();
+    const nextSettings = await measureAsync("settings.load", () => getWorkspaceSettings());
     configureWorkdaySchedule(nextSettings);
 
-    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await Promise.all([
+    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
       listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), listClosedPeriods(),
-    ]);
+    ]));
 
     setRecords(nextRecords);
     setClasses(nextClasses);

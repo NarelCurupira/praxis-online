@@ -1,4 +1,5 @@
 import { Scale, Sparkles } from "lucide-react";
+import { HelpTip } from "./HelpTip";
 
 export interface SpecialClassificationData {
   sociallyRelevant: boolean;
@@ -15,36 +16,20 @@ export interface SpecialClassificationData {
   complexityReason: string;
 }
 
-interface Props {
-  data: SpecialClassificationData;
-  onChange: (key: keyof SpecialClassificationData, value: string | boolean | string[]) => void;
-}
-
+interface Props { data: SpecialClassificationData; onChange: (key: keyof SpecialClassificationData, value: string | boolean | string[]) => void; }
 export const SDG_OPTIONS = [
-  "ODS 1 — Erradicação da pobreza",
-  "ODS 2 — Fome zero e agricultura sustentável",
-  "ODS 3 — Saúde e bem-estar",
-  "ODS 4 — Educação de qualidade",
-  "ODS 5 — Igualdade de gênero",
-  "ODS 6 — Água potável e saneamento",
-  "ODS 7 — Energia limpa e acessível",
-  "ODS 8 — Trabalho decente e crescimento econômico",
-  "ODS 9 — Indústria, inovação e infraestrutura",
-  "ODS 10 — Redução das desigualdades",
-  "ODS 11 — Cidades e comunidades sustentáveis",
-  "ODS 12 — Consumo e produção responsáveis",
-  "ODS 13 — Ação contra a mudança global do clima",
-  "ODS 14 — Vida na água",
-  "ODS 15 — Vida terrestre",
-  "ODS 16 — Paz, justiça e instituições eficazes",
-  "ODS 17 — Parcerias e meios de implementação",
+  "ODS 1 — Erradicação da pobreza", "ODS 2 — Fome zero e agricultura sustentável", "ODS 3 — Saúde e bem-estar",
+  "ODS 4 — Educação de qualidade", "ODS 5 — Igualdade de gênero", "ODS 6 — Água potável e saneamento",
+  "ODS 7 — Energia limpa e acessível", "ODS 8 — Trabalho decente e crescimento econômico", "ODS 9 — Indústria, inovação e infraestrutura",
+  "ODS 10 — Redução das desigualdades", "ODS 11 — Cidades e comunidades sustentáveis", "ODS 12 — Consumo e produção responsáveis",
+  "ODS 13 — Ação contra a mudança global do clima", "ODS 14 — Vida na água", "ODS 15 — Vida terrestre",
+  "ODS 16 — Paz, justiça e instituições eficazes", "ODS 17 — Parcerias e meios de implementação",
 ] as const;
 
 export function SpecialClassificationFields({ data, onChange }: Props) {
-  function toggleSdg(sdg: string, checked: boolean) {
-    onChange("sdgs", checked ? [...new Set([...data.sdgs, sdg])] : data.sdgs.filter((item) => item !== sdg));
-  }
+  function toggleSdg(sdg: string, checked: boolean) { onChange("sdgs", checked ? [...new Set([...data.sdgs, sdg])] : data.sdgs.filter((item) => item !== sdg)); }
   return <>
+    <div className="classification-heading full"><div><strong>Classificação especial</strong><small>Marque apenas quando o processo exigir destaque específico.</small></div><HelpTip title="Classificação especial">Relevância social descreve impacto social, coletivo, difuso ou estrutural. Alta complexidade identifica processos que exigem análise excepcional. As marcações são independentes.</HelpTip></div>
     <div className="classification-switches full">
       <label className={data.sociallyRelevant ? "classification-switch social active" : "classification-switch social"}>
         <input type="checkbox" checked={data.sociallyRelevant} onChange={(event) => onChange("sociallyRelevant", event.target.checked)} />
@@ -69,9 +54,6 @@ export function SpecialClassificationFields({ data, onChange }: Props) {
         <label className="full">Impacto social esperado<textarea rows={2} value={data.socialResult} onChange={(event) => onChange("socialResult", event.target.value)} placeholder="Descreva o impacto social que se espera produzir ou proteger." /></label>
       </div>
     </div>}
-    {data.extremelyComplex && <div className="classification-section complex-section full">
-      <div className="classification-title"><Scale size={17} /><div><strong>Dados de alta complexidade</strong><small>A marcação é independente da relevância social.</small></div></div>
-      <label>Justificativa da complexidade<textarea rows={2} value={data.complexityReason} onChange={(event) => onChange("complexityReason", event.target.value)} placeholder="Ex.: multiplicidade de partes, prova técnica extensa, questão jurídica inédita..." /></label>
-    </div>}
+    {data.extremelyComplex && <div className="classification-section complex-section full"><div className="classification-title"><Scale size={17} /><div><strong>Dados de alta complexidade</strong><small>A marcação é independente da relevância social.</small></div></div><label>Justificativa da complexidade<textarea rows={2} value={data.complexityReason} onChange={(event) => onChange("complexityReason", event.target.value)} placeholder="Ex.: multiplicidade de partes, prova técnica extensa, questão jurídica inédita..." /></label></div>}
   </>;
 }

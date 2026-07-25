@@ -13,15 +13,10 @@ const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> 
   { page: "trash", label: "Lixeira", icon: Trash2 },
   { page: "team", label: "Equipe", icon: Users },
   { page: "settings", label: "Configurações", icon: Settings },
-  { page: "audit", label: "Auditoria", icon: ClipboardList },
+  { page: "audit", label: "Auditoria e diagnóstico", icon: ClipboardList },
   { page: "about", label: "Sobre", icon: Info },
 ];
-
 interface Props { page: Page; access: AccessCapabilities; onChange: (page: Page) => void; }
 export function Sidebar({ page, access, onChange }: Props) {
-  return <aside className="sidebar">
-    <div className="brand"><img className="brand-mark" src="/praxis-icon.png" alt="" /><div className="brand-copy"><strong>Práxis</strong><span>Controle de Processos</span></div></div>
-    <nav>{items.filter((item) => access.visiblePages.has(item.page)).map(({ page: itemPage, label, icon: Icon }) => <button aria-label={label} className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}><Icon size={19} /><span className="nav-label">{label}</span><span className="nav-tooltip" role="tooltip">{label}</span></button>)}</nav>
-    <div className="sidebar-foot"><Database size={16} /><span>Banco online protegido</span></div>
-  </aside>;
+  return <aside className="sidebar"><div className="brand"><img className="brand-mark" src="/praxis-icon.png" alt="" /><div className="brand-copy"><strong>Práxis</strong><span>Controle de Processos</span></div></div><nav>{items.filter((item) => access.visiblePages.has(item.page)).map(({ page: itemPage, label, icon: Icon }) => <button aria-label={label} className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}><Icon size={19} /><span className="nav-label">{label}</span><span className="nav-tooltip" role="tooltip">{label}</span></button>)}</nav><div className="sidebar-foot"><Database size={16} /><span>Banco online protegido</span></div></aside>;
 }

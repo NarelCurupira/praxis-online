@@ -1,22 +1,14 @@
-import { Database, Globe2, Mail, ShieldCheck } from "lucide-react";
+import { Database, Globe2, History, Mail, ShieldCheck } from "lucide-react";
 import { PRAXIS_BUILD, shortCommit } from "../buildInfo";
 import { PRAXIS_VERSION } from "../version";
 
+const VERSIONS = [
+  { version:"0.10.1", title:"Auditoria, diagnóstico e refinamentos", items:["Auditoria e diagnóstico unificados","Ajuda contextual","Histórico de versões","Natureza da atuação com tooltip","Correção dos cartões de classificação especial","Integração das configurações nos relatórios"] },
+  { version:"0.10.0", title:"Confiabilidade e engenharia", items:["Error Boundary","Captura global de erros","Logs técnicos seguros","Identificação de compilação","Testes e workflow de qualidade"] },
+  { version:"0.9.5", title:"Integração e acabamento", items:["Configurações institucionais dos relatórios","Melhorias dos modais","Disclaimer de uso privado","Períodos de relatório revisados"] },
+  { version:"0.9.0", title:"Governança e permissões", items:["Perfis e controle de acesso","Calendário por ano","Fechamento mensal","Configurações administrativas"] },
+];
+
 export function AboutPage() {
-  return <div className="page-stack">
-    <div className="page-heading"><div><p className="eyebrow">Informações do aplicativo</p><h1>Sobre</h1><p>Autoria, finalidade e ambiente.</p></div></div>
-    <section className="panel about-card">
-      <img src="/praxis-logo.png" alt="Práxis - Controle de Processos" />
-      <div className="about-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="build-metadata"><span><strong>Compilação</strong>{shortCommit()}</span><span><strong>Publicação</strong>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(PRAXIS_BUILD.publishedAt))}</span></div>
-      <div className="about-copy"><p><strong>© 2026 Marcos Antonio Santos Machado. Todos os direitos reservados.</strong></p><p>Idealização e criação: Marcos Antonio Santos Machado.</p><p>Desenvolvido com assistência do ChatGPT/OpenAI.</p></div>
-      <div className="about-purpose about-disclaimer">
-        <h2>Natureza e finalidade de uso</h2>
-        <p>O Práxis Web é uma ferramenta privada de apoio à organização e ao controle pessoal de processos, criada sem finalidade comercial, lucrativa ou institucional. Seu uso é restrito ao criador e às pessoas por ele expressamente autorizadas.</p>
-        <p>O software não integra, não representa e não substitui sistemas oficiais do Ministério Público, do Poder Judiciário ou de qualquer outra instituição. Não se destina à distribuição pública, cessão, revenda, comercialização ou exploração econômica.</p>
-        <p>Os dados, prazos, indicadores e relatórios possuem caráter exclusivamente auxiliar e devem ser conferidos nos sistemas oficiais. O acesso, a reprodução, a disponibilização ou o uso por terceiros dependem de autorização expressa do criador.</p>
-      </div>
-      <div className="about-purpose"><h2>Informações do ambiente</h2><div className="environment-grid"><span><Globe2 />Aplicação on-line</span><span><Database />PostgreSQL no Supabase</span><span><ShieldCheck />Autenticação e RLS</span><span>Fuso: America/Belem</span></div></div>
-      <a className="about-email" href="mailto:marcosmachado@mppa.mp.br"><Mail size={18} />marcosmachado@mppa.mp.br</a>
-    </section>
-  </div>;
+  return <div className="page-stack"><div className="page-heading"><div><p className="eyebrow">Informações do aplicativo</p><h1>Sobre</h1><p>Autoria, finalidade, ambiente e evolução do Práxis.</p></div></div><section className="panel about-card"><img src="/praxis-logo.png" alt="Práxis - Controle de Processos" /><div className="about-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="build-metadata"><span><strong>Compilação</strong>{shortCommit()}</span><span><strong>Publicação</strong>{new Intl.DateTimeFormat("pt-BR", { dateStyle:"short", timeStyle:"short" }).format(new Date(PRAXIS_BUILD.publishedAt))}</span></div><div className="about-copy"><p><strong>© 2026 Marcos Antonio Santos Machado. Todos os direitos reservados.</strong></p><p>Idealização e criação: Marcos Antonio Santos Machado.</p><p>Desenvolvido com assistência do ChatGPT/OpenAI.</p></div><div className="about-purpose about-disclaimer"><h2>Natureza e finalidade de uso</h2><p>O Práxis Web é uma ferramenta privada de apoio à organização e ao controle pessoal de processos, criada sem finalidade comercial, lucrativa ou institucional. Seu uso é restrito ao criador e às pessoas por ele expressamente autorizadas.</p><p>O software não integra, não representa e não substitui sistemas oficiais do Ministério Público, do Poder Judiciário ou de qualquer outra instituição. Não se destina à distribuição pública, cessão, revenda, comercialização ou exploração econômica.</p><p>Os dados, prazos, indicadores e relatórios possuem caráter exclusivamente auxiliar e devem ser conferidos nos sistemas oficiais. O acesso, a reprodução, a disponibilização ou o uso por terceiros dependem de autorização expressa do criador.</p></div><div className="about-purpose"><h2>Informações do ambiente</h2><div className="environment-grid"><span><Globe2 />Aplicação on-line</span><span><Database />PostgreSQL no Supabase</span><span><ShieldCheck />Autenticação e RLS</span><span>Fuso: America/Belem</span></div></div><div className="about-purpose version-history"><div className="title-with-help"><h2>Histórico de versões</h2><History size={19}/></div>{VERSIONS.map((release,index)=><details key={release.version} open={index===0}><summary><span><strong>Versão {release.version}</strong><small>{release.title}</small></span></summary><ul>{release.items.map(item=><li key={item}>{item}</li>)}</ul></details>)}</div><a className="about-email" href="mailto:marcosmachado@mppa.mp.br"><Mail size={18}/>marcosmachado@mppa.mp.br</a></section></div>;
 }

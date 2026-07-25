@@ -17,6 +17,7 @@ import type {
   TeamMember,
   WorkspaceSettings,
 } from "../types";
+import { HelpTip } from "./HelpTip";
 
 interface Props {
   classes: ClassSetting[];
@@ -256,7 +257,7 @@ export function SettingsPage(props: Props) {
       <section className="panel governance-section">
         <div className="panel-title">
           <div>
-            <h2>Prazos e jornada</h2>
+            <div className="title-with-help"><h2>Prazos e jornada</h2><HelpTip title="Horas úteis">Os cálculos consideram apenas a interseção entre entrada, envio, expediente, fins de semana e datas sem expediente.</HelpTip></div>
             <p>Alterações futuras não recalculam o histórico automaticamente.</p>
           </div>
           <Save />
@@ -536,7 +537,7 @@ export function SettingsPage(props: Props) {
       <section className="panel calendar-settings">
         <div className="panel-title">
           <div>
-            <h2>Feriados, recessos e dias sem expediente</h2>
+            <div className="title-with-help"><h2>Feriados, recessos e dias sem expediente</h2><HelpTip title="Calendário institucional">As datas cadastradas são excluídas dos cálculos de prazo e de horas úteis. Dias consecutivos com a mesma descrição são apresentados em conjunto.</HelpTip></div>
             <p>Agrupados por ano, descrição e períodos consecutivos.</p>
           </div>
           <CalendarDays />
@@ -644,7 +645,7 @@ export function SettingsPage(props: Props) {
       <section className="panel governance-section">
         <div className="panel-title">
           <div>
-            <h2>Fechamento mensal</h2>
+            <div className="title-with-help"><h2>Fechamento mensal</h2><HelpTip title="Fechamento mensal">O fechamento protege o histórico contra alterações comuns. Somente o administrador pode reabrir o período, mediante justificativa.</HelpTip></div>
             <p>Períodos fechados ficam estáveis e só podem ser reabertos pelo administrador.</p>
           </div>
           <LockKeyhole />

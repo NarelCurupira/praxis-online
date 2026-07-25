@@ -1,45 +1,19 @@
-PRÁXIS WEB 0.10.0 — CONFIABILIDADE E ENGENHARIA
+PRÁXIS WEB 0.10.1 — AUDITORIA, DIAGNÓSTICO E REFINAMENTOS
 
-ORDEM DE INSTALAÇÃO
-
-1. Faça backup do banco no Supabase.
-2. Execute no Supabase SQL Editor:
+ORDEM OBRIGATÓRIA
+1. Faça backup do banco.
+2. Se ainda não executou a migração 0.10.0, execute primeiro:
    supabase/migrations/20260725_praxis_v010_confiabilidade.sql
-3. Somente após o SQL terminar sem erro, substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
-4. Aguarde a publicação do Cloudflare Pages.
-5. No GitHub, abra a aba Actions e confirme que “Qualidade do Práxis” concluiu com sucesso.
+3. Execute:
+   supabase/migrations/20260725_praxis_v0101_auditoria_diagnostico.sql
+4. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+5. Aguarde o Cloudflare Pages e confira a aba Actions do GitHub.
 
-ARQUIVOS PRINCIPAIS
+PRINCIPAIS ARQUIVOS NOVOS
+- src/actionGroups.ts
+- src/components/HelpTip.tsx
+- src/diagnosticsApi.ts
+- src/performanceMonitoring.ts
+- src/components/AdminAuditPage.tsx
 
-- package.json
-- vite.config.ts
-- src/main.tsx
-- src/App.tsx
-- src/version.ts
-- src/buildInfo.ts
-- src/reliability.ts
-- src/errorReporting.ts
-- src/components/ErrorBoundary.tsx
-- src/components/AboutPage.tsx
-- src/governance.css
-- src/reliability.test.ts
-- .github/workflows/quality.yml
-- supabase/migrations/20260725_praxis_v010_confiabilidade.sql
-- CHANGELOG.md
-- CRITERIOS_VERSAO_1.0.md
-- HISTORIA_DO_PRAXIS.md
-
-O QUE MUDA
-
-- erros inesperados deixam de produzir apenas tela vazia;
-- a aplicação mostra código, página, versão e compilação;
-- o usuário pode copiar um diagnóstico técnico;
-- erros são registrados no Supabase sem conteúdo processual;
-- cada push executa verificação TypeScript, testes e build;
-- a aba Sobre informa compilação e data de publicação.
-
-OBSERVAÇÕES
-
-- Não é necessário substituir o package-lock.json: não houve alteração de dependências.
-- A tabela technical_errors só pode ser consultada por administrador do mesmo workspace.
-- A visualização desses logs será integrada à Auditoria e diagnóstico na versão 0.10.1.
+A migração 0.10.1 cria somente infraestrutura técnica. Não altera processos existentes.

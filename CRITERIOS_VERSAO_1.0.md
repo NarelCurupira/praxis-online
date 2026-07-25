@@ -24,3 +24,11 @@
 - [ ] Ajuda contextual
 - [ ] Exportação e importação de configurações
 - [ ] Release candidate validada em uso cotidiano
+
+## Atualização 0.10.1
+- [x] Auditoria e diagnóstico unificados.
+- [x] Consulta de logs técnicos.
+- [x] Monitoramento básico de desempenho.
+- [x] Monitoramento do tamanho do banco.
+- [x] Ajuda contextual inicial.
+- [x] Histórico de versões na interface.
