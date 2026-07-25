@@ -2,6 +2,20 @@ export const PRAXIS_TIME_ZONE = "America/Belem";
 const PRAXIS_OFFSET = "-03:00";
 const MAX_LOCAL_DATE_CACHE = 20_000;
 
+export interface WorkdaySchedule {
+  workdayStart: string;
+  workdayEnd: string;
+  workdayHours: number;
+}
+
+const DEFAULT_WORKDAY_SCHEDULE: WorkdaySchedule = {
+  workdayStart: "08:00",
+  workdayEnd: "14:00",
+  workdayHours: 6,
+};
+
+let activeWorkdaySchedule: WorkdaySchedule = { ...DEFAULT_WORKDAY_SCHEDULE };
+
 const ZONED_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   timeZone: PRAXIS_TIME_ZONE,
   year: "numeric",
@@ -46,6 +60,26 @@ function rememberLocalDate(source: string, value: string): string {
   if (localDateCache.size >= MAX_LOCAL_DATE_CACHE) localDateCache.clear();
   localDateCache.set(source, value);
   return value;
+}
+
+function validClock(value: string, fallback: string): string {
+  return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
+}
+
+export function configureWorkdaySchedule(
+  settings: Partial<WorkdaySchedule> | null | undefined,
+): void {
+  const start = validClock(settings?.workdayStart ?? "", DEFAULT_WORKDAY_SCHEDULE.workdayStart);
+  const end = validClock(settings?.workdayEnd ?? "", DEFAULT_WORKDAY_SCHEDULE.workdayEnd);
+  const hours = Number(settings?.workdayHours);
+
+  activeWorkdaySchedule = {
+    workdayStart: start,
+    workdayEnd: end,
+    workdayHours: Number.isFinite(hours) && hours > 0
+      ? hours
+      : DEFAULT_WORKDAY_SCHEDULE.workdayHours,
+  };
 }
 
 export function toLocalInput(date = new Date()): string {
@@ -122,9 +156,18 @@ export function formatDate(value: string | null, includeTime = false, timePrecis
 
 export function formatElapsedTime(hours: number | null): string {
   if (hours === null) return "—";
-  if (hours <= 8) return `${hours.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} h`;
-  const days = hours / 6;
-  return `${days.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
+  if (hours <= Math.max(8, activeWorkdaySchedule.workdayHours)) {
+    return `${hours.toLocaleString("pt-BR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    })} h`;
+  }
+
+  const days = hours / activeWorkdaySchedule.workdayHours;
+  return `${days.toLocaleString("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
 }
 
 function localNoon(value: string): Date {
@@ -136,37 +179,57 @@ function isUsefulDayKey(value: string, excludedDates: ReadonlySet<string>): bool
   return weekday !== 0 && weekday !== 6 && !excludedDates.has(value);
 }
 
-export function usefulElapsedHours(receivedAt: string, sentAt: string | null, excludedDates: ReadonlySet<string> = new Set()): number | null {
+function workdayInstant(dateKey: string, clock: string): Date {
+  return new Date(`${dateKey}T${clock}:00${PRAXIS_OFFSET}`);
+}
+
+function nextDateKey(value: string): string {
+  const date = localNoon(value);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+/**
+ * Calcula apenas a interseção real entre o período de tramitação e o
+ * expediente configurado. Horas noturnas, fins de semana, feriados e
+ * recessos não entram no resultado.
+ */
+export function usefulElapsedHours(
+  receivedAt: string,
+  sentAt: string | null,
+  excludedDates: ReadonlySet<string> = new Set(),
+): number | null {
   if (!receivedAt || !sentAt) return null;
+
   const start = new Date(receivedAt);
   const end = new Date(sentAt);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
   if (end.getTime() <= start.getTime()) return 0;
 
-  const elapsed = (end.getTime() - start.getTime()) / 3_600_000;
   const startKey = localDatePart(receivedAt);
   const endKey = localDatePart(sentAt);
+  if (!startKey || !endKey) return null;
 
-  if (elapsed < 24) {
-    return isUsefulDayKey(startKey, excludedDates) ? Math.max(0, elapsed - 18) : 0;
+  let usefulMilliseconds = 0;
+  let cursorKey = startKey;
+
+  while (cursorKey <= endKey) {
+    if (isUsefulDayKey(cursorKey, excludedDates)) {
+      const workStart = workdayInstant(cursorKey, activeWorkdaySchedule.workdayStart);
+      const workEnd = workdayInstant(cursorKey, activeWorkdaySchedule.workdayEnd);
+
+      if (workEnd > workStart) {
+        const intervalStart = Math.max(start.getTime(), workStart.getTime());
+        const intervalEnd = Math.min(end.getTime(), workEnd.getTime());
+        if (intervalEnd > intervalStart) usefulMilliseconds += intervalEnd - intervalStart;
+      }
+    }
+
+    if (cursorKey === endKey) break;
+    cursorKey = nextDateKey(cursorKey);
   }
 
-  let usefulHours = 0;
-  const cursor = localNoon(startKey);
-  const endDay = localNoon(endKey);
-  while (cursor < endDay) {
-    const key = `${cursor.getUTCFullYear()}-${pad(cursor.getUTCMonth() + 1)}-${pad(cursor.getUTCDate())}`;
-    if (isUsefulDayKey(key, excludedDates)) usefulHours += 6;
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-
-  if (isUsefulDayKey(endKey, excludedDates)) {
-    const parts = zonedParts(end);
-    const endHour = Number(parts.hour) + Number(parts.minute) / 60 + Number(parts.second) / 3600;
-    usefulHours += Math.min(6, Math.max(0, endHour));
-  }
-
-  return usefulHours;
+  return usefulMilliseconds / 3_600_000;
 }
 
 export function daysUntil(value: string): number {
@@ -205,13 +268,10 @@ export function excelDateTime(value: unknown, separateTime?: unknown): Spreadshe
     date = new Date(value.getFullYear(), value.getMonth(), value.getDate(), value.getHours(), value.getMinutes(), value.getSeconds());
     explicitTime = value.getHours() !== 0 || value.getMinutes() !== 0 || value.getSeconds() !== 0;
   } else if (typeof value === "number") {
-    // Interpreta diretamente o número serial do Excel. Não cria uma data
-    // intermediária no fuso do navegador, evitando o deslocamento UTC−3.
     const wholeDays = Math.floor(value);
     let seconds = Math.round((value - wholeDays) * 86_400);
     let dayOffset = wholeDays;
 
-    // Protege contra arredondamentos como 23:59:59,999 → 24:00:00.
     if (seconds >= 86_400) {
       seconds -= 86_400;
       dayOffset += 1;

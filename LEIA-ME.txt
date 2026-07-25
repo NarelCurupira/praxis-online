@@ -1,22 +1,66 @@
-PRÁXIS WEB 0.9.3 — CORREÇÕES DE INTERFACE
+PRÁXIS WEB 0.9.4 — CORREÇÕES DE CALENDÁRIO, TIPOGRAFIA E TEMPO ÚTIL
 
-Arquivos completos para substituir:
+ARQUIVOS COMPLETOS PARA SUBSTITUIR
+
 - package.json
 - src/App.tsx
-- src/components/ProcessTable.tsx
-- src/components/Sidebar.tsx
-- src/components/DataQualityPage.tsx
-- src/components/Dashboard.tsx
+- src/date.ts
 - src/governance.css
+- src/components/Dashboard.tsx
+- src/components/SettingsPage.tsx
 
-Alterações:
-- tamanho da letra agora é global e fica ao lado do modo noturno;
-- a preferência aumenta efetivamente textos das tabelas e da interface;
-- removido o controle local de fonte de Minha fila e Processos;
-- Qualidade dos dados recebe somente controle de densidade;
-- corrigida a leitura de Perfis e permissões no tema escuro;
-- removido o aviso de backup automático da Visão geral;
-- tooltip próprio e maior no menu lateral recolhido;
-- status e providências mantêm o formato e as dimensões da versão 0.9.2.
+ARQUIVO DE TESTE ATUALIZADO
 
-Não é necessário executar SQL.
+- src/time-regression.test.ts
+
+NÃO É NECESSÁRIO EXECUTAR SQL.
+
+ALTERAÇÕES DESTA VERSÃO
+
+1. Configurações no modo noturno
+- Corrige o fundo claro dos anos de feriados e recessos.
+- Ajusta cores, bordas e contraste dos grupos e das datas internas.
+- Mantém leitura adequada com os anos abertos ou recolhidos.
+
+2. Feriados, recessos e dias sem expediente
+- Agrupa os registros primeiro por ano e depois pela descrição.
+- Datas consecutivas com a mesma descrição são exibidas como intervalo.
+- Datas não consecutivas com a mesma descrição permanecem no mesmo grupo.
+- Cada grupo pode ser expandido para conferir e excluir datas individualmente.
+- A contagem do ano continua mostrando o total de dias cadastrados.
+
+3. Tamanho global da letra
+- A opção A− passa a reduzir efetivamente títulos, cartões, filtros,
+  botões, textos auxiliares, legendas e informações da Visão Geral.
+- A opção A continua sendo o tamanho padrão.
+- A opção A+ continua ampliando toda a interface.
+- Status e providências mantêm o tamanho visual aprovado na versão 0.9.2.
+
+4. Tempo útil
+- Remove a antiga regra de subtrair 18 horas de todo intervalo inferior
+  a 24 horas.
+- Calcula a interseção real entre entrada, envio e expediente configurado.
+- Exclui horas noturnas, sábados, domingos, feriados e recessos.
+- Utiliza o início, o fim e a duração da jornada definidos em Configurações.
+- Processos enviados no mesmo dia preservam a duração real.
+- A alteração das configurações de jornada recalcula os registros carregados.
+
+5. Tempo médio da Visão Geral
+- Considera somente envios com horários completos de entrada e envio.
+- Exibe quantos envios compõem a média.
+- Quando não houver medições precisas, exibe “Não disponível”.
+- O comparativo anual passa a usar a mesma base metodológica.
+
+COMO INSTALAR
+
+1. Substitua no GitHub os arquivos do pacote, preservando os caminhos.
+2. Aguarde a publicação do Cloudflare Pages.
+3. Recarregue o Práxis sem cache.
+4. Confira a jornada na aba Configurações.
+5. Abra a Visão Geral e a aba Eficiência para verificar os tempos recalculados.
+
+OBSERVAÇÃO IMPORTANTE
+
+Os valores de tempo médio, mediana e Tempo de 90% dos envios podem aumentar
+após esta atualização. Isso é esperado: processos concluídos no mesmo dia
+deixam de ser reduzidos artificialmente a zero hora útil.

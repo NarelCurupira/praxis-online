@@ -32,3 +32,186 @@ html[data-theme="dark"] .global-font-control{border-color:#304655}html[data-them
 @media(max-width:760px){.current-user{display:none}.global-font-control button{width:30px}.quality-display-controls{justify-content:flex-start;padding-left:14px;padding-right:14px}}
 /* Mantém status e providência com as dimensões visuais aprovadas na 0.9.2. */
 .process-data-table .table-pill-select{font-size:10px!important}
+
+
+/* Versão 0.9.4 — calendário agrupado, escala tipográfica efetiva e correções no tema escuro */
+html[data-font-size="small"]{
+  --ui-page-title:24px;
+  --ui-page-subtitle:12px;
+  --ui-eyebrow:10px;
+  --ui-card-label:10px;
+  --ui-card-value:21px;
+  --ui-panel-title:14px;
+  --ui-panel-subtitle:10.5px;
+  --ui-button:11.5px;
+  --ui-control-label:9px;
+  --ui-legend:10px;
+  --ui-list-primary:11px;
+  --ui-list-secondary:10px;
+  --ui-chart-font:11px;
+}
+html[data-font-size="normal"]{
+  --ui-page-title:28px;
+  --ui-page-subtitle:14px;
+  --ui-eyebrow:11px;
+  --ui-card-label:11px;
+  --ui-card-value:24px;
+  --ui-panel-title:16px;
+  --ui-panel-subtitle:12px;
+  --ui-button:13px;
+  --ui-control-label:10px;
+  --ui-legend:11px;
+  --ui-list-primary:12px;
+  --ui-list-secondary:11px;
+  --ui-chart-font:12px;
+}
+html[data-font-size="large"]{
+  --ui-page-title:32px;
+  --ui-page-subtitle:16px;
+  --ui-eyebrow:12px;
+  --ui-card-label:12.5px;
+  --ui-card-value:28px;
+  --ui-panel-title:18px;
+  --ui-panel-subtitle:14px;
+  --ui-button:15px;
+  --ui-control-label:11px;
+  --ui-legend:13px;
+  --ui-list-primary:14px;
+  --ui-list-secondary:12.5px;
+  --ui-chart-font:14px;
+}
+.page-heading h1{font-size:var(--ui-page-title)}
+.page-heading p{font-size:var(--ui-page-subtitle)}
+.page-heading .eyebrow,.eyebrow{font-size:var(--ui-eyebrow)}
+.year-control{font-size:var(--ui-control-label)}
+.button{font-size:var(--ui-button)}
+.stat-card span,.stat-card small{font-size:var(--ui-card-label)}
+.stat-card strong{font-size:var(--ui-card-value)}
+.panel-title h2,.action-panel h2{font-size:var(--ui-panel-title)}
+.panel-title p,.action-panel p{font-size:var(--ui-panel-subtitle)}
+.legend-list span{font-size:var(--ui-legend)}
+.compact-row strong{font-size:var(--ui-list-primary)}
+.compact-row span{font-size:var(--ui-list-secondary)}
+.recharts-text{font-size:var(--ui-chart-font)}
+html[data-font-size="small"] .topbar,
+html[data-font-size="small"] .content,
+html[data-font-size="small"] .sidebar{font-size:.875rem}
+html[data-font-size="large"] .topbar,
+html[data-font-size="large"] .content,
+html[data-font-size="large"] .sidebar{font-size:1.08rem}
+
+.calendar-years>details{
+  background:#fff;
+}
+.calendar-years>details>summary{
+  align-items:center;
+  gap:16px;
+  color:#334e68;
+  font-weight:700;
+}
+.calendar-years>details>summary span{
+  color:#627d98;
+  font-weight:650;
+}
+.calendar-groups{
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border-top:1px solid #d9e2ec;
+}
+.calendar-label-group{
+  border:1px solid #d9e2ec;
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+.calendar-label-group>summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:12px 14px;
+  background:#f8fafc;
+  cursor:pointer;
+}
+.calendar-label-group>summary>span{
+  display:grid;
+  gap:4px;
+  min-width:0;
+}
+.calendar-label-group>summary strong{
+  color:#334e68;
+}
+.calendar-label-group>summary small{
+  color:#627d98;
+  line-height:1.4;
+  overflow-wrap:anywhere;
+}
+.calendar-label-group>summary b{
+  flex:0 0 auto;
+  color:#486581;
+  font-size:.78rem;
+}
+.calendar-label-group .calendar-list{
+  border-top:1px solid #d9e2ec;
+}
+.calendar-label-group .calendar-row{
+  padding-left:14px;
+  padding-right:14px;
+}
+.calendar-label-group .calendar-row span{
+  display:grid;
+  gap:3px;
+}
+.calendar-label-group .calendar-row small{
+  color:#829ab1;
+}
+
+html[data-theme="dark"] .calendar-years>details{
+  background:#111e29;
+  border-color:#304655;
+}
+html[data-theme="dark"] .calendar-years>details>summary{
+  background:#0d1822;
+  color:#e6f0f7;
+}
+html[data-theme="dark"] .calendar-years>details[open]>summary{
+  background:#142632;
+}
+html[data-theme="dark"] .calendar-years>details>summary span{
+  color:#a9bcc9;
+}
+html[data-theme="dark"] .calendar-groups{
+  border-color:#304655;
+  background:#0f1b25;
+}
+html[data-theme="dark"] .calendar-label-group{
+  background:#111e29;
+  border-color:#304655;
+}
+html[data-theme="dark"] .calendar-label-group>summary{
+  background:#142632;
+}
+html[data-theme="dark"] .calendar-label-group[open]>summary{
+  background:#173342;
+}
+html[data-theme="dark"] .calendar-label-group>summary strong,
+html[data-theme="dark"] .calendar-label-group .calendar-row strong{
+  color:#e6f0f7;
+}
+html[data-theme="dark"] .calendar-label-group>summary small,
+html[data-theme="dark"] .calendar-label-group>summary b,
+html[data-theme="dark"] .calendar-label-group .calendar-row small{
+  color:#a9bcc9;
+}
+html[data-theme="dark"] .calendar-label-group .calendar-list,
+html[data-theme="dark"] .calendar-label-group .calendar-row{
+  border-color:#304655;
+}
+
+@media(max-width:760px){
+  .calendar-label-group>summary{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}

@@ -26,6 +26,7 @@ import { TrashPage } from "./components/TrashPage";
 import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
 import { useIdleSession } from "./useIdleSession";
+import { configureWorkdaySchedule } from "./date";
 import { PRAXIS_VERSION } from "./version";
 
 function LoadingScreen({ message }: { message: string }) {
@@ -73,10 +74,20 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
 
   async function reload() { setRecords(await listMovements()); setDataVersion((value) => value + 1); }
   async function reloadAll() {
-    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextSettings, nextClosed] = await Promise.all([
-      listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), getWorkspaceSettings(), listClosedPeriods(),
+    const nextSettings = await getWorkspaceSettings();
+    configureWorkdaySchedule(nextSettings);
+
+    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await Promise.all([
+      listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), listClosedPeriods(),
     ]);
-    setRecords(nextRecords); setClasses(nextClasses); setExclusions(nextExclusions); setMembers(nextMembers); setSettings(nextSettings); setClosed(nextClosed); setDataVersion((value) => value + 1);
+
+    setRecords(nextRecords);
+    setClasses(nextClasses);
+    setExclusions(nextExclusions);
+    setMembers(nextMembers);
+    setSettings(nextSettings);
+    setClosed(nextClosed);
+    setDataVersion((value) => value + 1);
   }
 
   useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
@@ -145,7 +156,12 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
         {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash} />}
         {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadAll} />}
-        {page === "settings" && access.canManageSettings && <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => { await saveWorkspaceSettings(value); setSettings(value); }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} />}
+        {page === "settings" && access.canManageSettings && <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => {
+          await saveWorkspaceSettings(value);
+          configureWorkdaySchedule(value);
+          setSettings(value);
+          await reload();
+        }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} />}
         {page === "audit" && access.canViewAudit && <AdminAuditPage />}
         {page === "about" && <AboutPage />}
       </div>

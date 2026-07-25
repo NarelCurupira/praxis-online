@@ -45,8 +45,16 @@ export function Dashboard({ records, currentUserId, currentUserName }: Props) {
   const pending = filteredRecords.filter((record) => record.workflowStatus !== "Enviado");
   const sent = filteredRecords.filter((record) => record.workflowStatus === "Enviado");
   const urgent = pending.filter((record) => daysUntil(record.deadlineAt) <= 3);
-  const elapsed = sent.map((record) => record.elapsedHours).filter((value): value is number => value !== null);
-  const averageHours = elapsed.length ? elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length : 0;
+  const measuredSent = sent.filter((record) =>
+    record.receivedTimePrecise === true
+    && record.sentTimePrecise === true
+    && record.elapsedHours !== null
+    && Number.isFinite(record.elapsedHours)
+  );
+  const elapsed = measuredSent.map((record) => record.elapsedHours as number);
+  const averageHours = elapsed.length
+    ? elapsed.reduce((sum, value) => sum + value, 0) / elapsed.length
+    : null;
 
   const monthlyAll = MONTHS.map((month, index) => ({
     month,
@@ -68,16 +76,27 @@ export function Dashboard({ records, currentUserId, currentUserName }: Props) {
   const recordsForYear = (year: number) => scopedRecords.filter((record) => { const date = new Date(record.receivedAt); return date.getFullYear() === year && (comparisonMode === "full" || (date.getMonth() + 1) * 100 + date.getDate() <= cutoffKey); });
   const yearly = [...years].reverse().map((year, index, allYears) => {
     const items = recordsForYear(year); const yearSent = items.filter((record) => record.workflowStatus === "Enviado");
-    const hours = yearSent.map((record) => record.elapsedHours).filter((value): value is number => value !== null);
+    const hours = yearSent
+      .filter((record) => record.receivedTimePrecise === true && record.sentTimePrecise === true)
+      .map((record) => record.elapsedHours)
+      .filter((value): value is number => value !== null && Number.isFinite(value));
     const dpc = items.filter((record) => ["diligência", "prevenção", "ciência", "ciência fundamentada"].includes(record.actionType.toLowerCase())).length;
     const di = items.filter((record) => isUnnecessaryIntervention(record.actionType)).length;
     const previousYear = allYears[index - 1]; const previousTotal = previousYear ? recordsForYear(previousYear).length : 0;
-    return { year, total: items.length, sent: yearSent.length, dpc, di, interventions: Math.max(0, items.length - dpc - di), averageHours: hours.length ? hours.reduce((sum, value) => sum + value, 0) / hours.length : 0, variation: previousTotal ? (items.length / previousTotal - 1) * 100 : null };
+    return { year, total: items.length, sent: yearSent.length, dpc, di, interventions: Math.max(0, items.length - dpc - di), averageHours: hours.length ? hours.reduce((sum, value) => sum + value, 0) / hours.length : null, variation: previousTotal ? (items.length / previousTotal - 1) * 100 : null };
   });
 
   return <div className="page-stack">
     <div className="page-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedPeriod || "Todos"} onChange={(event) => setSelectedPeriod(event.target.value)}><option value="MesAtual">Mês atual</option><option value="Ultimos30">Últimos 30 dias</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}<option value="Todos">Todos</option></select></label></div></div>
-    <div className="stats-grid"><StatCard label="Na caixa" value={pending.length} helper="processos pendentes" icon={Files} /><StatCard label="Prazos próximos" value={urgent.length} helper="até 3 dias" icon={AlertTriangle} tone="red" /><StatCard label="Enviados" value={sent.length} helper="registros concluídos" icon={CheckCircle2} tone="green" /><StatCard label="Tempo médio" value={formatElapsedTime(averageHours)} helper="jornada estimada de 6 h por dia útil" icon={Clock3} tone="amber" /></div>
+    <div className="stats-grid"><StatCard label="Na caixa" value={pending.length} helper="processos pendentes" icon={Files} /><StatCard label="Prazos próximos" value={urgent.length} helper="até 3 dias" icon={AlertTriangle} tone="red" /><StatCard label="Enviados" value={sent.length} helper="registros concluídos" icon={CheckCircle2} tone="green" /><StatCard
+      label="Tempo médio"
+      value={averageHours === null ? "Não disponível" : formatElapsedTime(averageHours)}
+      helper={measuredSent.length
+        ? `${measuredSent.length} envios com horários completos`
+        : "sem envios com horários completos"}
+      icon={Clock3}
+      tone="amber"
+    /></div>
     <div className="dashboard-grid"><section className="panel chart-panel wide"><div className="panel-title"><div><h2>Movimentação mensal{periodLabel && periodLabel !== "Todos" ? ` — ${periodLabel}` : ""}</h2><p>Entradas e envios no período selecionado</p></div><Send size={19} /></div><div className="chart-box"><ResponsiveContainer width="100%" height="100%"><BarChart data={monthly} barGap={4}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5eaf0" /><XAxis dataKey="month" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="recebidos" fill="#9bbbd4" radius={[4, 4, 0, 0]} /><Bar dataKey="enviados" fill="#1e6091" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div></section>
       <section className="panel chart-panel"><div className="panel-title"><div><h2>Providências</h2><p>Distribuição dos registros</p></div></div><div className="chart-box pie-box">{actions.length ? <ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={actions} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78} paddingAngle={3}>{actions.map((_, index) => <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer> : <div className="empty-chart">Sem dados importados</div>}</div><div className="legend-list">{actions.map((item, index) => <span key={item.name}><i style={{ background: PIE_COLORS[index % PIE_COLORS.length] }} />{item.name}<b>{item.value} · {item.percentage.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</b></span>)}</div></section></div>
     <section className="panel"><div className="panel-title comparison-title"><div><h2>Comparativo anual</h2><p>{comparisonMode === "same" ? `Mesmo período de cada ano, até ${cutoffLabel}` : "Anos completos disponíveis"}</p></div><label className="year-control">Comparação<select value={comparisonMode} onChange={(event) => setComparisonMode(event.target.value as "same" | "full")}><option value="same">Mesmo período</option><option value="full">Ano completo</option></select></label></div><div className="annual-layout"><div className="annual-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={yearly}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5eaf0" /><XAxis dataKey="year" tickLine={false} axisLine={false} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} /><Tooltip /><Bar dataKey="total" name="Recebidos" fill="#9bbbd4" radius={[4,4,0,0]} /><Bar dataKey="sent" name="Enviados" fill="#1e6091" radius={[4,4,0,0]} /></BarChart></ResponsiveContainer></div><div className="annual-table-wrap"><table className="annual-table"><thead><tr><th>Ano</th><th>Total</th><th>Diligência/<br />Prevenção/Ciência</th><th>Desnecessária<br />Intervenção</th><th>Intervenções</th><th>Tempo médio</th><th>Variação</th></tr></thead><tbody>{yearly.map((item) => <tr key={item.year}><td><strong>{item.year}</strong></td><td>{item.total}</td><td>{item.dpc}</td><td>{item.di}</td><td>{item.interventions}</td><td>{formatElapsedTime(item.averageHours)}</td><td className={item.variation !== null && item.variation < 0 ? "negative" : "positive"}>{item.variation === null ? "—" : `${item.variation > 0 ? "+" : ""}${item.variation.toFixed(1)}%`}</td></tr>)}</tbody></table></div></div></section>
