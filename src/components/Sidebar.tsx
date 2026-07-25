@@ -20,8 +20,8 @@ const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> 
 interface Props { page: Page; access: AccessCapabilities; onChange: (page: Page) => void; }
 export function Sidebar({ page, access, onChange }: Props) {
   return <aside className="sidebar">
-    <div className="brand"><img className="brand-mark" src="/praxis-icon.png" alt="" /><div><strong>Práxis</strong><span>Controle de Processos</span></div></div>
-    <nav>{items.filter((item) => access.visiblePages.has(item.page)).map(({ page: itemPage, label, icon: Icon }) => <button className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}><Icon size={19} />{label}</button>)}</nav>
+    <div className="brand"><img className="brand-mark" src="/praxis-icon.png" alt="" /><div className="brand-copy"><strong>Práxis</strong><span>Controle de Processos</span></div></div>
+    <nav>{items.filter((item) => access.visiblePages.has(item.page)).map(({ page: itemPage, label, icon: Icon }) => <button title={label} className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}><Icon size={19} /><span className="nav-label">{label}</span></button>)}</nav>
     <div className="sidebar-foot"><Database size={16} /><span>Banco online protegido</span></div>
   </aside>;
 }

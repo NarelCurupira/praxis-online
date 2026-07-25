@@ -1,4 +1,17 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, Pencil, Search, Trash2, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Download,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { daysUntil, localDatePart } from "../date";
@@ -11,6 +24,8 @@ interface Props {
   currentUserId?: string;
   members?: TeamMember[];
   permissions: ProcessPermissions;
+  focusMode?: boolean;
+  onToggleFocusMode?: () => void;
   onStatus: (id: number, status: WorkflowStatus, actionType?: string) => Promise<void>;
   onAction: (id: number, actionType: string) => Promise<void>;
   onAssignment: (id: number, assignedTo: string) => Promise<void>;
@@ -21,6 +36,8 @@ interface Props {
 
 type TableFontSize = "small" | "normal" | "large";
 type TableDensity = "compact" | "comfortable" | "spacious";
+type HighlightFilter = "Todos" | "Relevância social" | "Alta complexidade" | "Ambos";
+type OptionalColumn = "subject" | "assignee" | "receivedAt" | "deadlineAt" | "action" | "status";
 
 const statuses: WorkflowStatus[] = ["Recebido", "Em análise", "Minutado", "Enviado", "Sobrestado"];
 const actions = ["Manifestação", "DI", "Diligência", "Prevenção", "Ciência", "CTRZ", "Recurso", "Sobrestamento", "Ratifico"];
@@ -33,6 +50,14 @@ const sortOptions: { value: MovementSortField; label: string }[] = [
   { value: "actionType", label: "Providência" },
   { value: "workflowStatus", label: "Status" },
   { value: "assignedName", label: "Responsável" },
+];
+const optionalColumnOptions: Array<{ key: OptionalColumn; label: string; queue: boolean }> = [
+  { key: "subject", label: "Classe e assunto", queue: true },
+  { key: "assignee", label: "Responsável", queue: false },
+  { key: "receivedAt", label: "Entrada", queue: true },
+  { key: "deadlineAt", label: "Prazo", queue: true },
+  { key: "action", label: "Providência", queue: true },
+  { key: "status", label: "Status", queue: true },
 ];
 
 const FULL_DATE = new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Belem", day: "2-digit", month: "long", year: "numeric" });
@@ -87,6 +112,11 @@ function directionLabels(field: MovementSortField): Array<{ value: "asc" | "desc
   ];
 }
 
+function highlightLabel(value: HighlightFilter): string {
+  if (value === "Ambos") return "Ambas as classificações";
+  return value;
+}
+
 function excelRows(records: ProcessMovement[]) {
   return records.map((record) => ({
     "Nº MP": record.mpNumber,
@@ -100,6 +130,8 @@ function excelRows(records: ProcessMovement[]) {
     Providência: actionLabel(record.actionType),
     Prioridade: record.priority,
     "Observações internas": record.notes,
+    "Relevância social": record.sociallyRelevant ? "Sim" : "Não",
+    "Alta complexidade": record.extremelyComplex ? "Sim" : "Não",
     Responsável: record.assignedName,
   }));
 }
@@ -113,12 +145,25 @@ function readPreference<T extends string>(key: string, allowed: readonly T[], fa
   }
 }
 
+function readColumnPreference(key: string, allowed: OptionalColumn[]): OptionalColumn[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) ?? "null") as unknown;
+    if (!Array.isArray(stored)) return allowed;
+    const selected = stored.filter((item): item is OptionalColumn => typeof item === "string" && allowed.includes(item as OptionalColumn));
+    return [...new Set(selected)];
+  } catch {
+    return allowed;
+  }
+}
+
 export function ProcessTable({
   records,
   queueOnly = false,
   currentUserId = "",
   members = [],
   permissions,
+  focusMode = false,
+  onToggleFocusMode,
   onStatus,
   onAction,
   onAssignment,
@@ -127,12 +172,16 @@ export function ProcessTable({
   onExport,
 }: Props) {
   const preferencePrefix = `praxis-table-${currentUserId || "anonymous"}`;
+  const columnPreferenceKey = `${preferencePrefix}-${queueOnly ? "queue" : "processes"}-columns`;
+  const allowedColumns = useMemo(() => optionalColumnOptions.filter((column) => !queueOnly || column.queue).map((column) => column.key), [queueOnly]);
   const [fontSize, setFontSize] = useState<TableFontSize>(() => readPreference(`${preferencePrefix}-font`, ["small", "normal", "large"] as const, "normal"));
   const [density, setDensity] = useState<TableDensity>(() => readPreference(`${preferencePrefix}-density`, ["compact", "comfortable", "spacious"] as const, "comfortable"));
+  const [visibleColumns, setVisibleColumns] = useState<OptionalColumn[]>(() => readColumnPreference(columnPreferenceKey, allowedColumns));
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Todos");
   const [year, setYear] = useState("Todos");
   const [assignedTo, setAssignedTo] = useState("Todos");
+  const [highlight, setHighlight] = useState<HighlightFilter>("Todos");
   const [sortField, setSortField] = useState<MovementSortField>(queueOnly ? "deadlineAt" : "receivedAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">(queueOnly ? "asc" : "desc");
   const [page, setPage] = useState(1);
@@ -143,14 +192,19 @@ export function ProcessTable({
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.userId, member])), [members]);
   const years = useMemo(() => [...new Set(records.map((record) => Number(localDatePart(record.receivedAt).slice(0, 4))).filter(Number.isFinite))].sort((a, b) => b - a), [records]);
+  const showColumn = (column: OptionalColumn) => visibleColumns.includes(column) && (!queueOnly || column !== "assignee");
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
     const selected = records.filter((record) => {
       if (queueOnly && (record.workflowStatus === "Enviado" || record.assignedTo !== currentUserId)) return false;
-      if (status !== "Todos" && record.workflowStatus !== status) return false;
-      if (year !== "Todos" && localDatePart(record.receivedAt).slice(0, 4) !== year) return false;
+      if (status === "Em andamento" && record.workflowStatus === "Enviado") return false;
+      if (status !== "Todos" && status !== "Em andamento" && record.workflowStatus !== status) return false;
+      if (!queueOnly && year !== "Todos" && localDatePart(record.receivedAt).slice(0, 4) !== year) return false;
       if (!queueOnly && assignedTo !== "Todos" && record.assignedTo !== assignedTo) return false;
+      if (!queueOnly && highlight === "Relevância social" && !record.sociallyRelevant) return false;
+      if (!queueOnly && highlight === "Alta complexidade" && !record.extremelyComplex) return false;
+      if (!queueOnly && highlight === "Ambos" && !(record.sociallyRelevant && record.extremelyComplex)) return false;
       return !normalizedQuery || `${record.mpNumber} ${record.judicialNumber} ${record.className} ${record.subject} ${record.actionType}`.toLocaleLowerCase("pt-BR").includes(normalizedQuery);
     });
 
@@ -172,14 +226,20 @@ export function ProcessTable({
       if (comparison === 0) comparison = left.movementId - right.movementId;
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [records, queueOnly, currentUserId, status, year, assignedTo, query, sortField, sortDirection]);
+  }, [records, queueOnly, currentUserId, status, year, assignedTo, highlight, query, sortField, sortDirection]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const displayed = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
-  const hasActiveFilters = Boolean(query.trim() || status !== "Todos" || year !== "Todos" || (!queueOnly && assignedTo !== "Todos"));
+  const hasActiveFilters = Boolean(
+    query.trim()
+    || status !== "Todos"
+    || (!queueOnly && year !== "Todos")
+    || (!queueOnly && assignedTo !== "Todos")
+    || (!queueOnly && highlight !== "Todos")
+  );
   const isDefaultEmptyQueue = queueOnly && !hasActiveFilters;
-  const columnCount = queueOnly ? 7 : 8;
+  const columnCount = 2 + allowedColumns.filter(showColumn).length;
 
   function saveFontSize(value: TableFontSize) {
     setFontSize(value);
@@ -191,11 +251,20 @@ export function ProcessTable({
     try { localStorage.setItem(`${preferencePrefix}-density`, value); } catch { /* Preferência não persistente. */ }
   }
 
+  function toggleColumn(column: OptionalColumn) {
+    setVisibleColumns((current) => {
+      const next = current.includes(column) ? current.filter((item) => item !== column) : [...current, column];
+      try { localStorage.setItem(columnPreferenceKey, JSON.stringify(next)); } catch { /* Preferência não persistente. */ }
+      return next;
+    });
+  }
+
   function clearFilters() {
     setQuery("");
     setStatus("Todos");
     setYear("Todos");
     setAssignedTo("Todos");
+    setHighlight("Todos");
     setPage(1);
   }
 
@@ -239,35 +308,49 @@ export function ProcessTable({
     }
   }
 
-  return <section className={`panel table-panel table-panel-v091 table-font-${fontSize} table-density-${density} ${queueOnly ? "queue-table-panel" : "processes-table-panel"}`}>
-    <div className="table-display-controls">
-      <div className="display-control-group"><span>Tamanho da letra</span><div role="group" aria-label="Tamanho da letra da tabela"><button type="button" className={fontSize === "small" ? "active" : ""} onClick={() => saveFontSize("small")}>A−</button><button type="button" className={fontSize === "normal" ? "active" : ""} onClick={() => saveFontSize("normal")}>A</button><button type="button" className={fontSize === "large" ? "active" : ""} onClick={() => saveFontSize("large")}>A+</button></div></div>
-      <div className="display-control-group"><span>Densidade</span><div role="group" aria-label="Densidade das linhas"><button type="button" title="Compacta" className={density === "compact" ? "active" : ""} onClick={() => saveDensity("compact")}>≡</button><button type="button" title="Confortável" className={density === "comfortable" ? "active" : ""} onClick={() => saveDensity("comfortable")}>☰</button><button type="button" title="Espaçosa" className={density === "spacious" ? "active" : ""} onClick={() => saveDensity("spacious")}>☷</button></div></div>
+  return <section className={`panel table-panel table-panel-v091 table-panel-v092 table-font-${fontSize} table-density-${density} ${queueOnly ? "queue-table-panel" : "processes-table-panel"}`}>
+    <div className="table-display-controls table-display-controls-v092">
+      <div className="table-display-preferences">
+        <div className="display-control-group"><span>Tamanho da letra</span><div role="group" aria-label="Tamanho da letra da tabela"><button type="button" className={fontSize === "small" ? "active" : ""} onClick={() => saveFontSize("small")}>A−</button><button type="button" className={fontSize === "normal" ? "active" : ""} onClick={() => saveFontSize("normal")}>A</button><button type="button" className={fontSize === "large" ? "active" : ""} onClick={() => saveFontSize("large")}>A+</button></div></div>
+        <div className="display-control-group"><span>Densidade</span><div role="group" aria-label="Densidade das linhas"><button type="button" title="Compacta" className={density === "compact" ? "active" : ""} onClick={() => saveDensity("compact")}>≡</button><button type="button" title="Confortável" className={density === "comfortable" ? "active" : ""} onClick={() => saveDensity("comfortable")}>☰</button><button type="button" title="Espaçosa" className={density === "spacious" ? "active" : ""} onClick={() => saveDensity("spacious")}>☷</button></div></div>
+      </div>
+      <div className="table-view-actions">
+        <details className="column-picker"><summary><SlidersHorizontal size={16} />Colunas</summary><div>{optionalColumnOptions.filter((column) => !queueOnly || column.queue).map((column) => <label key={column.key}><input type="checkbox" checked={showColumn(column.key)} onChange={() => toggleColumn(column.key)} />{column.label}</label>)}</div></details>
+        {onToggleFocusMode && <button type="button" className="button secondary focus-mode-button" onClick={onToggleFocusMode}>{focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}{focusMode ? "Sair do foco" : "Expandir tabela"}</button>}
+      </div>
     </div>
 
-    <div className="table-toolbar table-toolbar-v091">
-      <label className="filter-field search-filter"><span>Pesquisar</span><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Número, assunto, classe ou providência..." /></div></label>
-      <label className="filter-field filter-compact"><span>Ano</span><select value={year} onChange={(event) => { setYear(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{years.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-      <label className="filter-field filter-compact"><span>Status</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-      {!queueOnly && <label className="filter-field responsible-filter"><span>Responsável</span><select value={assignedTo} onChange={(event) => { setAssignedTo(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{members.map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select></label>}
-      <span className="toolbar-divider" aria-hidden="true" />
-      <label className="filter-field sort-filter"><span>Ordenar por</span><select value={sortField} onChange={(event) => changeSortField(event.target.value as MovementSortField)}>{sortOptions.filter((option) => !queueOnly || option.value !== "assignedName").map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-      <label className="filter-field order-filter"><span>Ordem</span><select value={sortDirection} onChange={(event) => { setSortDirection(event.target.value as "asc" | "desc"); setPage(1); }}>{directionLabels(sortField).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-      <div className="toolbar-actions"><button type="button" className="button secondary clear-filters-button" disabled={!hasActiveFilters} onClick={clearFilters}>Limpar filtros</button>{permissions.canExport && <button type="button" className="button secondary" disabled={!filtered.length} onClick={exportFiltered}><Download size={16} />Exportar</button>}</div>
+    {!queueOnly && <div className="table-quick-views" role="group" aria-label="Atalhos de visualização"><span>Visualização rápida</span><button type="button" className={status === "Em andamento" ? "active" : ""} onClick={() => { setStatus("Em andamento"); setPage(1); }}>Em andamento</button><button type="button" className={status === "Enviado" ? "active" : ""} onClick={() => { setStatus("Enviado"); setPage(1); }}>Enviados</button><button type="button" className={status === "Todos" ? "active" : ""} onClick={() => { setStatus("Todos"); setPage(1); }}>Todos</button></div>}
+
+    <div className="table-toolbar table-toolbar-v091 table-toolbar-v092">
+      <div className="table-toolbar-row table-filter-row">
+        <label className="filter-field search-filter"><span>Pesquisar</span><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Número, assunto, classe ou providência..." /></div></label>
+        {!queueOnly && <label className="filter-field filter-compact"><span>Ano</span><select value={year} onChange={(event) => { setYear(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{years.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>}
+        <label className="filter-field filter-compact status-filter"><span>Status</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="Todos">Todos</option><option value="Em andamento">Em andamento</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        {!queueOnly && <label className="filter-field responsible-filter"><span>Responsável</span><select value={assignedTo} onChange={(event) => { setAssignedTo(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{members.map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select></label>}
+        {!queueOnly && <label className="filter-field highlight-filter"><span>Destacados</span><select value={highlight} onChange={(event) => { setHighlight(event.target.value as HighlightFilter); setPage(1); }}><option value="Todos">Todos</option><option value="Relevância social">Relevância social</option><option value="Alta complexidade">Alta complexidade</option><option value="Ambos">Ambas as classificações</option></select></label>}
+      </div>
+      <div className="table-toolbar-row table-sort-row">
+        <span className="toolbar-section-label">Organização</span>
+        <label className="filter-field sort-filter"><span>Ordenar por</span><select value={sortField} onChange={(event) => changeSortField(event.target.value as MovementSortField)}>{sortOptions.filter((option) => !queueOnly || option.value !== "assignedName").map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <label className="filter-field order-filter"><span>Ordem</span><select value={sortDirection} onChange={(event) => { setSortDirection(event.target.value as "asc" | "desc"); setPage(1); }}>{directionLabels(sortField).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+        <div className="toolbar-actions"><button type="button" className="button secondary clear-filters-button" disabled={!hasActiveFilters} onClick={clearFilters}>Limpar filtros</button>{permissions.canExport && <button type="button" className="button secondary" disabled={!filtered.length} onClick={exportFiltered}><Download size={16} />Exportar</button>}</div>
+      </div>
     </div>
 
     {hasActiveFilters && <div className="active-filter-chips" aria-label="Filtros ativos">
-      {year !== "Todos" && <button type="button" onClick={() => { setYear("Todos"); setPage(1); }}>Ano: {year}<X size={13} /></button>}
+      {!queueOnly && year !== "Todos" && <button type="button" onClick={() => { setYear("Todos"); setPage(1); }}>Ano: {year}<X size={13} /></button>}
       {status !== "Todos" && <button type="button" onClick={() => { setStatus("Todos"); setPage(1); }}>Status: {status}<X size={13} /></button>}
       {!queueOnly && assignedTo !== "Todos" && <button type="button" onClick={() => { setAssignedTo("Todos"); setPage(1); }}>Responsável: {shortMemberName(memberById.get(assignedTo))}<X size={13} /></button>}
+      {!queueOnly && highlight !== "Todos" && <button type="button" onClick={() => { setHighlight("Todos"); setPage(1); }}>Destacados: {highlightLabel(highlight)}<X size={13} /></button>}
       {query.trim() && <button type="button" onClick={() => { setQuery(""); setPage(1); }}>Pesquisa: “{query.trim()}”<X size={13} /></button>}
       <button type="button" className="clear-all-chip" onClick={clearFilters}>Limpar todos</button>
     </div>}
 
     {message && <div className="table-export-message">{message}</div>}
 
-    <div className="table-scroll table-scroll-v091"><table className={`process-data-table ${queueOnly ? "queue-data-table" : "all-processes-data-table"}`}>
-      <thead><tr><th className="col-process">Processo</th><th className="col-subject">Classe/assunto</th>{!queueOnly && <th className="col-assignee">Responsável</th>}<th className="col-date">Entrada</th><th className="col-deadline">Prazo</th><th className="col-action">Providência</th><th className="col-status">Status</th><th className="col-actions" /></tr></thead>
+    <div className="table-scroll table-scroll-v091 table-scroll-v092"><table className={`process-data-table ${queueOnly ? "queue-data-table" : "all-processes-data-table"}`}>
+      <thead><tr><th className="col-process">Processo</th>{showColumn("subject") && <th className="col-subject">Classe/assunto</th>}{showColumn("assignee") && <th className="col-assignee">Responsável</th>}{showColumn("receivedAt") && <th className="col-date">Entrada</th>}{showColumn("deadlineAt") && <th className="col-deadline">Prazo</th>}{showColumn("action") && <th className="col-action">Providência</th>}{showColumn("status") && <th className="col-status">Status</th>}<th className="col-actions" /></tr></thead>
       <tbody>{displayed.length ? displayed.map((record) => {
         const remaining = daysUntil(record.deadlineAt);
         const actionOptions = [...new Set([record.actionType, ...actions].filter(Boolean))];
@@ -284,12 +367,12 @@ export function ProcessTable({
                 : `${remaining} ${remaining === 1 ? "dia" : "dias"}`;
         return <tr key={record.movementId}>
           <td className="col-process"><strong>{record.judicialNumber}</strong><span>{record.mpNumber}</span></td>
-          <td className="subject-cell col-subject"><strong>{record.className}</strong><span title={record.subject}>{record.subject}</span></td>
-          {!queueOnly && <td className="col-assignee">{permissions.canChangeAssignment ? <select className="assignee-select table-inline-select" aria-label={`Responsável por ${record.judicialNumber}`} title={assignedMember?.fullName || record.assignedName} value={record.assignedTo} onChange={(event) => onAssignment(record.movementId, event.target.value)}>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select> : <strong className="assignee-display" title={assignedMember?.fullName || record.assignedName}>{assigneeLabel}</strong>}</td>}
-          <td className="compact-date col-date" title={fullDateTitle(record.receivedAt, Boolean(record.receivedTimePrecise))}>{compactDate(record.receivedAt)}</td>
-          <td className="col-deadline"><strong className={remaining <= 3 && record.workflowStatus !== "Enviado" ? "danger-text" : ""} title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className={remaining < 0 && record.workflowStatus !== "Enviado" ? "deadline-detail overdue" : "deadline-detail"}>{deadlineDetail}</span></td>
-          <td className="col-action"><select disabled={!permissions.canEditWorkflow} className="action-select table-inline-select" aria-label="Providência" value={record.actionType} onChange={(event) => onAction(record.movementId, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>
-          <td className="col-status"><select disabled={!permissions.canEditWorkflow} className={`status-select table-inline-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(event) => changeStatus(record, event.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>
+          {showColumn("subject") && <td className="subject-cell col-subject"><strong>{record.className}</strong><span title={record.subject}>{record.subject}</span>{(record.sociallyRelevant || record.extremelyComplex) && <div className="classification-badges">{record.sociallyRelevant && <b className="classification-badge social">Relevância social</b>}{record.extremelyComplex && <b className="classification-badge complex">Alta complexidade</b>}</div>}</td>}
+          {showColumn("assignee") && <td className="col-assignee">{permissions.canChangeAssignment ? <select className="assignee-select table-inline-select" aria-label={`Responsável por ${record.judicialNumber}`} title={assignedMember?.fullName || record.assignedName} value={record.assignedTo} onChange={(event) => onAssignment(record.movementId, event.target.value)}>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select> : <strong className="assignee-display" title={assignedMember?.fullName || record.assignedName}>{assigneeLabel}</strong>}</td>}
+          {showColumn("receivedAt") && <td className="compact-date col-date" title={fullDateTitle(record.receivedAt, Boolean(record.receivedTimePrecise))}>{compactDate(record.receivedAt)}</td>}
+          {showColumn("deadlineAt") && <td className="col-deadline"><strong className={remaining <= 3 && record.workflowStatus !== "Enviado" ? "danger-text" : ""} title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className={remaining < 0 && record.workflowStatus !== "Enviado" ? "deadline-detail overdue" : "deadline-detail"}>{deadlineDetail}</span></td>}
+          {showColumn("action") && <td className="col-action"><select disabled={!permissions.canEditWorkflow} className="action-select table-inline-select table-pill-select" aria-label="Providência" title={actionLabel(record.actionType)} value={record.actionType} onChange={(event) => onAction(record.movementId, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>}
+          {showColumn("status") && <td className="col-status"><select disabled={!permissions.canEditWorkflow} className={`status-select table-inline-select table-pill-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(event) => changeStatus(record, event.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>}
           <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => onEdit(record)}><Pencil size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>
         </tr>;
       }) : <tr><td colSpan={columnCount}><div className="table-empty-state"><Search size={28} /><strong>{isDefaultEmptyQueue ? "Sua fila está em dia" : "Nenhum processo encontrado"}</strong><span>{isDefaultEmptyQueue ? "Não há processos pendentes atribuídos a você." : "Revise ou limpe os filtros para ampliar a pesquisa."}</span>{hasActiveFilters && <button type="button" className="button secondary" onClick={clearFilters}>Limpar filtros</button>}</div></td></tr>}</tbody>

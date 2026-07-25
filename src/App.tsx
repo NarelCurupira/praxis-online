@@ -1,18 +1,160 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Cloud, LogOut, Menu, Moon, Plus, Sun } from "lucide-react";
+import { Cloud, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, Sun } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, listCalendarExclusions, listClassSettings, listMovements, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { closePeriod, getWorkspaceSettings, listClosedPeriods, listGovernanceMembers, reopenPeriod, saveMemberAccess, saveWorkspaceSettings, updateMovementGoverned } from "./governanceApi";
 import { resolveAccess } from "./access";
-import { AboutPage } from "./components/AboutPage"; import { AdminAuditPage } from "./components/AdminAuditPage"; import { Dashboard } from "./components/Dashboard"; import { EfficiencyPage } from "./components/EfficiencyPage"; import { DataQualityPage } from "./components/DataQualityPage"; import { EditProcessModal } from "./components/EditProcessModal"; import { ImportPage } from "./components/ImportPage"; import { ProcessModal } from "./components/ProcessModal"; import { ProcessTable } from "./components/ProcessTable"; import { ReportsPage } from "./components/ReportsPage"; import { ResetPasswordPage } from "./components/ResetPasswordPage"; import { SettingsPage } from "./components/SettingsPage"; import { Sidebar } from "./components/Sidebar"; import { TrashPage } from "./components/TrashPage"; import { TeamPage } from "./components/TeamPage"; import { AuthPage } from "./components/AuthPage"; import { MfaGate } from "./components/MfaGate"; import { SetupPage } from "./components/SetupPage";
+import { AboutPage } from "./components/AboutPage";
+import { AdminAuditPage } from "./components/AdminAuditPage";
+import { AuthPage } from "./components/AuthPage";
+import { Dashboard } from "./components/Dashboard";
+import { DataQualityPage } from "./components/DataQualityPage";
+import { EditProcessModal } from "./components/EditProcessModal";
+import { EfficiencyPage } from "./components/EfficiencyPage";
+import { ImportPage } from "./components/ImportPage";
+import { MfaGate } from "./components/MfaGate";
+import { ProcessModal } from "./components/ProcessModal";
+import { ProcessTable } from "./components/ProcessTable";
+import { ReportsPage } from "./components/ReportsPage";
+import { ResetPasswordPage } from "./components/ResetPasswordPage";
+import { SettingsPage } from "./components/SettingsPage";
+import { SetupPage } from "./components/SetupPage";
+import { Sidebar } from "./components/Sidebar";
+import { TeamPage } from "./components/TeamPage";
+import { TrashPage } from "./components/TrashPage";
 import { supabase, supabaseConfigured } from "./supabase";
-import type { CalendarExclusion, CalendarExclusionRange, ClassSetting, ClosedPeriod, ImportRecord, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
-import { useIdleSession } from "./useIdleSession"; import { PRAXIS_VERSION } from "./version";
-function LoadingScreen({message}:{message:string}){return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png"/><div className="splash-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="splash-progress"><span className="splash-spinner"/><span>{message}</span></div></div>}
-function PraxisApp({session,theme,onToggleTheme}:{session:Session;theme:"light"|"dark";onToggleTheme:()=>void}){useIdleSession();const[page,setPage]=useState<Page>("dashboard");const[records,setRecords]=useState<ProcessMovement[]>([]);const[classes,setClasses]=useState<ClassSetting[]>([]);const[exclusions,setExclusions]=useState<CalendarExclusion[]>([]);const[members,setMembers]=useState<TeamMember[]>([]);const[settings,setSettings]=useState<WorkspaceSettings|null>(null);const[closed,setClosed]=useState<ClosedPeriod[]>([]);const[modal,setModal]=useState(false);const[editing,setEditing]=useState<ProcessMovement|null>(null);const[loading,setLoading]=useState(true);const[sidebarOpen,setSidebarOpen]=useState(false);const[dataVersion,setDataVersion]=useState(0);
- async function reload(){setRecords(await listMovements());setDataVersion(v=>v+1)} async function reloadAll(){const[r,c,e,m,s,p]=await Promise.all([listMovements(),listClassSettings(),listCalendarExclusions(),listGovernanceMembers(),getWorkspaceSettings(),listClosedPeriods()]);setRecords(r);setClasses(c);setExclusions(e);setMembers(m);setSettings(s);setClosed(p);setDataVersion(v=>v+1)} useEffect(()=>{reloadAll().finally(()=>setLoading(false))},[]);
- const currentMember=members.find(m=>m.userId===session.user.id);const access=useMemo(()=>resolveAccess(currentMember),[currentMember]);useEffect(()=>{if(!access.visiblePages.has(page))setPage("dashboard")},[access,page]);
- async function save(d:ProcessFormData){await createMovement(d);await reload();setModal(false)} async function edit(id:number,d:ProcessEditData){await updateMovementGoverned(id,d);await reload();setEditing(null)} async function status(id:number,v:WorkflowStatus,a?:string){await updateMovementStatus(id,v,a);await reload()} async function action(id:number,a:string){await updateMovementAction(id,a);await reload()} async function assignment(id:number,u:string){await updateMovementAssignment(id,u);await reload()} async function bulk(ids:number[],u:string){await updateMovementAssignments(ids,u);await reload()} async function remove(id:number){await deleteMovement(id);await reload()}
- if(loading||!settings)return <LoadingScreen message="Preparando seus processos..."/>;const shell=<div className={sidebarOpen?"app sidebar-visible":"app"}><Sidebar page={page} access={access} onChange={p=>{setPage(p);setSidebarOpen(false)}}/><main><header className="topbar"><button className="mobile-menu" onClick={()=>setSidebarOpen(!sidebarOpen)}><Menu/></button><div className="online-indicator"><Cloud size={17}/><span>Online</span></div><div className="topbar-spacer"/><span className="current-user">{currentMember?.fullName||session.user.email}</span><button className="icon-button" onClick={onToggleTheme}>{theme==="dark"?<Sun/>:<Moon/>}</button><button className="icon-button" onClick={()=>supabase?.auth.signOut()}><LogOut/></button>{access.canCreateProcess&&<button className="button primary" onClick={()=>setModal(true)}><Plus/>Novo processo</button>}</header><div className={page==="queue"||page==="processes"?"content content-wide":"content"}>{page==="dashboard"&&<Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName||"Meus dados"} isAdmin={access.canViewTeamDashboard}/>} {page==="queue"&&<div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport}/></div>} {page==="processes"&&<div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport}/></div>} {page==="efficiency"&&access.efficiencyScope!=="none"&&<EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope}/>} {page==="reports"&&access.reportsScope!=="none"&&<ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope}/>} {page==="quality"&&access.canViewQuality&&<DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk}/>} {page==="import"&&access.canImport&&<ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup}/>} {page==="trash"&&<TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash}/>} {page==="team"&&access.canManageTeam&&<TeamPage onChanged={reloadAll}/>} {page==="settings"&&access.canManageSettings&&<SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async s=>{await saveClassSetting(s);await reloadAll()}} onDeleteClass={async n=>{await deleteClassSetting(n);await reloadAll()}} onSaveExclusion={async d=>{await saveCalendarExclusion(d);await reloadAll()}} onDeleteExclusion={async d=>{await deleteCalendarExclusion(d);await reloadAll()}} onSaveMemberAccess={async(id,e,r)=>{await saveMemberAccess(id,e,r);await reloadAll()}} onSaveSettings={async s=>{await saveWorkspaceSettings(s);setSettings(s)}} onClosePeriod={async(y,m,r)=>{await closePeriod(y,m,r);setClosed(await listClosedPeriods())}} onReopenPeriod={async(id,r)=>{await reopenPeriod(id,r);setClosed(await listClosedPeriods())}}/>} {page==="audit"&&access.canViewAudit&&<AdminAuditPage/>} {page==="about"&&<AboutPage/>}</div></main>{modal&&<ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={()=>setModal(false)} onSave={save}/>} {editing&&(access.canEditFull||access.canEditNotes)&&<EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={()=>setEditing(null)} onSave={edit}/>}</div>;return (access.role==="admin"||currentMember?.mfaRequired)?<MfaGate>{shell}</MfaGate>:shell}
-export default function App(){const[theme,setTheme]=useState<"light"|"dark">(()=>localStorage.getItem("praxis-theme") as "light"|"dark"||"dark");const[session,setSession]=useState<Session|null>(null);const[checking,setChecking]=useState(true);const[recovery,setRecovery]=useState(()=>location.hash.includes("type=recovery")||location.hash.includes("type=invite"));useEffect(()=>{document.documentElement.dataset.theme=theme;localStorage.setItem("praxis-theme",theme)},[theme]);useEffect(()=>{if(!supabase){setChecking(false);return}supabase.auth.getSession().then(({data})=>{setSession(data.session);setChecking(false)});const{data:l}=supabase.auth.onAuthStateChange((event,s)=>{if(event==="PASSWORD_RECOVERY")setRecovery(true);setSession(s);setChecking(false)});return()=>l.subscription.unsubscribe()},[]);if(!supabaseConfigured)return <SetupPage/>;if(checking)return <LoadingScreen message="Verificando acesso seguro..."/>;if(recovery&&session)return <ResetPasswordPage onDone={async()=>{await supabase?.auth.signOut({scope:"local"});setRecovery(false)}}/>;if(!session)return <AuthPage/>;return <PraxisApp session={session} theme={theme} onToggleTheme={()=>setTheme(v=>v==="dark"?"light":"dark")}/>}
+import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
+import { useIdleSession } from "./useIdleSession";
+import { PRAXIS_VERSION } from "./version";
+
+function LoadingScreen({ message }: { message: string }) {
+  return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" /><div className="splash-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="splash-progress"><span className="splash-spinner" /><span>{message}</span></div></div>;
+}
+
+function storedBoolean(key: string): boolean {
+  try { return localStorage.getItem(key) === "true"; }
+  catch { return false; }
+}
+
+function PraxisApp({ session, theme, onToggleTheme }: { session: Session; theme: "light" | "dark"; onToggleTheme: () => void }) {
+  useIdleSession();
+  const [page, setPage] = useState<Page>("dashboard");
+  const [records, setRecords] = useState<ProcessMovement[]>([]);
+  const [classes, setClasses] = useState<ClassSetting[]>([]);
+  const [exclusions, setExclusions] = useState<CalendarExclusion[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
+  const [closed, setClosed] = useState<ClosedPeriod[]>([]);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<ProcessMovement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => storedBoolean("praxis-sidebar-collapsed"));
+  const [tableFocusMode, setTableFocusMode] = useState(false);
+  const [dataVersion, setDataVersion] = useState(0);
+
+  async function reload() { setRecords(await listMovements()); setDataVersion((value) => value + 1); }
+  async function reloadAll() {
+    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextSettings, nextClosed] = await Promise.all([
+      listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), getWorkspaceSettings(), listClosedPeriods(),
+    ]);
+    setRecords(nextRecords); setClasses(nextClasses); setExclusions(nextExclusions); setMembers(nextMembers); setSettings(nextSettings); setClosed(nextClosed); setDataVersion((value) => value + 1);
+  }
+
+  useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
+
+  const currentMember = members.find((member) => member.userId === session.user.id);
+  const access = useMemo(() => resolveAccess(currentMember), [currentMember]);
+
+  useEffect(() => {
+    if (!access.visiblePages.has(page)) setPage("dashboard");
+  }, [access, page]);
+
+  useEffect(() => {
+    if (page !== "queue" && page !== "processes") setTableFocusMode(false);
+  }, [page]);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((current) => {
+      const next = !current;
+      try { localStorage.setItem("praxis-sidebar-collapsed", String(next)); } catch { /* Preferência não persistente. */ }
+      return next;
+    });
+  }
+
+  async function save(data: ProcessFormData) { await createMovement(data); await reload(); setModal(false); }
+  async function edit(id: number, data: ProcessEditData) { await updateMovementGoverned(id, data); await reload(); setEditing(null); }
+  async function status(id: number, value: WorkflowStatus, actionType?: string) { await updateMovementStatus(id, value, actionType); await reload(); }
+  async function action(id: number, actionType: string) { await updateMovementAction(id, actionType); await reload(); }
+  async function assignment(id: number, userId: string) { await updateMovementAssignment(id, userId); await reload(); }
+  async function bulk(ids: number[], userId: string) { await updateMovementAssignments(ids, userId); await reload(); }
+  async function remove(id: number) { await deleteMovement(id); await reload(); }
+
+  if (loading || !settings) return <LoadingScreen message="Preparando seus processos..." />;
+
+  const appClassName = [
+    "app",
+    sidebarOpen ? "sidebar-visible" : "",
+    sidebarCollapsed ? "sidebar-collapsed" : "",
+    tableFocusMode ? "table-focus-mode" : "",
+  ].filter(Boolean).join(" ");
+
+  const shell = <div className={appClassName}>
+    <Sidebar page={page} access={access} onChange={(nextPage) => { setPage(nextPage); setSidebarOpen(false); setTableFocusMode(false); }} />
+    <main>
+      <header className="topbar">
+        <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button>
+        <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
+        <div className="online-indicator"><Cloud size={17} /><span>Online</span></div>
+        <div className="topbar-spacer" />
+        <span className="current-user">{currentMember?.fullName || session.user.email}</span>
+        <button className="icon-button" onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
+        <button className="icon-button" onClick={() => supabase?.auth.signOut()}><LogOut /></button>
+        {access.canCreateProcess && <button className="button primary" onClick={() => setModal(true)}><Plus />Novo processo</button>}
+      </header>
+      <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>
+        {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} isAdmin={access.canViewTeamDashboard} />}
+        {page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+        {page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+        {page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
+        {page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} />}
+        {page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk} />}
+        {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
+        {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash} />}
+        {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadAll} />}
+        {page === "settings" && access.canManageSettings && <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => { await saveWorkspaceSettings(value); setSettings(value); }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} />}
+        {page === "audit" && access.canViewAudit && <AdminAuditPage />}
+        {page === "about" && <AboutPage />}
+      </div>
+    </main>
+    {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}
+    {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
+  </div>;
+
+  return (access.role === "admin" || currentMember?.mfaRequired) ? <MfaGate>{shell}</MfaGate> : shell;
+}
+
+export default function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => localStorage.getItem("praxis-theme") as "light" | "dark" || "dark");
+  const [session, setSession] = useState<Session | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [recovery, setRecovery] = useState(() => location.hash.includes("type=recovery") || location.hash.includes("type=invite"));
+
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("praxis-theme", theme); }, [theme]);
+  useEffect(() => {
+    if (!supabase) { setChecking(false); return; }
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setChecking(false); });
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") setRecovery(true);
+      setSession(nextSession); setChecking(false);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  if (!supabaseConfigured) return <SetupPage />;
+  if (checking) return <LoadingScreen message="Verificando acesso seguro..." />;
+  if (recovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setRecovery(false); }} />;
+  if (!session) return <AuthPage />;
+  return <PraxisApp session={session} theme={theme} onToggleTheme={() => setTheme((value) => value === "dark" ? "light" : "dark")} />;
+}

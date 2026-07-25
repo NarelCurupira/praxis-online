@@ -1,49 +1,43 @@
-PRÁXIS WEB 0.9.1 — USABILIDADE DAS TABELAS
+PRÁXIS WEB 0.9.2 — REFINAMENTO AVANÇADO DAS TABELAS
 
-Este pacote contém arquivos completos, prontos para substituir no GitHub.
-
-ORDEM DE INSTALAÇÃO
-
-1. Faça um backup do banco.
-2. No Supabase > SQL Editor, execute integralmente:
-   supabase/migrations/20260725_praxis_v091_usabilidade_tabelas.sql
-3. Depois, substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
-4. Aguarde a publicação do Cloudflare Pages.
-5. Recarregue o Práxis sem cache.
-
-ARQUIVOS MODIFICADOS
-
+ARQUIVOS COMPLETOS PARA SUBSTITUIR
 - package.json
 - src/App.tsx
-- src/types.ts
-- src/governanceApi.ts
-- src/governance.css
 - src/components/ProcessTable.tsx
-- src/components/TeamPage.tsx
-- supabase/migrations/20260725_praxis_v091_usabilidade_tabelas.sql
+- src/components/Sidebar.tsx
+- src/governance.css
+
+NÃO É NECESSÁRIO EXECUTAR SQL.
 
 ALTERAÇÕES PRINCIPAIS
 
-- correção do posicionamento das setas de paginação;
-- paginação fora da área de rolagem horizontal;
-- paginação ocultada quando não há resultados;
-- mensagens amigáveis para fila vazia e filtros sem resultado;
-- retirada da coluna Responsável da aba Minha fila;
-- rótulos visíveis para todos os filtros;
-- separação visual entre filtros e ordenação;
-- ordem descrita em linguagem natural, como “Mais próximo primeiro”;
-- datas compactas no formato DD/MM/AA nas tabelas;
-- data completa e horário exibidos ao repousar o cursor;
-- nome curto configurável para o responsável na aba Equipe;
-- tamanho da letra configurável por usuário;
-- densidade compacta, confortável ou espaçosa;
-- preferências de letra e densidade gravadas no navegador;
-- marcadores dos filtros ativos e comando para limpar todos;
-- páginas Minha fila e Processos usando melhor a largura disponível;
-- primeira e última página adicionadas à paginação;
-- versão atualizada para 0.9.1.
+1. Minha fila
+- Removido o filtro por ano.
+- Mantidos somente filtros úteis para uma fila corrente: pesquisa e status.
+- Ordenação passa para uma segunda linha, antes da opção de ordem.
 
-OBSERVAÇÃO
+2. Processos
+- Restaurado o filtro “Destacados”, com as opções:
+  • Relevância social;
+  • Alta complexidade;
+  • Ambas as classificações.
+- “Ordenar por” e “Ordem” passam para uma segunda linha própria.
+- Atalhos rápidos: Em andamento, Enviados e Todos.
+- Os processos destacados voltam a exibir etiquetas na coluna Classe/assunto.
 
-O nome de exibição é usado apenas nas tabelas e filtros compactos. O nome completo
-permanece nos relatórios, na auditoria e na administração da equipe.
+3. Refinamentos previstos para a 0.9.2
+- Menu lateral recolhível, com preferência salva no navegador.
+- Modo foco para maximizar a tabela e ocultar temporariamente menu e cabeçalho.
+- Colunas configuráveis individualmente em Minha fila e Processos.
+- Cabeçalho fixo durante a rolagem vertical.
+- Primeira coluna fixa durante a rolagem horizontal.
+- Providência e status apresentados como controles compactos em formato de etiqueta.
+- Preferências de colunas, fonte, densidade e menu salvas por usuário no navegador.
+
+INSTALAÇÃO
+
+1. Substitua no GitHub os cinco arquivos, preservando exatamente os caminhos.
+2. Aguarde a publicação do Cloudflare Pages.
+3. Recarregue a aplicação sem cache.
+
+Não houve alteração de dependências nem de estrutura do Supabase. O package-lock.json não precisa ser substituído.
