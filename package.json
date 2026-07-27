@@ -22,7 +22,7 @@
     "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.105.4",
+    "@supabase/supabase-js": "^2.56.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.24.0",
