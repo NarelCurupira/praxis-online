@@ -2,21 +2,24 @@ import { requireSupabase } from "./supabase";
 import { toStorageTimestamp } from "./date";
 import type { AccessScope, ClosedPeriod, ProcessEditData, TeamMember, WorkspaceSettings } from "./types";
 
+let workspaceOwner = "";
 let workspacePromise: Promise<string> | null = null;
 function fail(error: { message: string } | null): void { if (error) throw new Error(error.message); }
 async function context() {
   const client = requireSupabase();
-  const { data: auth, error: authError } = await client.auth.getUser();
+  const { data: auth, error: authError } = await client.auth.getSession();
   fail(authError);
-  if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
+  const user = auth.session?.user;
+  if (!user) throw new Error("Sessão expirada. Entre novamente.");
+  if (workspaceOwner !== user.id) { workspaceOwner = user.id; workspacePromise = null; }
   if (!workspacePromise) workspacePromise = (async () => {
     const { data, error } = await client.from("workspace_members").select("workspace_id")
-      .eq("user_id", auth.user!.id).eq("active", true).limit(1).single();
+      .eq("user_id", user.id).eq("active", true).limit(1).single();
     fail(error);
     if (!data?.workspace_id) throw new Error("Espaço de trabalho não encontrado.");
     return String(data.workspace_id);
   })();
-  return { client, user: auth.user, workspaceId: await workspacePromise };
+  return { client, user, workspaceId: await workspacePromise };
 }
 
 export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
@@ -73,12 +76,9 @@ function mapGovernanceMember(item: Record<string, unknown>): TeamMember {
   const fullName = String(item.full_name ?? "");
   const email = String(item.email ?? "");
   return {
-    userId: String(item.user_id),
-    fullName,
+    userId: String(item.user_id), fullName,
     displayName: String(item.display_name ?? "").trim() || suggestedDisplayName(fullName, email),
-    email,
-    role: item.role as TeamMember["role"],
-    active: Boolean(item.active),
+    email, role: item.role as TeamMember["role"], active: Boolean(item.active),
     mfaRequired: Boolean(item.mfa_required),
     historicalCoverageSince: item.historico_disponivel_desde ? String(item.historico_disponivel_desde) : null,
     efficiencyAccess: item.efficiency_access as AccessScope,
@@ -90,20 +90,12 @@ export async function listGovernanceMembers(): Promise<TeamMember[]> {
   const { client } = await context();
   const current = await client.rpc("list_current_workspace_members_v091");
   if (!current.error) return (current.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
-
-  // Compatibilidade durante a implantação: a versão 0.9.0 continua abrindo
-  // enquanto a migração 0.9.1 ainda não tiver sido executada.
   const legacy = await client.rpc("list_current_workspace_members_v09");
   fail(legacy.error);
   return (legacy.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
 }
 
-export async function saveMemberAccess(
-  userId: string,
-  efficiencyAccess: AccessScope,
-  reportsAccess: AccessScope,
-  displayName?: string | null,
-): Promise<void> {
+export async function saveMemberAccess(userId: string, efficiencyAccess: AccessScope, reportsAccess: AccessScope, displayName?: string | null): Promise<void> {
   const { client } = await context();
   const current = await client.rpc("update_workspace_member_presentation_v091", {
     target_user: userId,
@@ -112,14 +104,8 @@ export async function saveMemberAccess(
     new_reports_access: reportsAccess,
   });
   if (!current.error) return;
-
-  // Sem a migração 0.9.1, apenas as permissões antigas podem ser salvas.
   if (displayName !== undefined) throw new Error(`Não foi possível salvar o nome de exibição. Execute a migração da versão 0.9.1. ${current.error.message}`);
-  const legacy = await client.rpc("update_workspace_member_access_v09", {
-    target_user: userId,
-    new_efficiency_access: efficiencyAccess,
-    new_reports_access: reportsAccess,
-  });
+  const legacy = await client.rpc("update_workspace_member_access_v09", { target_user: userId, new_efficiency_access: efficiencyAccess, new_reports_access: reportsAccess });
   fail(legacy.error);
 }
 
@@ -133,24 +119,14 @@ export async function getWorkspaceSettings(): Promise<WorkspaceSettings> {
 export async function saveWorkspaceSettings(settings: WorkspaceSettings): Promise<void> {
   const { client, workspaceId } = await context();
   const { error } = await client.from("workspace_settings").upsert({
-    workspace_id: workspaceId,
-    workday_hours: settings.workdayHours,
-    workday_start: settings.workdayStart,
-    workday_end: settings.workdayEnd,
-    default_deadline_business_days: settings.defaultDeadlineBusinessDays,
-    count_from_next_business_day: settings.countFromNextBusinessDay,
-    after_hours_policy: settings.afterHoursPolicy,
-    unit_name: settings.unitName,
-    lead_prosecutor: settings.leadProsecutor,
-    report_footer: settings.reportFooter,
-    default_report_mode: settings.defaultReportMode,
-    default_report_period: settings.defaultReportPeriod,
-    allow_named_comparisons: settings.allowNamedComparisons,
-    require_action_on_send: settings.requireActionOnSend,
-    require_assignee_on_progress: settings.requireAssigneeOnProgress,
-    detect_duplicates: settings.detectDuplicates,
-    require_date_change_reason: settings.requireDateChangeReason,
-    block_closed_periods: settings.blockClosedPeriods,
+    workspace_id: workspaceId, workday_hours: settings.workdayHours, workday_start: settings.workdayStart,
+    workday_end: settings.workdayEnd, default_deadline_business_days: settings.defaultDeadlineBusinessDays,
+    count_from_next_business_day: settings.countFromNextBusinessDay, after_hours_policy: settings.afterHoursPolicy,
+    unit_name: settings.unitName, lead_prosecutor: settings.leadProsecutor, report_footer: settings.reportFooter,
+    default_report_mode: settings.defaultReportMode, default_report_period: settings.defaultReportPeriod,
+    allow_named_comparisons: settings.allowNamedComparisons, require_action_on_send: settings.requireActionOnSend,
+    require_assignee_on_progress: settings.requireAssigneeOnProgress, detect_duplicates: settings.detectDuplicates,
+    require_date_change_reason: settings.requireDateChangeReason, block_closed_periods: settings.blockClosedPeriods,
     updated_at: new Date().toISOString(),
   });
   fail(error);
@@ -187,15 +163,7 @@ export async function reopenPeriod(id: number, reason: string): Promise<void> {
 
 export async function updateMovementGoverned(movementId: number, data: ProcessEditData): Promise<void> {
   const { client } = await context();
-  const payload = {
-    ...data,
-    receivedAt: toStorageTimestamp(data.receivedAt),
-    sentAt: toStorageTimestamp(data.sentAt),
-  };
-  const { error } = await client.rpc("update_movement_v09", {
-    target_movement: movementId,
-    payload,
-    change_reason: data.sensitiveChangeReason?.trim() || null,
-  });
+  const payload = { ...data, receivedAt: toStorageTimestamp(data.receivedAt), sentAt: toStorageTimestamp(data.sentAt) };
+  const { error } = await client.rpc("update_movement_v09", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
   fail(error);
 }

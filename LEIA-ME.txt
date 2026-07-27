@@ -1,24 +1,28 @@
-PRÁXIS WEB 0.10.2 — DESEMPENHO E IMPORTAÇÃO INTELIGENTE
+PRÁXIS WEB 0.10.3 — PWA, BIOMETRIA E DESEMPENHO
 
-ORDEM OBRIGATÓRIA
-1. Faça um backup externo do banco.
-2. Confirme que as migrações 0.10.0 e 0.10.1 já foram executadas. Caso ainda não tenham sido, execute-as nesta ordem:
-   supabase/migrations/20260725_praxis_v010_confiabilidade.sql
-   supabase/migrations/20260725_praxis_v0101_auditoria_diagnostico.sql
-3. Execute integralmente no SQL Editor do Supabase:
-   supabase/migrations/20260727_praxis_v0102_importacao_desempenho.sql
-4. Substitua no GitHub todos os arquivos presentes neste pacote, preservando os caminhos.
-5. Aguarde a publicação do Cloudflare Pages e confira o workflow Qualidade do Práxis na aba Actions.
+INSTALAÇÃO
+1. Faça backup externo do banco.
+2. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+3. Não há migração SQL nesta versão.
+4. O package.json fixa @supabase/supabase-js em 2.105.4. O arquivo .npmrc faz o ambiente ignorar temporariamente o package-lock antigo durante esta atualização.
+5. Como a dependência mudou, permita que o ambiente execute npm install. O workflow incluído usa npm install, e não npm ci.
+6. Configure as passkeys no Supabase conforme SUPABASE-PASSKEYS.md.
+7. Aguarde a publicação do Cloudflare Pages.
+8. No navegador, atualize uma vez para registrar o Service Worker.
 
-DESTAQUES DA VERSÃO
-- cadastro, edição, status, providência, responsável e exclusão atualizam a interface sem recarregar todas as movimentações;
-- operações lentas podem ser exportadas em TXT e ARQUIVADAS;
-- arquivar não apaga registros do banco: apenas retira as ocorrências da visão corrente;
-- fonte da Qualidade dos Dados alinhada à tabela de Processos;
-- botões de cópia para números judicial e MP;
-- Importação Inteligente com prévia, regras, lotes, histórico, origem dos dados e reversão segura;
-- registros alterados manualmente após uma importação não são revertidos automaticamente;
-- limite de operação lenta e retenção visual podem ser configurados na área de diagnóstico.
+TESTE RECOMENDADO
+- Abra o Práxis no Mac ou celular.
+- Entre com e-mail e senha.
+- Vá a Sobre → Acesso por biometria.
+- Ative a credencial.
+- Saia da conta e teste “Entrar com Face ID/Touch ID/biometria”.
+- Instale o PWA quando o aviso aparecer.
+- Recarregue a página e confira o Diagnóstico para comparar app.reloadAll e movements.reload.
 
-A migração acrescenta tabelas e metadados técnicos. Não modifica nem remove processos já cadastrados.
-Não houve alteração de dependências; o package-lock.json não precisa ser substituído.
+DESEMPENHO
+A consulta principal agora:
+- usa a sessão local já validada, evitando chamadas repetidas a auth.getUser;
+- solicita apenas os campos necessários;
+- consulta a primeira página com contagem e busca as páginas restantes em paralelo;
+- compartilha a consulta de feriados entre o carregamento de dados e as Configurações;
+- evita chamadas duplicadas simultâneas.

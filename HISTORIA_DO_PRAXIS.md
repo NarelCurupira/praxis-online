@@ -8,3 +8,7 @@ O princípio central permanece o mesmo: oferecer controle auxiliar confiável, p
 
 ## Série 0.10.2 — dados de origem e importação segura
 A versão 0.10.2 introduziu a Importação Inteligente, com prévia antes da gravação, regras explícitas, lotes rastreáveis e reversão segura. Também reduziu recarregamentos integrais após operações cotidianas e permitiu arquivar, sem excluir, as métricas técnicas já analisadas.
+
+## Série 0.10.3
+
+A 0.10.3 encerrou a série beta com suporte a instalação como aplicativo, acesso opcional por passkeys e nova otimização do carregamento principal. O Práxis passou a operar como PWA sem transformar o Service Worker em repositório de dados processuais: o cache fica restrito ao aplicativo e à tela de contingência, enquanto consultas e alterações continuam protegidas pelo Supabase.

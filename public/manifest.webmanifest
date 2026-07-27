@@ -1,0 +1,17 @@
+{
+  "name": "Práxis — Controle de Processos",
+  "short_name": "Práxis",
+  "description": "Controle privado de processos, prazos, eficiência e relatórios.",
+  "lang": "pt-BR",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#08141d",
+  "theme_color": "#102a43",
+  "categories": ["productivity", "business"],
+  "icons": [
+    { "src": "/praxis-icon.png", "sizes": "any", "type": "image/png", "purpose": "any" },
+    { "src": "/praxis-icon.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}

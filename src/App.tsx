@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Cloud, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, Sun } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
-import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, listCalendarExclusions, listClassSettings, listMovements, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
+import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { closePeriod, getWorkspaceSettings, listClosedPeriods, listGovernanceMembers, reopenPeriod, saveMemberAccess, saveWorkspaceSettings, updateMovementGoverned } from "./governanceApi";
 import { resolveAccess } from "./access";
 import { AboutPage } from "./components/AboutPage";
@@ -29,6 +29,7 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { PRAXIS_VERSION } from "./version";
+import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast } from "./fastApi";
 
 function LoadingScreen({ message }: { message: string }) {
   return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" /><div className="splash-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="splash-progress"><span className="splash-spinner" /><span>{message}</span></div></div>;
@@ -72,16 +73,17 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => storedBoolean("praxis-sidebar-collapsed"));
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
+  const [online, setOnline] = useState(() => navigator.onLine);
 
   async function reload() {
-    const nextRecords = await measureAsync("movements.reload", () => listMovements());
+    const nextRecords = await measureAsync("movements.reload", () => listMovementsFast({ force: true }));
     setRecords(nextRecords);
     setDataVersion((value) => value + 1);
   }
 
   async function reloadAll() {
     const [nextSettings, nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
-      getWorkspaceSettings(), listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), listClosedPeriods(),
+      getWorkspaceSettings(), listMovementsFast({ force: true }), listClassSettingsFast(), listCalendarExclusionsFast(), listGovernanceMembers(), listClosedPeriods(),
     ]));
     configureWorkdaySchedule(nextSettings);
     setRecords(nextRecords);
@@ -94,6 +96,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
+
+  useEffect(() => {
+    const markOnline = () => setOnline(true);
+    const markOffline = () => setOnline(false);
+    window.addEventListener("online", markOnline);
+    window.addEventListener("offline", markOffline);
+    return () => { window.removeEventListener("online", markOnline); window.removeEventListener("offline", markOffline); };
+  }, []);
 
   const currentMember = members.find((member) => member.userId === session.user.id);
   const access = useMemo(() => resolveAccess(currentMember), [currentMember]);
@@ -201,7 +211,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       <header className="topbar">
         <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button>
         <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
-        <div className="online-indicator"><Cloud size={17} /><span>Online</span></div>
+        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">

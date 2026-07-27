@@ -39,3 +39,11 @@
 - [x] Histórico e reversão segura de lotes.
 - [x] Atualização incremental após operações cotidianas.
 - [x] Exportação e arquivamento de operações lentas.
+
+## Concluído na 0.10.3
+
+- [x] Aplicação instalável como PWA.
+- [x] Service Worker, atualização controlada e contingência sem conexão.
+- [x] Passkeys/biometria opcional em Mac e celulares.
+- [x] Otimização do carregamento integral de movimentações.
+- [x] Redução de validações repetidas de sessão.
