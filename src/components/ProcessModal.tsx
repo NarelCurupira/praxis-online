@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { addBusinessDays, toLocalInput } from "../date";
 import type { CalendarExclusion, ClassSetting, Priority, ProcessFormData, TeamMember } from "../types";
 import { SpecialClassificationFields } from "./SpecialClassificationFields";
+import { CopyButton } from "./CopyButton";
 
 interface Props { classes: ClassSetting[]; exclusions: CalendarExclusion[]; members: TeamMember[]; currentUserId: string; isAdmin: boolean; onClose: () => void; onSave: (data: ProcessFormData) => Promise<void>; }
 
@@ -41,8 +42,8 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
     <form className="modal" onSubmit={submit}>
       <div className="modal-head"><div><p className="eyebrow">Novo registro</p><h2>Cadastrar processo</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={20} /></button></div>
       <div className="form-grid process-form-grid">
-        <label>Número MP<input required value={form.mpNumber} onChange={(e) => change("mpNumber", e.target.value)} placeholder="08.2026.00000000-0" /></label>
-        <label>Número judicial<input required value={form.judicialNumber} onChange={(e) => change("judicialNumber", e.target.value)} placeholder="0000000-00.2026.8.14.0000" /></label>
+        <label>Número MP<div className="input-copy-row"><input required value={form.mpNumber} onChange={(e) => change("mpNumber", e.target.value)} placeholder="08.2026.00000000-0" /><CopyButton value={form.mpNumber} label="Copiar número MP" /></div></label>
+        <label>Número judicial<div className="input-copy-row"><input required value={form.judicialNumber} onChange={(e) => change("judicialNumber", e.target.value)} placeholder="0000000-00.2026.8.14.0000" /><CopyButton value={form.judicialNumber} label="Copiar número judicial" /></div></label>
         <label>Classe<select value={form.className} onChange={(e) => change("className", e.target.value)}>{selectableClasses.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
         <label>Entrada<input type="datetime-local" required value={form.receivedAt} onChange={(e) => change("receivedAt", e.target.value)} /></label>
         <label className="field-with-help">Prazo<input type="date" value={form.deadlineAt} onChange={(e) => change("deadlineAt", e.target.value)} /><small>Calculado com fins de semana e exclusões cadastradas. Deixe vazio se não houver prazo aplicável.</small></label>

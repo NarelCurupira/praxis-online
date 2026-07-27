@@ -17,6 +17,7 @@ import * as XLSX from "xlsx";
 import { daysUntil, localDatePart } from "../date";
 import { actionLabel } from "../labels";
 import type { MovementSortField, ProcessMovement, ProcessPermissions, TeamMember, WorkflowStatus } from "../types";
+import { CopyButton } from "./CopyButton";
 
 interface Props {
   records: ProcessMovement[];
@@ -39,7 +40,7 @@ type HighlightFilter = "Todos" | "Relevância social" | "Alta complexidade" | "A
 type OptionalColumn = "subject" | "assignee" | "receivedAt" | "deadlineAt" | "action" | "status";
 
 const statuses: WorkflowStatus[] = ["Recebido", "Em análise", "Minutado", "Enviado", "Sobrestado"];
-const actions = ["Manifestação", "DI", "Diligência", "Prevenção", "Ciência", "CTRZ", "Recurso", "Sobrestamento", "Ratifico"];
+const actions = ["Manifestação", "DI", "Diligência", "Prevenção", "Suspeição", "Ciência", "CTRZ", "Recurso", "Sobrestamento", "Ratifico"];
 const sortOptions: { value: MovementSortField; label: string }[] = [
   { value: "receivedAt", label: "Data de entrada" },
   { value: "deadlineAt", label: "Prazo" },
@@ -358,7 +359,7 @@ export function ProcessTable({
                 ? "vence hoje"
                 : `${remaining} ${remaining === 1 ? "dia" : "dias"}`;
         return <tr key={record.movementId}>
-          <td className="col-process"><strong>{record.judicialNumber}</strong><span>{record.mpNumber}</span></td>
+          <td className="col-process"><div className="number-copy-line"><strong>{record.judicialNumber}</strong><CopyButton value={record.judicialNumber} label="Copiar número judicial" /></div><div className="number-copy-line secondary-number"><span>{record.mpNumber}</span><CopyButton value={record.mpNumber} label="Copiar número MP" /></div></td>
           {showColumn("subject") && <td className="subject-cell col-subject"><strong>{record.className}</strong><span title={record.subject}>{record.subject}</span>{(record.sociallyRelevant || record.extremelyComplex) && <div className="classification-badges">{record.sociallyRelevant && <b className="classification-badge social">Relevância social</b>}{record.extremelyComplex && <b className="classification-badge complex">Alta complexidade</b>}</div>}</td>}
           {showColumn("assignee") && <td className="col-assignee">{permissions.canChangeAssignment ? <select className="assignee-select table-inline-select" aria-label={`Responsável por ${record.judicialNumber}`} title={assignedMember?.fullName || record.assignedName} value={record.assignedTo} onChange={(event) => onAssignment(record.movementId, event.target.value)}>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select> : <strong className="assignee-display" title={assignedMember?.fullName || record.assignedName}>{assigneeLabel}</strong>}</td>}
           {showColumn("receivedAt") && <td className="compact-date col-date" title={fullDateTitle(record.receivedAt, Boolean(record.receivedTimePrecise))}>{compactDate(record.receivedAt)}</td>}

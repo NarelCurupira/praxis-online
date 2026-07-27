@@ -1,19 +1,24 @@
-PRÁXIS WEB 0.10.1 — AUDITORIA, DIAGNÓSTICO E REFINAMENTOS
+PRÁXIS WEB 0.10.2 — DESEMPENHO E IMPORTAÇÃO INTELIGENTE
 
 ORDEM OBRIGATÓRIA
-1. Faça backup do banco.
-2. Se ainda não executou a migração 0.10.0, execute primeiro:
+1. Faça um backup externo do banco.
+2. Confirme que as migrações 0.10.0 e 0.10.1 já foram executadas. Caso ainda não tenham sido, execute-as nesta ordem:
    supabase/migrations/20260725_praxis_v010_confiabilidade.sql
-3. Execute:
    supabase/migrations/20260725_praxis_v0101_auditoria_diagnostico.sql
-4. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
-5. Aguarde o Cloudflare Pages e confira a aba Actions do GitHub.
+3. Execute integralmente no SQL Editor do Supabase:
+   supabase/migrations/20260727_praxis_v0102_importacao_desempenho.sql
+4. Substitua no GitHub todos os arquivos presentes neste pacote, preservando os caminhos.
+5. Aguarde a publicação do Cloudflare Pages e confira o workflow Qualidade do Práxis na aba Actions.
 
-PRINCIPAIS ARQUIVOS NOVOS
-- src/actionGroups.ts
-- src/components/HelpTip.tsx
-- src/diagnosticsApi.ts
-- src/performanceMonitoring.ts
-- src/components/AdminAuditPage.tsx
+DESTAQUES DA VERSÃO
+- cadastro, edição, status, providência, responsável e exclusão atualizam a interface sem recarregar todas as movimentações;
+- operações lentas podem ser exportadas em TXT e ARQUIVADAS;
+- arquivar não apaga registros do banco: apenas retira as ocorrências da visão corrente;
+- fonte da Qualidade dos Dados alinhada à tabela de Processos;
+- botões de cópia para números judicial e MP;
+- Importação Inteligente com prévia, regras, lotes, histórico, origem dos dados e reversão segura;
+- registros alterados manualmente após uma importação não são revertidos automaticamente;
+- limite de operação lenta e retenção visual podem ser configurados na área de diagnóstico.
 
-A migração 0.10.1 cria somente infraestrutura técnica. Não altera processos existentes.
+A migração acrescenta tabelas e metadados técnicos. Não modifica nem remove processos já cadastrados.
+Não houve alteração de dependências; o package-lock.json não precisa ser substituído.

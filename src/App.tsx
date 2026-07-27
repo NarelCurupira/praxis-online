@@ -26,7 +26,7 @@ import { TrashPage } from "./components/TrashPage";
 import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
 import { useIdleSession } from "./useIdleSession";
-import { configureWorkdaySchedule } from "./date";
+import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { PRAXIS_VERSION } from "./version";
 
@@ -73,15 +73,17 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
 
-  async function reload() { setRecords(await measureAsync("movements.reload", () => listMovements())); setDataVersion((value) => value + 1); }
+  async function reload() {
+    const nextRecords = await measureAsync("movements.reload", () => listMovements());
+    setRecords(nextRecords);
+    setDataVersion((value) => value + 1);
+  }
+
   async function reloadAll() {
-    const nextSettings = await measureAsync("settings.load", () => getWorkspaceSettings());
-    configureWorkdaySchedule(nextSettings);
-
-    const [nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
-      listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), listClosedPeriods(),
+    const [nextSettings, nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
+      getWorkspaceSettings(), listMovements(), listClassSettings(), listCalendarExclusions(), listGovernanceMembers(), listClosedPeriods(),
     ]));
-
+    configureWorkdaySchedule(nextSettings);
     setRecords(nextRecords);
     setClasses(nextClasses);
     setExclusions(nextExclusions);
@@ -112,13 +114,77 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     });
   }
 
-  async function save(data: ProcessFormData) { await createMovement(data); await reload(); setModal(false); }
-  async function edit(id: number, data: ProcessEditData) { await updateMovementGoverned(id, data); await reload(); setEditing(null); }
-  async function status(id: number, value: WorkflowStatus, actionType?: string) { await updateMovementStatus(id, value, actionType); await reload(); }
-  async function action(id: number, actionType: string) { await updateMovementAction(id, actionType); await reload(); }
-  async function assignment(id: number, userId: string) { await updateMovementAssignment(id, userId); await reload(); }
-  async function bulk(ids: number[], userId: string) { await updateMovementAssignments(ids, userId); await reload(); }
-  async function remove(id: number) { await deleteMovement(id); await reload(); }
+  function asIso(value: string | null): string | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString();
+  }
+
+  async function save(data: ProcessFormData) {
+    const created = await measureAsync("movements.create", () => createMovement(data));
+    setRecords((current) => [created, ...current.filter((item) => item.movementId !== created.movementId)]);
+    setDataVersion((value) => value + 1);
+    setModal(false);
+  }
+
+  async function edit(id: number, data: ProcessEditData) {
+    await measureAsync("movements.update", () => updateMovementGoverned(id, data));
+    const receivedAt = asIso(data.receivedAt) ?? data.receivedAt;
+    const sentAt = asIso(data.sentAt);
+    const excludedDates = new Set<string>(exclusions.map((item) => item.date));
+    setRecords((current) => current.map((record) => record.movementId !== id ? record : {
+      ...record,
+      ...data,
+      receivedAt,
+      sentAt,
+      receivedTimePrecise: Boolean(data.receivedTimePrecise),
+      sentTimePrecise: Boolean(data.sentTimePrecise),
+      elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
+      assignedName: members.find((member) => member.userId === data.assignedTo)?.fullName || record.assignedName,
+    }));
+    setDataVersion((value) => value + 1);
+    setEditing(null);
+  }
+
+  async function status(id: number, value: WorkflowStatus, actionType?: string) {
+    const sentAt = value === "Enviado" ? new Date().toISOString() : null;
+    await measureAsync("movements.status", () => updateMovementStatus(id, value, actionType));
+    const excludedDates = new Set<string>(exclusions.map((item) => item.date));
+    setRecords((current) => current.map((record) => record.movementId !== id ? record : {
+      ...record,
+      workflowStatus: value,
+      actionType: actionType ?? record.actionType,
+      draftStatus: value === "Minutado" || value === "Enviado" ? "Minutado" : record.draftStatus,
+      sentAt,
+      sentTimePrecise: value === "Enviado",
+      elapsedHours: value === "Enviado" ? usefulElapsedHours(record.receivedAt, sentAt, excludedDates) : null,
+    }));
+    setDataVersion((value) => value + 1);
+  }
+
+  async function action(id: number, actionType: string) {
+    await measureAsync("movements.action", () => updateMovementAction(id, actionType));
+    setRecords((current) => current.map((record) => record.movementId === id ? { ...record, actionType } : record));
+  }
+
+  async function assignment(id: number, userId: string) {
+    await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId));
+    const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
+    setRecords((current) => current.map((record) => record.movementId === id ? { ...record, assignedTo: userId, assignedName } : record));
+  }
+
+  async function bulk(ids: number[], userId: string) {
+    await measureAsync("movements.bulkAssignment", () => updateMovementAssignments(ids, userId));
+    const selected = new Set(ids);
+    const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
+    setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, assignedTo: userId, assignedName } : record));
+  }
+
+  async function remove(id: number) {
+    await measureAsync("movements.delete", () => deleteMovement(id));
+    setRecords((current) => current.filter((record) => record.movementId !== id));
+    setDataVersion((value) => value + 1);
+  }
 
   if (loading || !settings) return <LoadingScreen message="Preparando seus processos..." />;
 

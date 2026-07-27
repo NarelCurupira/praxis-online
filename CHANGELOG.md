@@ -1,5 +1,22 @@
 # Histórico de versões do Práxis Web
 
+## 0.10.2 — Importação Inteligente e desempenho
+
+### Novidades
+- Prévia detalhada da planilha antes de qualquer gravação.
+- Regras configuráveis para registros existentes, duplicidades, conflitos de horário e validação.
+- Importações por lote, com origem do arquivo, precisão dos horários e histórico administrativo.
+- Reversão segura de lotes, preservando registros alterados manualmente após a importação.
+- Exportação das operações lentas em TXT.
+- Arquivamento das operações lentas sem exclusão do banco.
+- Limite de lentidão e retenção configuráveis.
+- Botões para copiar número judicial e número MP.
+
+### Correções e desempenho
+- Cadastro, edição, status, providência, responsável e exclusão atualizam o estado local sem recarregar toda a base.
+- Carregamento inicial passou a buscar configurações e dados em paralelo.
+- Tipografia da Qualidade dos dados alinhada à tabela de Processos.
+
 ## 0.10.1 — Auditoria, diagnóstico e refinamentos
 
 ### Novidades

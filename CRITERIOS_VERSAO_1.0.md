@@ -17,11 +17,11 @@
 - [x] Error Boundary e captura global de erros
 - [x] Identificação da compilação
 - [x] Registro técnico sem dados processuais
-- [ ] Auditoria e diagnóstico unificados
-- [ ] Importações por lote com prévia
-- [ ] Origem e precisão dos dados
+- [x] Auditoria e diagnóstico unificados
+- [x] Importações por lote com prévia
+- [x] Origem e precisão dos dados
 - [ ] Paginação real e otimizações de crescimento
-- [ ] Ajuda contextual
+- [x] Ajuda contextual
 - [ ] Exportação e importação de configurações
 - [ ] Release candidate validada em uso cotidiano
 
@@ -32,3 +32,10 @@
 - [x] Monitoramento do tamanho do banco.
 - [x] Ajuda contextual inicial.
 - [x] Histórico de versões na interface.
+
+## Atualização 0.10.2
+- [x] Importação Inteligente com prévia e regras de validação.
+- [x] Lotes de importação com origem e precisão dos dados.
+- [x] Histórico e reversão segura de lotes.
+- [x] Atualização incremental após operações cotidianas.
+- [x] Exportação e arquivamento de operações lentas.

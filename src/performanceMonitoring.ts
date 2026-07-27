@@ -1,14 +1,14 @@
 import { PRAXIS_BUILD } from "./buildInfo";
 import { supabase } from "./supabase";
 
-const SLOW_OPERATION_MS = 2000;
-function pageName(): string { return typeof location === "undefined" ? "aplicação" : `${location.pathname}${location.hash}`.slice(0,120); }
+const MIN_CLIENT_MONITORED_MS = 500;
+function pageName(): string { return typeof location === "undefined" ? "aplicação" : `${location.pathname}${location.hash}`.slice(0, 120); }
 
 async function logSlowOperation(operation: string, durationMs: number): Promise<void> {
-  if (!supabase || durationMs < SLOW_OPERATION_MS) return;
+  if (!supabase || durationMs < MIN_CLIENT_MONITORED_MS) return;
   try {
-    await supabase.rpc("log_performance_metric_v0101", {
-      operation_name_value: operation.slice(0,120), page_name_value: pageName(), duration_ms_value: Math.round(durationMs),
+    await supabase.rpc("log_performance_metric_v0102", {
+      operation_name_value: operation.slice(0, 120), page_name_value: pageName(), duration_ms_value: Math.round(durationMs),
       app_version_value: PRAXIS_BUILD.version, build_commit_value: PRAXIS_BUILD.commit,
     });
   } catch { /* o monitoramento nunca deve interromper a aplicação */ }

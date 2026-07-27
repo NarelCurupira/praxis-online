@@ -7,7 +7,7 @@ test("calcula o percentual da referência gratuita", () => {
 });
 
 test("diagnóstico copiável não contém dados processuais", () => {
-  const value = diagnosticsText({workspaceName:"Gabinete",processes:10,movements:20,activeUsers:3,impreciseReceived:1,impreciseSent:2,technicalErrors:0,slowOperations:0,databaseBytes:1024,databasePretty:"1024 bytes",checkedAt:"2026-07-25T12:00:00Z"});
+  const value = diagnosticsText({workspaceName:"Gabinete",processes:10,movements:20,activeUsers:3,impreciseReceived:1,impreciseSent:2,technicalErrors:0,slowOperations:0,archivedSlowOperations:0,importBatches:0,databaseBytes:1024,databasePretty:"1024 bytes",checkedAt:"2026-07-25T12:00:00Z"});
   assert.match(value,/Processos: 10/);
   assert.doesNotMatch(value,/número judicial|assunto|08\.2026/i);
 });

@@ -3,6 +3,7 @@ import { PRAXIS_BUILD, shortCommit } from "../buildInfo";
 import { PRAXIS_VERSION } from "../version";
 
 const VERSIONS = [
+  { version:"0.10.2", title:"Importação Inteligente e desempenho", items:["Prévia detalhada antes da gravação","Importações por lote com histórico e reversão segura","Origem e precisão dos dados importados","Atualização incremental após cadastro e edição","Exportação e arquivamento das operações lentas","Botões para copiar números judiciais e MP","Legibilidade ampliada na Qualidade dos dados"] },
   { version:"0.10.1", title:"Auditoria, diagnóstico e refinamentos", items:["Auditoria e diagnóstico unificados","Ajuda contextual","Histórico de versões","Natureza da atuação com tooltip","Correção dos cartões de classificação especial","Integração das configurações nos relatórios"] },
   { version:"0.10.0", title:"Confiabilidade e engenharia", items:["Error Boundary","Captura global de erros","Logs técnicos seguros","Identificação de compilação","Testes e workflow de qualidade"] },
   { version:"0.9.5", title:"Integração e acabamento", items:["Configurações institucionais dos relatórios","Melhorias dos modais","Disclaimer de uso privado","Períodos de relatório revisados"] },
