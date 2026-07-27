@@ -1,7 +1,7 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.10.3",
+  "version": "0.10.3.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
@@ -17,7 +17,8 @@
     "test:intelligent-import": "node --import tsx --test src/intelligentImport.test.ts",
     "test:pwa": "node --import tsx --test src/pwa.test.ts",
     "test:passkeys": "node --import tsx --test src/passkeySupport.test.ts",
-    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys",
+    "test:auth-method": "node --import tsx --test src/authenticationMethod.test.ts",
+    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method",
     "report:sample": "node --import tsx scripts/generate-report-sample.ts",
     "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts"
   },

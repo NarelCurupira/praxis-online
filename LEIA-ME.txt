@@ -1,28 +1,24 @@
-PRÁXIS WEB 0.10.3 — PWA, BIOMETRIA E DESEMPENHO
+PRÁXIS WEB 0.10.3.1 — BIOMETRIA SEM CÓDIGO ADICIONAL
+
+ALTERAÇÃO
+- Acesso por passkey, Face ID, Touch ID ou biometria entra diretamente no Práxis.
+- Acesso por e-mail e senha continua exigindo o código do autenticador para administradores e usuários com MFA obrigatório.
+- A distinção é feita pelo método "passkey" assinado no JWT do Supabase.
+- O Práxis não usa localStorage ou uma preferência editável do navegador para dispensar o segundo fator.
 
 INSTALAÇÃO
-1. Faça backup externo do banco.
-2. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
-3. Não há migração SQL nesta versão.
-4. O package.json fixa @supabase/supabase-js em 2.105.4. O arquivo .npmrc faz o ambiente ignorar temporariamente o package-lock antigo durante esta atualização.
-5. Como a dependência mudou, permita que o ambiente execute npm install. O workflow incluído usa npm install, e não npm ci.
-6. Configure as passkeys no Supabase conforme SUPABASE-PASSKEYS.md.
-7. Aguarde a publicação do Cloudflare Pages.
-8. No navegador, atualize uma vez para registrar o Service Worker.
+1. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+2. Não há migração SQL.
+3. Não exclua nem altere o package-lock.json existente no repositório.
+4. Aguarde a publicação do Cloudflare Pages.
+5. Abra o Práxis e aceite a atualização quando o PWA informar que há nova versão.
 
 TESTE RECOMENDADO
-- Abra o Práxis no Mac ou celular.
-- Entre com e-mail e senha.
-- Vá a Sobre → Acesso por biometria.
-- Ative a credencial.
-- Saia da conta e teste “Entrar com Face ID/Touch ID/biometria”.
-- Instale o PWA quando o aviso aparecer.
-- Recarregue a página e confira o Diagnóstico para comparar app.reloadAll e movements.reload.
+1. Saia da conta.
+2. Entre com a passkey: o Práxis deve abrir sem solicitar o código TOTP.
+3. Saia novamente.
+4. Entre com e-mail e senha: o Práxis deve solicitar o código TOTP normalmente.
+5. Recarregue o PWA após o login por passkey para confirmar que a sessão continua reconhecida corretamente.
 
-DESEMPENHO
-A consulta principal agora:
-- usa a sessão local já validada, evitando chamadas repetidas a auth.getUser;
-- solicita apenas os campos necessários;
-- consulta a primeira página com contagem e busca as páginas restantes em paralelo;
-- compartilha a consulta de feriados entre o carregamento de dados e as Configurações;
-- evita chamadas duplicadas simultâneas.
+SEGURANÇA
+A dispensa do TOTP ocorre somente quando o token de sessão informa que o método de autenticação foi "passkey". Um token por senha, recuperação, convite ou método desconhecido não dispensa a verificação em duas etapas.

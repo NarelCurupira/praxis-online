@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { closePeriod, getWorkspaceSettings, listClosedPeriods, listGovernanceMembers, reopenPeriod, saveMemberAccess, saveWorkspaceSettings, updateMovementGoverned } from "./governanceApi";
 import { resolveAccess } from "./access";
+import { sessionUsesPasskey } from "./authenticationMethod";
 import { AboutPage } from "./components/AboutPage";
 import { AdminAuditPage } from "./components/AdminAuditPage";
 import { AuthPage } from "./components/AuthPage";
@@ -247,7 +248,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
   </div>;
 
-  return (access.role === "admin" || currentMember?.mfaRequired) ? <MfaGate>{shell}</MfaGate> : shell;
+  const requiresTotp = (access.role === "admin" || currentMember?.mfaRequired) && !sessionUsesPasskey(session);
+  return requiresTotp ? <MfaGate>{shell}</MfaGate> : shell;
 }
 
 export default function App() {

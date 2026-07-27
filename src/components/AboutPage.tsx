@@ -5,6 +5,7 @@ import { PRAXIS_VERSION } from "../version";
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
 
 const VERSIONS = [
+  { version:"0.10.3.1", title:"Biometria sem código adicional", items:["Login por passkey dispensa o código TOTP","Login por e-mail e senha continua exigindo autenticação em duas etapas","Decisão baseada no método passkey assinado no JWT do Supabase","Sem uso de localStorage como critério de segurança"] },
   { version:"0.10.3", title:"PWA, biometria e desempenho", items:["Instalação como aplicativo no Mac e celulares","Service Worker, funcionamento do shell sem conexão e atualização automática","Acesso opcional por Face ID, Touch ID ou biometria do celular","Preferência biométrica restrita ao navegador selecionado","Consultas de movimentações em menos etapas e sem validações repetidas de sessão","Pré-carregamento paralelo e seleção reduzida de campos"] },
   { version:"0.10.2", title:"Importação Inteligente e desempenho", items:["Prévia detalhada antes da gravação","Importações por lote com histórico e reversão segura","Origem e precisão dos dados importados","Atualização incremental após cadastro e edição","Exportação e arquivamento das operações lentas","Botões para copiar números judiciais e MP","Legibilidade ampliada na Qualidade dos dados"] },
   { version:"0.10.1", title:"Auditoria, diagnóstico e refinamentos", items:["Auditoria e diagnóstico unificados","Ajuda contextual","Histórico de versões","Natureza da atuação com tooltip","Correção dos cartões de classificação especial","Integração das configurações nos relatórios"] },

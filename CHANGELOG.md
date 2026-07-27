@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 0.10.3.1 — Passkey como autenticação forte
+
+- Login por passkey, Face ID, Touch ID ou biometria entra diretamente no Práxis.
+- O código TOTP continua obrigatório quando o acesso é realizado com e-mail e senha.
+- O método de autenticação é identificado pelo `amr` do JWT emitido pelo Supabase.
+- Preferências locais do navegador não são utilizadas para dispensar o segundo fator.
+- Testes automáticos cobrem passkey, senha, renovação do token e token inválido.
+- Cache do Service Worker atualizado para distribuir a correção aos PWAs instalados.
+
 ## 0.10.3 — PWA, passkeys e desempenho
 
 - Manifesto PWA, Service Worker, tela sem conexão e modo standalone.

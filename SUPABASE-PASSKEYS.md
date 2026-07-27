@@ -30,3 +30,10 @@ Se o domínio publicado for diferente, use o endereço real. Não mude o RP ID d
 ## Observação
 
 Passkeys no Supabase ainda são um recurso experimental. Antes de substituir a versão estável, teste o cadastro, saída e novo acesso em um único dispositivo.
+
+## Comportamento do segundo fator no Práxis 0.10.3.1
+
+- Login por passkey: não solicita código TOTP adicional.
+- Login por e-mail e senha: continua solicitando TOTP para administradores e usuários com MFA obrigatório.
+- A distinção é feita pelo método `passkey` presente no campo `amr` do JWT emitido pelo Supabase.
+- Preferências do navegador e localStorage não são usadas para dispensar o segundo fator.
