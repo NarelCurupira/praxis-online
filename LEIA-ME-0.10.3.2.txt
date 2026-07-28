@@ -1,0 +1,11 @@
+PRÁXIS WEB 0.10.3.2 — AUTENTICAÇÃO FORTE ADMINISTRATIVA
+
+1. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
+2. Não há migração SQL nesta atualização.
+3. Não altere o package-lock.json.
+4. Aguarde o deploy do Cloudflare Pages e atualize o PWA quando solicitado.
+
+Comportamento:
+- Login por passkey/biometria libera todas as funções administrativas.
+- Login por senha continua exigindo TOTP para administradores e perfis configurados.
+- Limpeza integral e restauração exigem nova confirmação, escolhendo passkey ou TOTP.

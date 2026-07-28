@@ -1,3 +1,12 @@
+# Changelog
+
+## 0.10.3.2 — Autenticação forte administrativa
+
+- Passkeys reconhecidas como autenticação forte para todas as funções administrativas.
+- Login por senha continua sujeito ao TOTP quando exigido pelo perfil.
+- Limpeza integral e restauração de backup exigem nova confirmação, com escolha entre passkey/biometria e código TOTP.
+- A confirmação de segurança não depende de preferências gravadas no navegador.
+
 # Histórico de versões
 
 ## 0.10.3.1 — Passkey como autenticação forte
