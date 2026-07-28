@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.3.8";
+const CACHE_NAME = "praxis-shell-0.10.4";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/praxis-icon.png"];
 
 self.addEventListener("install", (event) => {

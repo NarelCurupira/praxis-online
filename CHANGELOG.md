@@ -1,3 +1,12 @@
+# Práxis 0.10.4 — Consolidação para a versão 1.0
+
+- Unifica o número da versão no pacote, interface e Service Worker.
+- Adiciona verificação automática para impedir publicação com versões divergentes.
+- Torna obrigatórios no GitHub Actions: TypeScript, testes automáticos e build.
+- Publica a pasta `dist` como artefato de cada execução bem-sucedida.
+- Implementa exportação das configurações institucionais em JSON versionado.
+- A exportação contém configurações gerais, classes, calendário e períodos fechados; não contém processos ou credenciais.
+
 # 0.10.3.7 — Área segura no iPhone e configurações pessoais
 
 - Reserva a área superior do iPhone com notch ou Dynamic Island quando o Práxis está instalado como PWA.

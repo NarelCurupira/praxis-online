@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   CalendarDays,
+  Download,
   LockKeyhole,
   Plus,
   Save,
@@ -19,6 +20,7 @@ import type {
 } from "../types";
 import { HelpTip } from "./HelpTip";
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
+import { buildConfigurationExport, downloadConfigurationExport } from "../configurationExport";
 
 interface Props {
   classes: ClassSetting[];
@@ -183,6 +185,38 @@ export function SettingsPage(props: Props) {
       </div>
 
       <DeviceAccessPanel />
+
+      <section className="panel governance-section configuration-export-panel">
+        <div className="panel-title">
+          <div>
+            <div className="title-with-help"><h2>Exportação de configurações</h2><HelpTip title="O que é exportado">Gera um arquivo JSON com configurações institucionais, prazos por classe, calendário e períodos fechados. Não inclui processos, senhas, passkeys, tokens ou conteúdo processual.</HelpTip></div>
+            <p>Guarde uma cópia externa das regras atualmente utilizadas pelo Práxis.</p>
+          </div>
+          <Download />
+        </div>
+        <div className="configuration-export-actions">
+          <div>
+            <strong>Arquivo de configurações</strong>
+            <span>Formato JSON versionado, próprio para conferência e futura portabilidade.</span>
+          </div>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              const value = buildConfigurationExport({
+                settings: draft,
+                classes: props.classes,
+                exclusions: props.exclusions,
+                closedPeriods: props.closedPeriods,
+              });
+              downloadConfigurationExport(value);
+              setMessage("Configurações exportadas.");
+            }}
+          >
+            <Download size={17} /> Exportar configurações
+          </button>
+        </div>
+      </section>
 
       <section className="panel governance-section">
         <div className="panel-title">

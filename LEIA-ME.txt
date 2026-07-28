@@ -1,5 +1,9 @@
-PRÁXIS 0.10.3.8
+PRÁXIS WEB 0.10.4 — CONSOLIDAÇÃO E EXPORTAÇÃO DE CONFIGURAÇÕES
 
-Substitua os arquivos no GitHub preservando os caminhos.
-Não há migração SQL.
-Após o deploy, atualize o PWA e reabra o aplicativo.
+1. Substitua todos os arquivos do ZIP no GitHub, preservando os caminhos.
+2. Não há migração SQL.
+3. O package-lock.json não precisa ser alterado porque nenhuma dependência foi adicionada.
+4. Confirme na aba Actions a execução do workflow “Qualidade do Práxis”.
+5. Em Configurações, use “Exportar configurações” para gerar o JSON.
+
+Para tornar o controle realmente obrigatório antes de integrar mudanças, configure no GitHub a regra de proteção da branch main e exija o status “Tipos, testes e build”.
