@@ -7,6 +7,7 @@ import { installGlobalErrorHandlers } from "./errorReporting";
 import "./styles.css";
 import "./governance.css";
 import "./pwaSafeArea.css";
+import "./mobileDashboard.css";
 
 function ReliableApp() {
   useEffect(() => installGlobalErrorHandlers(), []);

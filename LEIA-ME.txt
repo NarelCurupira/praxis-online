@@ -1,28 +1,5 @@
+PRÁXIS 0.10.3.8
 
-ATUALIZAÇÃO 0.10.3.4 — OBRIGATÓRIO EXECUTAR SQL
-Execute no Supabase SQL Editor: supabase/migrations/20260728_praxis_v01034_passkey_admin_backend.sql
-Sem essa migração, Auditoria e Diagnóstico continuarão exigindo AAL2/TOTP, mesmo após login por passkey.
-PRÁXIS WEB 0.10.3.1 — BIOMETRIA SEM CÓDIGO ADICIONAL
-
-ALTERAÇÃO
-- Acesso por passkey, Face ID, Touch ID ou biometria entra diretamente no Práxis.
-- Acesso por e-mail e senha continua exigindo o código do autenticador para administradores e usuários com MFA obrigatório.
-- A distinção é feita pelo método "passkey" assinado no JWT do Supabase.
-- O Práxis não usa localStorage ou uma preferência editável do navegador para dispensar o segundo fator.
-
-INSTALAÇÃO
-1. Substitua no GitHub todos os arquivos deste pacote, preservando os caminhos.
-2. Não há migração SQL.
-3. Não exclua nem altere o package-lock.json existente no repositório.
-4. Aguarde a publicação do Cloudflare Pages.
-5. Abra o Práxis e aceite a atualização quando o PWA informar que há nova versão.
-
-TESTE RECOMENDADO
-1. Saia da conta.
-2. Entre com a passkey: o Práxis deve abrir sem solicitar o código TOTP.
-3. Saia novamente.
-4. Entre com e-mail e senha: o Práxis deve solicitar o código TOTP normalmente.
-5. Recarregue o PWA após o login por passkey para confirmar que a sessão continua reconhecida corretamente.
-
-SEGURANÇA
-A dispensa do TOTP ocorre somente quando o token de sessão informa que o método de autenticação foi "passkey". Um token por senha, recuperação, convite ou método desconhecido não dispensa a verificação em duas etapas.
+Substitua os arquivos no GitHub preservando os caminhos.
+Não há migração SQL.
+Após o deploy, atualize o PWA e reabra o aplicativo.

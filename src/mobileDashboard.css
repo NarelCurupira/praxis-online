@@ -1,0 +1,82 @@
+@media (max-width: 700px) {
+  .content { width: 100%; max-width: 100%; overflow-x: hidden; }
+  .page-stack, .page-stack > *, .panel, .compact-list, .compact-row,
+  .compact-row .grow, .compact-row .right { min-width: 0; max-width: 100%; }
+
+  .compact-row {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr);
+    grid-template-areas:
+      "dot process"
+      "dot deadline";
+    column-gap: 12px;
+    row-gap: 8px;
+    align-items: start;
+    padding: 15px 0;
+    min-height: 0;
+  }
+
+  .compact-row .priority-dot { grid-area: dot; margin-top: 7px; }
+  .compact-row .grow { grid-area: process; width: 100%; }
+
+  .compact-row .grow strong {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+  }
+
+  .compact-row .grow span {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+  }
+
+  .compact-row .right {
+    grid-area: deadline;
+    width: 100%;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(130, 155, 177, .22);
+    text-align: left;
+  }
+
+  .compact-row .right strong,
+  .compact-row .right span {
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    margin: 0;
+  }
+
+  .compact-row .right span {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .annual-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 420px) {
+  .compact-row .right {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .compact-row .right span {
+    margin-left: 0;
+    text-align: left;
+  }
+}
