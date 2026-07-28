@@ -1,0 +1,9 @@
+PRÁXIS WEB 0.10.3.6 — CORREÇÃO DO AVISO DE ATUALIZAÇÃO
+
+Substitua todos os arquivos deste pacote no GitHub, preservando os caminhos.
+
+Não há migração SQL. Não altere o package-lock.json.
+
+Novo comportamento:
+- PWA instalado: mostra aviso quando houver nova versão pronta.
+- Uso em aba normal do navegador: não mostra o aviso de nova versão.

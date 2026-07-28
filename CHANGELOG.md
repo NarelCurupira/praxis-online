@@ -1,3 +1,8 @@
+# Práxis 0.10.3.6
+
+- O aviso de nova versão passa a ser exibido exclusivamente quando o Práxis estiver aberto como PWA instalado.
+- No uso comum pelo Chrome, Edge, Safari ou outro navegador, a atualização do Service Worker não gera aviso visual de aplicativo instalado.
+
 # Práxis 0.10.3.5
 
 - Oferta de instalação PWA limitada a Mac, iPhone, iPad e Android; navegadores no Windows não exibem mais o aviso.

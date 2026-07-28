@@ -62,14 +62,15 @@ export function PwaManager() {
     updateWorker?.postMessage({ type: "SKIP_WAITING" });
   }
 
+  const standalone = isStandaloneMode();
   const supportedInstallDevice = isSupportedPwaInstallDevice(navigator.userAgent);
-  const showInstall = Boolean(supportedInstallDevice && installPrompt && !dismissedInstall && !isStandaloneMode());
-  const showIosHint = !showInstall && !dismissedInstall && isIosDevice(navigator.userAgent) && !isStandaloneMode();
-  const showMacSafariHint = !showInstall && !showIosHint && !dismissedInstall && isMacSafari(navigator.userAgent) && !isStandaloneMode();
+  const showInstall = Boolean(supportedInstallDevice && installPrompt && !dismissedInstall && !standalone);
+  const showIosHint = !showInstall && !dismissedInstall && isIosDevice(navigator.userAgent) && !standalone;
+  const showMacSafariHint = !showInstall && !showIosHint && !dismissedInstall && isMacSafari(navigator.userAgent) && !standalone;
 
   return <div className="pwa-notices" aria-live="polite">
     {!online && <div className="pwa-notice offline"><WifiOff size={18} /><span><strong>Sem conexão</strong> O aplicativo continua disponível, mas consultas e alterações exigem conexão.</span></div>}
-    {updateWorker && <div className="pwa-notice update"><RefreshCw size={18} /><span><strong>Nova versão disponível.</strong> Atualize para aplicar as correções.</span><button type="button" onClick={update}>Atualizar agora</button></div>}
+    {standalone && updateWorker && <div className="pwa-notice update"><RefreshCw size={18} /><span><strong>Nova versão disponível.</strong> Atualize para aplicar as correções.</span><button type="button" onClick={update}>Atualizar agora</button></div>}
     {showInstall && <div className="pwa-notice install"><Download size={18} /><span><strong>Instalar o Práxis</strong> Use o aplicativo em uma janela própria no Mac ou celular.</span><button type="button" onClick={install}>Instalar</button><button type="button" className="notice-close" onClick={() => setDismissedInstall(true)} aria-label="Dispensar"><X size={16} /></button></div>}
     {showIosHint && <div className="pwa-notice install ios"><Download size={18} /><span>No iPhone ou iPad, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</span><button type="button" className="notice-close" onClick={() => setDismissedInstall(true)} aria-label="Dispensar"><X size={16} /></button></div>}
     {showMacSafariHint && <div className="pwa-notice install ios"><Download size={18} /><span>No Safari do Mac, use <strong>Arquivo → Adicionar ao Dock</strong>.</span><button type="button" className="notice-close" onClick={() => setDismissedInstall(true)} aria-label="Dispensar"><X size={16} /></button></div>}
