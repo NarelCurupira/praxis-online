@@ -15,6 +15,18 @@ export function isIosDevice(userAgent: string): boolean {
   return /iPhone|iPad|iPod/i.test(userAgent);
 }
 
+export function isAndroidDevice(userAgent: string): boolean {
+  return /Android/i.test(userAgent);
+}
+
+export function isMacDevice(userAgent: string): boolean {
+  return /Macintosh|Mac OS X/i.test(userAgent) && !isIosDevice(userAgent);
+}
+
+export function isSupportedPwaInstallDevice(userAgent: string): boolean {
+  return isIosDevice(userAgent) || isAndroidDevice(userAgent) || isMacDevice(userAgent);
+}
+
 export function canRegisterServiceWorker(): boolean {
   return typeof window !== "undefined" && window.isSecureContext && "serviceWorker" in navigator;
 }

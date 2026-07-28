@@ -3,7 +3,7 @@ import { requireSupabase } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ProcessMovement } from "./types";
 
 const PAGE_SIZE = 1000;
-const CACHE_TTL_MS = 1500;
+const CACHE_TTL_MS = 30_000;
 const SELECT_MOVEMENT = [
   "id", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
   "sent_at", "sent_time_precise", "action_type", "notes", "priority", "document_path", "deleted_at", "assigned_to",

@@ -1,6 +1,6 @@
 import { Download, RefreshCw, WifiOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { canRegisterServiceWorker, isIosDevice, isMacSafari, isStandaloneMode } from "../pwa";
+import { canRegisterServiceWorker, isIosDevice, isMacSafari, isStandaloneMode, isSupportedPwaInstallDevice } from "../pwa";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -62,7 +62,8 @@ export function PwaManager() {
     updateWorker?.postMessage({ type: "SKIP_WAITING" });
   }
 
-  const showInstall = Boolean(installPrompt && !dismissedInstall && !isStandaloneMode());
+  const supportedInstallDevice = isSupportedPwaInstallDevice(navigator.userAgent);
+  const showInstall = Boolean(supportedInstallDevice && installPrompt && !dismissedInstall && !isStandaloneMode());
   const showIosHint = !showInstall && !dismissedInstall && isIosDevice(navigator.userAgent) && !isStandaloneMode();
   const showMacSafariHint = !showInstall && !showIosHint && !dismissedInstall && isMacSafari(navigator.userAgent) && !isStandaloneMode();
 

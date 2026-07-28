@@ -1,0 +1,15 @@
+PRÁXIS WEB 0.10.3.5 — PWA, LOGIN E INICIALIZAÇÃO
+
+Substitua todos os arquivos deste pacote no GitHub, preservando os caminhos.
+
+Não há migração SQL nesta correção.
+Não altere o package-lock.json.
+
+Correções:
+- aviso de instalação PWA não aparece no Windows;
+- em navegador com biometria habilitada, o formulário de senha fica oculto por padrão;
+- a tela principal abre antes do término da carga completa dos processos;
+- os dados restantes são atualizados em segundo plano;
+- cache de movimentações ampliado para reduzir reloads repetidos.
+
+Após o deploy, aceite Atualizar agora no PWA ou feche e abra o aplicativo.

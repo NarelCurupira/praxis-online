@@ -75,6 +75,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [dataLoading, setDataLoading] = useState(true);
 
   async function reload() {
     const nextRecords = await measureAsync("movements.reload", () => listMovementsFast({ force: true }));
@@ -96,7 +97,35 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setDataVersion((value) => value + 1);
   }
 
-  useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    let active = true;
+    async function bootstrap() {
+      try {
+        const [nextSettings, nextMembers] = await measureAsync("app.bootstrap", () => Promise.all([
+          getWorkspaceSettings(), listGovernanceMembers(),
+        ]));
+        if (!active) return;
+        configureWorkdaySchedule(nextSettings);
+        setSettings(nextSettings);
+        setMembers(nextMembers);
+        setLoading(false);
+
+        const [nextRecords, nextClasses, nextExclusions, nextClosed] = await measureAsync("app.dataLoad", () => Promise.all([
+          listMovementsFast(), listClassSettingsFast(), listCalendarExclusionsFast(), listClosedPeriods(),
+        ]));
+        if (!active) return;
+        setRecords(nextRecords);
+        setClasses(nextClasses);
+        setExclusions(nextExclusions);
+        setClosed(nextClosed);
+        setDataVersion((value) => value + 1);
+      } finally {
+        if (active) { setLoading(false); setDataLoading(false); }
+      }
+    }
+    void bootstrap();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const markOnline = () => setOnline(true);
@@ -212,7 +241,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       <header className="topbar">
         <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button>
         <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
-        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>
+        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>{dataLoading && <div className="background-loading-indicator"><span className="mini-spinner" />Atualizando dados...</div>}
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">

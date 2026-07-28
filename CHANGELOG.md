@@ -1,3 +1,10 @@
+# Práxis 0.10.3.5
+
+- Oferta de instalação PWA limitada a Mac, iPhone, iPad e Android; navegadores no Windows não exibem mais o aviso.
+- Login com passkey passa a abrir diretamente no modo biométrico, mantendo e-mail e senha ocultos até escolha explícita.
+- Inicialização progressiva: interface administrativa abre após carregar configurações e perfil; processos e dados auxiliares continuam em segundo plano.
+- Cache de movimentações ampliado para reduzir recargas integrais repetidas na mesma sessão.
+
 ## 0.10.3.4
 - Reconhecimento de passkey no backend para RPCs, RLS, Auditoria, Diagnóstico e Logs técnicos.
 - Login por senha continua exigindo AAL2/TOTP para funções administrativas.
