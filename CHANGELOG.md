@@ -1,3 +1,10 @@
+## 0.10.3.3
+
+- Liberação integral das funções administrativas para sessões autenticadas por passkey/WebAuthn.
+- Compatibilidade com os métodos `passkey`, `webauthn` e `mfa/webauthn` no JWT.
+- Configuração do acesso biométrico movida da aba Sobre para Configurações.
+- O formulário de senha é ocultado após a seleção do acesso biométrico, com opção explícita para voltar ao login por senha.
+
 # Changelog
 
 ## 0.10.3.2 — Autenticação forte administrativa

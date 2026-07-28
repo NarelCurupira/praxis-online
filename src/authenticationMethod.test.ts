@@ -16,6 +16,14 @@ test("reconhece login por passkey pelo AMR emitido no JWT", () => {
   assert.deepEqual(authenticationMethodsFromAccessToken(accessToken), ["passkey"]);
 });
 
+
+test("reconhece nomes WebAuthn usados em sessões de passkey", () => {
+  const webauthn = token({ amr: [{ method: "webauthn", timestamp: 1 }] });
+  const mfaWebauthn = token({ amr: [{ method: "mfa/webauthn", timestamp: 1 }] });
+  assert.equal(sessionUsesPasskey({ access_token: webauthn }), true);
+  assert.equal(sessionUsesPasskey({ access_token: mfaWebauthn }), true);
+});
+
 test("não dispensa o segundo fator quando o login foi por senha", () => {
   const accessToken = token({ amr: [{ method: "password", timestamp: 1 }] });
   assert.equal(sessionUsesPasskey({ access_token: accessToken }), false);

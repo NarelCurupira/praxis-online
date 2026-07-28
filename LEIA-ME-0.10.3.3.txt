@@ -1,0 +1,13 @@
+PRÁXIS WEB 0.10.3.3 — PASSKEY ADMINISTRATIVA E ACESSO SIMPLIFICADO
+
+1. Substitua todos os arquivos deste pacote preservando os caminhos.
+2. Não há migração SQL nesta atualização.
+3. Não altere nem exclua o package-lock.json já existente no repositório.
+4. Após a publicação, atualize o PWA quando o aviso de nova versão aparecer.
+
+ALTERAÇÕES
+- Auditoria e diagnóstico deixam de exigir TOTP quando a sessão foi autenticada por passkey/WebAuthn.
+- Reconhecimento ampliado dos métodos passkey, webauthn e mfa/webauthn no JWT.
+- Marcador auxiliar de curta duração na sessão do navegador após login biométrico bem-sucedido, usado apenas para corrigir inconsistências de identificação do método no frontend; a sessão Supabase válida e as permissões/RLS continuam obrigatórias.
+- A configuração de biometria foi movida da aba Sobre para Configurações.
+- Ao selecionar biometria na tela de login, o formulário de e-mail e senha fica oculto. O usuário pode retornar explicitamente ao login por senha.

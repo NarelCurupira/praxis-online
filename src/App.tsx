@@ -221,7 +221,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
           <button type="button" className={fontSize === "large" ? "active" : ""} aria-label="Letra grande" title="Letra grande" onClick={() => onFontSizeChange("large")}>A+</button>
         </div>
         <button className="icon-button" title={theme === "dark" ? "Usar modo claro" : "Usar modo noturno"} onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
-        <button className="icon-button" onClick={() => supabase?.auth.signOut()}><LogOut /></button>
+        <button className="icon-button" onClick={() => { try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } void supabase?.auth.signOut(); }}><LogOut /></button>
         {access.canCreateProcess && <button className="button primary" onClick={() => setModal(true)}><Plus />Novo processo</button>}
       </header>
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>
@@ -248,7 +248,12 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
   </div>;
 
-  const requiresTotp = (access.role === "admin" || currentMember?.mfaRequired) && !sessionUsesPasskey(session);
+  let passkeyAuthenticated = sessionUsesPasskey(session);
+  if (!passkeyAuthenticated) {
+    try { passkeyAuthenticated = sessionStorage.getItem("praxis-authenticated-with-passkey") === "true"; }
+    catch { /* O JWT continua sendo a fonte principal. */ }
+  }
+  const requiresTotp = (access.role === "admin" || currentMember?.mfaRequired) && !passkeyAuthenticated;
   return requiresTotp ? <MfaGate>{shell}</MfaGate> : shell;
 }
 

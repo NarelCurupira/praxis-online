@@ -53,6 +53,8 @@ export function authenticationMethodsFromAccessToken(accessToken: string): strin
  * pelo Supabase no JWT. Não se usa preferência do navegador ou localStorage
  * como decisão de segurança.
  */
+const STRONG_WEBAUTHN_METHODS = new Set(["passkey", "webauthn", "mfa/webauthn"]);
+
 export function sessionUsesPasskey(session: { access_token: string }): boolean {
-  return authenticationMethodsFromAccessToken(session.access_token).includes("passkey");
+  return authenticationMethodsFromAccessToken(session.access_token).some((method) => STRONG_WEBAUTHN_METHODS.has(method));
 }

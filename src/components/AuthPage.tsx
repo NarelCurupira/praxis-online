@@ -27,6 +27,7 @@ export function AuthPage() {
   const [message, setMessage] = useState("");
   const [biometricLabel, setBiometricLabel] = useState("");
   const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<"both" | "biometric" | "password">("both");
 
   useEffect(() => {
     detectPasskeyCapability().then((capability) => {
@@ -36,7 +37,9 @@ export function AuthPage() {
   }, []);
 
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage(""); const client = requireSupabase();
+    event.preventDefault(); setBusy(true); setMessage("");
+    try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sessão sem armazenamento disponível. */ }
+    const client = requireSupabase();
     try {
       if (mode === "forgot") {
         const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin, captchaToken: captchaToken || undefined });
@@ -51,6 +54,7 @@ export function AuthPage() {
   }
 
   async function signInWithBiometrics() {
+    setSelectedMethod("biometric");
     setBusy(true); setMessage("");
     try {
       const client = requireSupabase();
@@ -58,6 +62,7 @@ export function AuthPage() {
       if (!auth.signInWithPasskey) throw new Error("Atualize a biblioteca do Supabase para habilitar passkeys.");
       const result = await auth.signInWithPasskey();
       if (result.error) throw result.error;
+      try { sessionStorage.setItem("praxis-authenticated-with-passkey", "true"); } catch { /* Marcador auxiliar indisponível. */ }
     } catch (error) { setMessage(friendlyPasskeyError(error)); }
     finally { setBusy(false); }
   }
@@ -65,7 +70,8 @@ export function AuthPage() {
   const title = mode === "login" ? "Entre no Práxis Online" : "Recuperar senha";
   const description = mode === "login" ? "Use sua conta individual para acessar o espaço compartilhado." : "Informe seu e-mail para receber um link seguro de recuperação.";
   return <div className="auth-shell"><section className="auth-card"><img src="/praxis-logo.png" alt="Práxis — Controle de Processos" /><p className="eyebrow">Acesso seguro</p><h1>{title}</h1><p>{description}</p>
-    {mode === "login" && biometricAvailable && <button type="button" className="button biometric-login" disabled={busy} onClick={signInWithBiometrics}><Fingerprint size={21} />{busy ? "Aguarde..." : `Entrar com ${biometricLabel}`}</button>}
-    {mode === "login" && biometricAvailable && <div className="auth-divider"><span>ou use sua senha</span></div>}
-    <form onSubmit={submit}><label>E-mail<div className="input-with-icon"><Mail size={18} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></div></label>{mode !== "forgot" && <label>Senha<div className="input-with-icon"><LockKeyhole size={18} /><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar ou ocultar senha">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>}<Turnstile onToken={setCaptchaToken} />{message && <div className="auth-message">{message}</div>}<button className="button primary auth-submit" disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}>{busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar link de recuperação"}</button></form>{mode === "login" && <button className="forgot-password" onClick={() => { setMode("forgot"); setMessage(""); }}>Esqueci minha senha</button>}<button className="auth-switch" onClick={() => { setMode(mode === "login" ? "forgot" : "login"); setMessage(""); }}>{mode === "login" ? "Recuperar acesso" : "Voltar para o acesso"}</button><small>Novas contas são cadastradas exclusivamente pelo administrador do gabinete.</small></section></div>;
+    {mode === "login" && biometricAvailable && selectedMethod !== "password" && <button type="button" className="button biometric-login" disabled={busy} onClick={signInWithBiometrics}><Fingerprint size={21} />{busy ? "Aguardando biometria..." : selectedMethod === "biometric" ? `Tentar novamente com ${biometricLabel}` : `Entrar com ${biometricLabel}`}</button>}
+    {mode === "login" && biometricAvailable && selectedMethod === "both" && <div className="auth-divider"><span>ou use sua senha</span></div>}
+    {(mode === "forgot" || selectedMethod !== "biometric") && <form onSubmit={submit}><label>E-mail<div className="input-with-icon"><Mail size={18} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></div></label>{mode !== "forgot" && <label>Senha<div className="input-with-icon"><LockKeyhole size={18} /><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar ou ocultar senha">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>}<Turnstile onToken={setCaptchaToken} />{message && <div className="auth-message">{message}</div>}<button className="button primary auth-submit" disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}>{busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar link de recuperação"}</button></form>}
+    {mode === "login" && biometricAvailable && selectedMethod === "biometric" && <><button type="button" className="auth-switch" disabled={busy} onClick={() => { setSelectedMethod("password"); setMessage(""); }}>Entrar com e-mail e senha</button>{message && <div className="auth-message">{message}</div>}</>}{mode === "login" && <button className="forgot-password" onClick={() => { setMode("forgot"); setMessage(""); }}>Esqueci minha senha</button>}<button className="auth-switch" onClick={() => { setMode(mode === "login" ? "forgot" : "login"); setMessage(""); }}>{mode === "login" ? "Recuperar acesso" : "Voltar para o acesso"}</button><small>Novas contas são cadastradas exclusivamente pelo administrador do gabinete.</small></section></div>;
 }

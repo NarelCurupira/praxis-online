@@ -18,6 +18,7 @@ import type {
   WorkspaceSettings,
 } from "../types";
 import { HelpTip } from "./HelpTip";
+import { DeviceAccessPanel } from "./DeviceAccessPanel";
 
 interface Props {
   classes: ClassSetting[];
@@ -180,6 +181,8 @@ export function SettingsPage(props: Props) {
           <p>Perfis, prazos, calendário, relatórios e integridade.</p>
         </div>
       </div>
+
+      <DeviceAccessPanel />
 
       <section className="panel governance-section">
         <div className="panel-title">
