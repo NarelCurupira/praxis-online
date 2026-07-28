@@ -1,3 +1,7 @@
+## 0.10.3.4
+- Reconhecimento de passkey no backend para RPCs, RLS, Auditoria, Diagnóstico e Logs técnicos.
+- Login por senha continua exigindo AAL2/TOTP para funções administrativas.
+
 ## 0.10.3.3
 
 - Liberação integral das funções administrativas para sessões autenticadas por passkey/WebAuthn.

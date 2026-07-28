@@ -4,6 +4,7 @@ import { isStandaloneMode } from "../pwa";
 import { PRAXIS_VERSION } from "../version";
 
 const VERSIONS = [
+  { version:"0.10.3.4", title:"Passkey administrativa no backend", items:["RPCs e políticas administrativas aceitam passkey como autenticação forte","Auditoria, diagnóstico e logs técnicos liberados após login biométrico","Login por senha continua exigindo TOTP para acesso administrativo"] },
   { version:"0.10.3.3", title:"Passkey administrativa e acesso simplificado", items:["Auditoria e diagnóstico liberados por passkey","Reconhecimento ampliado de WebAuthn no JWT","Configuração biométrica transferida para Configurações","Login por senha ocultado após selecionar biometria"] },
   { version:"0.10.3.2", title:"Autenticação forte administrativa", items:["Passkey libera todas as funções administrativas","Senha continua protegida por TOTP","Operações destrutivas permitem confirmar por passkey ou código do autenticador"] },
   { version:"0.10.3.1", title:"Biometria sem código adicional", items:["Login por passkey dispensa o código TOTP","Login por e-mail e senha continua exigindo autenticação em duas etapas","Decisão baseada no método passkey assinado no JWT do Supabase","Sem uso de localStorage como critério de segurança"] },

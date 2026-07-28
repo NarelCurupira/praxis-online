@@ -1,3 +1,7 @@
+
+ATUALIZAÇÃO 0.10.3.4 — OBRIGATÓRIO EXECUTAR SQL
+Execute no Supabase SQL Editor: supabase/migrations/20260728_praxis_v01034_passkey_admin_backend.sql
+Sem essa migração, Auditoria e Diagnóstico continuarão exigindo AAL2/TOTP, mesmo após login por passkey.
 PRÁXIS WEB 0.10.3.1 — BIOMETRIA SEM CÓDIGO ADICIONAL
 
 ALTERAÇÃO
