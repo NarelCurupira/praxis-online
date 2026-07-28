@@ -28,7 +28,7 @@ export function ReportsPage({ records, members, currentUserId, onSave, accessSco
   const initialStart = initialPreset === "month" ? new Date(today.getFullYear(), today.getMonth(), 1) : initialPreset === "30days" ? new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29) : new Date(today.getFullYear(), 0, 1);
   const [startDate, setStartDate] = useState(inputDate(initialStart));
   const [endDate, setEndDate] = useState(inputDate(today));
-  const [preset, setPreset] = useState(initialPreset);
+  const [preset, setPreset] = useState<string>(initialPreset);
   const [mode, setMode] = useState<ReportMode>(settings.defaultReportMode || "executive");
   const [scope, setScope] = useState(canViewTeam ? "team" : currentUserId);
   const [className, setClassName] = useState("all"); const [actionType, setActionType] = useState("all"); const [highlight, setHighlight] = useState<HighlightFilter>("all");
