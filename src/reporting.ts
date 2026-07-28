@@ -52,6 +52,9 @@ function inRange(value: string, start: string, end: string): boolean { return Bo
 
 export function effectiveCoverageSince(records: ProcessMovement[], member: TeamMember): string | null {
   const configured = dateKey(member.historicalCoverageSince);
+
+  if (configured) return configured;
+
   let inferred = "";
 
   for (const record of records) {
@@ -60,9 +63,7 @@ export function effectiveCoverageSince(records: ProcessMovement[], member: TeamM
     if (received && (!inferred || received < inferred)) inferred = received;
   }
 
-  if (!configured) return inferred || null;
-  if (!inferred) return configured;
-  return configured <= inferred ? configured : inferred;
+  return inferred || null;
 }
 
 function memberCoverageStatus(since: string | null, startDate: string, endDate: string): "covered" | "partial" | "unavailable" {
