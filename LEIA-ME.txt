@@ -1,9 +1,10 @@
-PRÁXIS WEB 0.10.4 — CONSOLIDAÇÃO E EXPORTAÇÃO DE CONFIGURAÇÕES
+CORREÇÃO DO GITHUB ACTIONS — PRÁXIS 0.10.4
 
-1. Substitua todos os arquivos do ZIP no GitHub, preservando os caminhos.
-2. Não há migração SQL.
-3. O package-lock.json não precisa ser alterado porque nenhuma dependência foi adicionada.
-4. Confirme na aba Actions a execução do workflow “Qualidade do Práxis”.
-5. Em Configurações, use “Exportar configurações” para gerar o JSON.
+Substitua estes arquivos preservando os caminhos:
+- src/components/ReportsPage.tsx
+- src/fastApi.ts
+- src/governanceApi.ts
+- .github/workflows/quality.yml
 
-Para tornar o controle realmente obrigatório antes de integrar mudanças, configure no GitHub a regra de proteção da branch main e exija o status “Tipos, testes e build”.
+A correção resolve os erros de TypeScript indicados na primeira execução do workflow.
+Não há migração SQL e não há alteração no package-lock.json.

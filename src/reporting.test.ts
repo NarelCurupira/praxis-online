@@ -46,7 +46,16 @@ test("prazos distinguem concluídos, pendentes e sem prazo", () => {
 
 test("estatísticas de tramitação usam horas úteis já calculadas", () => {
   const values = [1, 2, 6, 12, 30];
-  const records = values.map((elapsedHours, index) => movement({ movementId: index + 1, caseId: index + 1, receivedAt: "2026-01-01", workflowStatus: "Enviado", sentAt: `2026-01-${String(index + 1).padStart(2, "0")}T12:00:00`, elapsedHours }));
+  const records = values.map((elapsedHours, index) => movement({
+    movementId: index + 1,
+    caseId: index + 1,
+    receivedAt: "2026-01-01T08:00:00-03:00",
+    receivedTimePrecise: true,
+    workflowStatus: "Enviado",
+    sentAt: `2026-01-${String(index + 1).padStart(2, "0")}T12:00:00-03:00`,
+    sentTimePrecise: true,
+    elapsedHours,
+  }));
   const result = calculateDistribution(records, "2026-01-01", "2026-01-31");
   assert.equal(result.mean, 10.2); assert.equal(result.median, 6); assert.equal(result.p75, 12); assert.equal(result.p90, 22.8);
   assert.equal(result.withinOneBusinessDay, 3); assert.equal(result.withinThreeBusinessDays, 4);
