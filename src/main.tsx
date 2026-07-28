@@ -6,6 +6,7 @@ import { PwaManager } from "./components/PwaManager";
 import { installGlobalErrorHandlers } from "./errorReporting";
 import "./styles.css";
 import "./governance.css";
+import "./pwaSafeArea.css";
 
 function ReliableApp() {
   useEffect(() => installGlobalErrorHandlers(), []);

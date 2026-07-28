@@ -1,3 +1,11 @@
+# 0.10.3.7 — Área segura no iPhone e configurações pessoais
+
+- Reserva a área superior do iPhone com notch ou Dynamic Island quando o Práxis está instalado como PWA.
+- Mantém o menu e os controles do cabeçalho abaixo da barra de status.
+- Torna a página Configurações visível a todos os usuários autenticados.
+- Usuários não administradores visualizam somente o painel pessoal de biometria/passkey.
+- Configurações institucionais e administrativas continuam exclusivas do administrador.
+
 # Práxis 0.10.3.6
 
 - O aviso de nova versão passa a ser exibido exclusivamente quando o Práxis estiver aberto como PWA instalado.

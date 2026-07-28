@@ -33,12 +33,15 @@ export function resolveAccess(member: TeamMember | undefined): AccessCapabilitie
   const isIntern = role === "estagiario";
   const writer = isAdmin || isProsecutor || isAssessor;
 
-  const visiblePages = new Set<Page>(["dashboard", "queue", "processes", "about"]);
+  // Configurações fica visível para todos os usuários autenticados. Para quem
+  // não é administrador, a página apresenta somente as opções pessoais de
+  // passkey/biometria; as configurações institucionais permanecem restritas.
+  const visiblePages = new Set<Page>(["dashboard", "queue", "processes", "settings", "about"]);
   if (!isIntern) visiblePages.add("trash");
   if (efficiencyScope !== "none") visiblePages.add("efficiency");
   if (reportsScope !== "none") visiblePages.add("reports");
   if (isAdmin) {
-    ["quality", "import", "team", "settings", "audit"].forEach((page) => visiblePages.add(page as Page));
+    ["quality", "import", "team", "audit"].forEach((page) => visiblePages.add(page as Page));
   }
 
   return {

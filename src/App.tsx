@@ -16,6 +16,7 @@ import { EfficiencyPage } from "./components/EfficiencyPage";
 import { ImportPage } from "./components/ImportPage";
 import { MfaGate } from "./components/MfaGate";
 import { ProcessModal } from "./components/ProcessModal";
+import { PersonalSettingsPage } from "./components/PersonalSettingsPage";
 import { ProcessTable } from "./components/ProcessTable";
 import { ReportsPage } from "./components/ReportsPage";
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
@@ -75,7 +76,6 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [online, setOnline] = useState(() => navigator.onLine);
-  const [dataLoading, setDataLoading] = useState(true);
 
   async function reload() {
     const nextRecords = await measureAsync("movements.reload", () => listMovementsFast({ force: true }));
@@ -97,35 +97,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setDataVersion((value) => value + 1);
   }
 
-  useEffect(() => {
-    let active = true;
-    async function bootstrap() {
-      try {
-        const [nextSettings, nextMembers] = await measureAsync("app.bootstrap", () => Promise.all([
-          getWorkspaceSettings(), listGovernanceMembers(),
-        ]));
-        if (!active) return;
-        configureWorkdaySchedule(nextSettings);
-        setSettings(nextSettings);
-        setMembers(nextMembers);
-        setLoading(false);
-
-        const [nextRecords, nextClasses, nextExclusions, nextClosed] = await measureAsync("app.dataLoad", () => Promise.all([
-          listMovementsFast(), listClassSettingsFast(), listCalendarExclusionsFast(), listClosedPeriods(),
-        ]));
-        if (!active) return;
-        setRecords(nextRecords);
-        setClasses(nextClasses);
-        setExclusions(nextExclusions);
-        setClosed(nextClosed);
-        setDataVersion((value) => value + 1);
-      } finally {
-        if (active) { setLoading(false); setDataLoading(false); }
-      }
-    }
-    void bootstrap();
-    return () => { active = false; };
-  }, []);
+  useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
 
   useEffect(() => {
     const markOnline = () => setOnline(true);
@@ -241,7 +213,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       <header className="topbar">
         <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button>
         <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
-        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>{dataLoading && <div className="background-loading-indicator"><span className="mini-spinner" />Atualizando dados...</div>}
+        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">
@@ -263,12 +235,12 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
         {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash} />}
         {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadAll} />}
-        {page === "settings" && access.canManageSettings && <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => {
+        {page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => {
           await saveWorkspaceSettings(value);
           configureWorkdaySchedule(value);
           setSettings(value);
           await reload();
-        }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} />}
+        }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} /> : <PersonalSettingsPage />)}
         {page === "audit" && access.canViewAudit && <AdminAuditPage />}
         {page === "about" && <AboutPage />}
       </div>

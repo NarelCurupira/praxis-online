@@ -1,4 +1,4 @@
-const CACHE = "praxis-shell-v0.10.3.6";
+const CACHE = "praxis-shell-v0.10.3.7";
 const SHELL = ["/", "/index.html", "/offline.html", "/manifest.webmanifest", "/praxis-logo.png", "/praxis-icon.png"];
 
 self.addEventListener("install", (event) => {

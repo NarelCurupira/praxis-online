@@ -1,0 +1,48 @@
+/* Práxis 0.10.3.7 — áreas seguras em iPhone com notch/Dynamic Island */
+:root {
+  --praxis-safe-top: env(safe-area-inset-top, 0px);
+  --praxis-safe-right: env(safe-area-inset-right, 0px);
+  --praxis-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --praxis-safe-left: env(safe-area-inset-left, 0px);
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .topbar {
+    min-height: calc(64px + var(--praxis-safe-top));
+    padding-top: var(--praxis-safe-top) !important;
+    padding-right: max(16px, var(--praxis-safe-right)) !important;
+    padding-left: max(16px, var(--praxis-safe-left)) !important;
+  }
+
+  .sidebar {
+    padding-top: max(18px, var(--praxis-safe-top));
+    padding-bottom: max(18px, var(--praxis-safe-bottom));
+  }
+
+  .content {
+    padding-bottom: max(24px, var(--praxis-safe-bottom));
+  }
+}
+
+@media (max-width: 900px) and (display-mode: standalone),
+       (max-width: 900px) and (display-mode: fullscreen) {
+  .topbar {
+    min-height: calc(72px + var(--praxis-safe-top));
+    align-items: center;
+  }
+
+  .mobile-menu,
+  .topbar .icon-button,
+  .topbar .button {
+    margin-top: 0;
+  }
+}
+
+.personal-settings-note {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color, #d9e2ec);
+  border-radius: 10px;
+  color: var(--muted-color, #627d98);
+  font-size: .88rem;
+}
