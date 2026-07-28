@@ -99,7 +99,7 @@ export async function saveMemberAccess(userId: string, efficiencyAccess: AccessS
   const { client } = await context();
   const current = await client.rpc("update_workspace_member_presentation_v091", {
     target_user: userId,
-    new_display_name: displayName === undefined ? null : displayName.trim(),
+    new_display_name: displayName == null ? null : displayName.trim(),
     new_efficiency_access: efficiencyAccess,
     new_reports_access: reportsAccess,
   });

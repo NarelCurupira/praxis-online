@@ -190,6 +190,7 @@ export function calculateEfficiencyTime(records: ProcessMovement[], range: DateR
     && (record.sentTimePrecise ?? hasCompleteTime(record.sentAt)));
   const values = measured.map((record) => record.elapsedHours as number);
   const preciseValues = precise.map((record) => record.elapsedHours as number);
+
   return {
     sentCount: sent.length,
     measuredCount: measured.length,
@@ -197,9 +198,9 @@ export function calculateEfficiencyTime(records: ProcessMovement[], range: DateR
     sameDay: sent.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
     withinTwoHours: preciseValues.filter((value) => value <= 2).length,
     withinOneDay: preciseValues.filter((value) => value <= WORKDAY_HOURS).length,
-    median: percentile(preciseValues, .5),
-    mean: preciseValues.length ? preciseValues.reduce((sum, value) => sum + value, 0) / preciseValues.length : null,
-    p90: percentile(preciseValues, .9),
+    median: percentile(values, .5),
+    mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+    p90: percentile(values, .9),
   };
 }
 
@@ -208,6 +209,7 @@ function monthBuckets(range: DateRange, today: string): Array<{ start: string; e
   const end = parseDate(range.endDate);
   const cursor = new Date(start.getFullYear(), start.getMonth(), 1, 12);
   const result = [];
+
   while (cursor <= end) {
     const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1, 12);
     const last = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 12);
@@ -215,6 +217,7 @@ function monthBuckets(range: DateRange, today: string): Array<{ start: string; e
     const bucketEnd = localDateKey(last) > range.endDate ? range.endDate : localDateKey(last);
     const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
     const currentMonth = today.slice(0, 7) === key;
+
     result.push({
       start: bucketStart,
       end: bucketEnd,
@@ -223,21 +226,37 @@ function monthBuckets(range: DateRange, today: string): Array<{ start: string; e
       partial: currentMonth || bucketStart !== localDateKey(first) || bucketEnd !== localDateKey(last),
       future: bucketStart > today,
     });
+
     cursor.setMonth(cursor.getMonth() + 1);
   }
+
   return result;
 }
 
 function buildTrend(records: ProcessMovement[], range: DateRange, today: string): EfficiencyTrendPoint[] {
   return monthBuckets(range, today).map((bucket) => {
-    if (bucket.future) return {
-      key: bucket.key, label: bucket.label, partial: false, future: true,
-      received: null, sent: null, stock: null, sameDayPct: null, withinOneDayPct: null,
-      median: null, p90: null, validMeasurements: 0, preciseMeasurements: 0,
-    };
+    if (bucket.future) {
+      return {
+        key: bucket.key,
+        label: bucket.label,
+        partial: false,
+        future: true,
+        received: null,
+        sent: null,
+        stock: null,
+        sameDayPct: null,
+        withinOneDayPct: null,
+        median: null,
+        p90: null,
+        validMeasurements: 0,
+        preciseMeasurements: 0,
+      };
+    }
+
     const bucketRange = { startDate: bucket.start, endDate: bucket.end > today ? today : bucket.end };
     const flow = calculateEfficiencyFlow(records, bucketRange, bucketRange.endDate);
     const time = calculateEfficiencyTime(records, bucketRange);
+
     return {
       key: bucket.key,
       label: bucket.label,
@@ -280,10 +299,18 @@ function effectiveCoverageSince(records: ProcessMovement[], member: TeamMember):
 }
 
 function coverageForRecords(records: ProcessMovement[], member: TeamMember, range: DateRange): CoverageResult {
-  return coverageFor(
-    { ...member, historicalCoverageSince: effectiveCoverageSince(records, member) },
-    range,
-  );
+  const since = effectiveCoverageSince(records, member);
+  const configured = dateKey(member.historicalCoverageSince);
+
+  // Quando não existe data administrativa, a cobertura é inferida pelos
+  // registros disponíveis. Nesse caso, a inferência indica disponibilidade
+  // dos dados no período, sem transformar a ausência anterior em zero.
+  if (!configured) {
+    if (!since || since > range.endDate) return { status: "unavailable", since };
+    return { status: "covered", since };
+  }
+
+  return coverageFor({ ...member, historicalCoverageSince: since }, range);
 }
 
 function historicalRecordsForMembers(records: ProcessMovement[], members: TeamMember[]): ProcessMovement[] {
@@ -298,8 +325,11 @@ function comparableSummary(records: ProcessMovement[], members: TeamMember[], cu
   const comparable = members.filter((member) =>
     coverageForRecords(records, member, currentRange).status === "covered"
     && coverageForRecords(records, member, previousRange).status === "covered");
+
   if (!comparable.length) return null;
+
   const comparableRecords = recordsForMembers(records, comparable);
+
   return {
     members: comparable,
     current: calculateEfficiencyFlow(comparableRecords, currentRange, today),
@@ -320,11 +350,13 @@ export function buildEfficiencyModel(
   const coverageItems = scopeMembers.map((member) => coverageForRecords(records, member, range));
   const includedMembers = scopeMembers.filter((member) => coverageForRecords(records, member, range).status !== "unavailable");
   const selectedRecords = historicalRecordsForMembers(records, includedMembers);
+
   const rows = scopeMembers.map((member): EfficiencyUserRow => {
     const coverage = coverageForRecords(records, member, range);
     const allMemberRecords = recordsForMembers(records, [member]);
     const memberRecords = historicalRecordsForMembers(records, [member]);
     const pending = allMemberRecords.filter((record) => pendingAt(record, today));
+
     return {
       member,
       coverage,
@@ -333,14 +365,22 @@ export function buildEfficiencyModel(
       pendingOverdue: pending.filter((record) => dateKey(record.deadlineAt) && dateKey(record.deadlineAt) < today).length,
     };
   });
+
   const thirtyDaysAgo = addDays(today, -29);
   const allActive = members.filter((member) => member.active);
-  const recentTotal = records.filter((record) => !record.deletedAt && dateKey(record.receivedAt) >= thirtyDaysAgo && dateKey(record.receivedAt) <= today).length;
+  const recentTotal = records.filter((record) =>
+    !record.deletedAt
+    && dateKey(record.receivedAt) >= thirtyDaysAgo
+    && dateKey(record.receivedAt) <= today).length;
+
   const load = allActive.map((member): LoadRow => {
     const memberRecords = recordsForMembers(records, [member]);
-    const recentReceived = memberRecords.filter((record) => dateKey(record.receivedAt) >= thirtyDaysAgo && dateKey(record.receivedAt) <= today).length;
+    const recentReceived = memberRecords.filter((record) =>
+      dateKey(record.receivedAt) >= thirtyDaysAgo
+      && dateKey(record.receivedAt) <= today).length;
     const pending = memberRecords.filter((record) => pendingAt(record, today));
     const oldest = pending.map((record) => dateKey(record.receivedAt)).filter(Boolean).sort()[0];
+
     return {
       member,
       recentReceived,
@@ -348,13 +388,21 @@ export function buildEfficiencyModel(
       pending: pending.length,
       pendingOverdue: pending.filter((record) => dateKey(record.deadlineAt) && dateKey(record.deadlineAt) < today).length,
       pendingOnTime: pending.filter((record) => !dateKey(record.deadlineAt) || dateKey(record.deadlineAt) >= today).length,
-      oldestPendingDays: oldest ? Math.max(0, Math.floor((parseDate(today).getTime() - parseDate(oldest).getTime()) / 86_400_000)) : null,
+      oldestPendingDays: oldest
+        ? Math.max(0, Math.floor((parseDate(today).getTime() - parseDate(oldest).getTime()) / 86_400_000))
+        : null,
     };
   }).sort((a, b) => a.member.fullName.localeCompare(b.member.fullName, "pt-BR"));
+
   const composition = scopeMembers.map((member): CompositionRow => {
     const memberCases = new Map<number, ProcessMovement>();
-    historicalRecordsForMembers(records, [member]).filter((record) => inRange(dateKey(record.receivedAt), range)).forEach((record) => memberCases.set(record.caseId, record));
+
+    historicalRecordsForMembers(records, [member])
+      .filter((record) => inRange(dateKey(record.receivedAt), range))
+      .forEach((record) => memberCases.set(record.caseId, record));
+
     const cases = [...memberCases.values()];
+
     return {
       member,
       common: cases.filter((record) => !record.sociallyRelevant && !record.extremelyComplex).length,
@@ -363,15 +411,23 @@ export function buildEfficiencyModel(
       both: cases.filter((record) => record.sociallyRelevant && record.extremelyComplex).length,
     };
   });
+
   const covered = coverageItems.filter((item) => item.status === "covered").length;
   const partial = coverageItems.filter((item) => item.status === "partial").length;
   const unavailable = coverageItems.filter((item) => item.status === "unavailable").length;
   const hasHistoricalScope = includedMembers.length > 0;
+
   return {
     range,
     scope,
     scopeMembers,
-    coverage: { covered, partial, unavailable, total: scopeMembers.length, isComplete: unavailable === 0 && partial === 0 },
+    coverage: {
+      covered,
+      partial,
+      unavailable,
+      total: scopeMembers.length,
+      isComplete: unavailable === 0 && partial === 0,
+    },
     selectedRecords,
     flow: hasHistoricalScope ? calculateEfficiencyFlow(selectedRecords, range, today) : null,
     time: hasHistoricalScope ? calculateEfficiencyTime(selectedRecords, range) : null,
@@ -386,10 +442,19 @@ export function buildEfficiencyModel(
 export function formatEfficiencyDuration(value: number | null, time?: EfficiencyTimeMetrics | null): string {
   if (value == null) return "Não disponível";
   if (value === 0) return time?.sameDay ? "Mesmo dia útil" : "Não disponível";
-  const formatted = value.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  const formatted = value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
   if (value < WORKDAY_HOURS) return `${formatted} ${value < 1.05 ? "h útil" : "h úteis"}`;
+
   const days = value / WORKDAY_HOURS;
-  return `${formatted} h úteis — ${days.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
+  return `${formatted} h úteis — ${days.toLocaleString("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
 }
 
 export function percentage(value: number, denominator: number): string {
