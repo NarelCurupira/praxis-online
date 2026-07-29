@@ -4,6 +4,7 @@ import { isStandaloneMode } from "../pwa";
 import { PRAXIS_VERSION } from "../version";
 
 const VERSIONS = [
+  { version:"0.10.6", title:"Otimização de desempenho", items:["Cálculo acelerado de horas úteis em históricos extensos","Redução das chamadas repetidas ao Supabase","Índice específico para a carga dos processos ativos","Atualização de providência e histórico em uma única operação","Diagnóstico separado entre busca e transformação dos dados"] },
   { version:"0.10.5", title:"Desempenho, robustez e experiência móvel", items:["Lazy loading das páginas e redução do bundle inicial","Carregamento sob demanda de PDF, planilhas e gráficos","Correção da tela inicial no celular e revisão das safe areas do iPhone","Fallback visual para páginas assíncronas e preservação do Error Boundary global","Revisão do workflow de qualidade, auditoria e dependências"] },
   { version:"0.10.3.4", title:"Passkey administrativa no backend", items:["RPCs e políticas administrativas aceitam passkey como autenticação forte","Auditoria, diagnóstico e logs técnicos liberados após login biométrico","Login por senha continua exigindo TOTP para acesso administrativo"] },
   { version:"0.10.3.3", title:"Passkey administrativa e acesso simplificado", items:["Auditoria e diagnóstico liberados por passkey","Reconhecimento ampliado de WebAuthn no JWT","Configuração biométrica transferida para Configurações","Login por senha ocultado após selecionar biometria"] },

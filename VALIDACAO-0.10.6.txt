@@ -1,0 +1,30 @@
+PRÁXIS WEB 0.10.6 — VALIDAÇÃO
+
+Data: 29/07/2026
+
+VALIDAÇÕES EXECUTADAS
+
+[OK] Consistência da versão 0.10.6
+[OK] TypeScript sem erros (tsc --noEmit)
+[OK] 67 testes automatizados aprovados
+[OK] Build de produção concluído
+[OK] Equivalência do cálculo de horas em 6.000 cenários aleatórios
+[OK] Fins de semana, feriados e jornada configurada preservados
+[OK] Compatibilidade do frontend antes da execução da nova RPC
+
+BENCHMARK ISOLADO DO CÁLCULO HISTÓRICO
+
+Cenário: 2.000 processos, cada um com intervalo de aproximadamente 900 dias.
+
+Implementação anterior: aproximadamente 2.200 ms
+Implementação 0.10.6: aproximadamente 15 ms
+
+O valor calculado foi preservado. O benchmark mede somente a transformação no
+cliente e não representa o tempo de rede ou de execução do Supabase.
+
+ARQUIVO SQL
+
+EXECUTAR-NO-SUPABASE-0.10.6.sql
+
+O arquivo cria dois índices idempotentes e a função transacional utilizada para
+alterar a providência e registrar o histórico em uma única chamada.

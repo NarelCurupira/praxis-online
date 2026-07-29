@@ -1,40 +1,9 @@
-import { requireSupabase } from "./supabase";
 import { toStorageTimestamp } from "./date";
 import type { AccessScope, ClosedPeriod, ProcessEditData, TeamMember, WorkspaceSettings } from "./types";
+import { workspaceContext } from "./workspaceContext";
 
-let workspaceOwner = "";
-let workspacePromise: Promise<string> | null = null;
 function fail(error: { message: string } | null): void { if (error) throw new Error(error.message); }
-async function context() {
-  const client = requireSupabase();
-  const { data: auth, error: authError } = await client.auth.getSession();
-  fail(authError);
-  const user = auth.session?.user;
-  if (!user) throw new Error("Sessão expirada. Entre novamente.");
-  if (workspaceOwner !== user.id) { workspaceOwner = user.id; workspacePromise = null; }
-  if (!workspacePromise) workspacePromise = (async () => {
-    const { data: profile, error: profileError } = await client
-      .from("profiles")
-      .select("current_workspace_id")
-      .eq("id", user.id)
-      .single();
-    fail(profileError);
-
-    if (profile?.current_workspace_id) return String(profile.current_workspace_id);
-
-    const { data, error } = await client
-      .from("workspace_members")
-      .select("workspace_id")
-      .eq("user_id", user.id)
-      .eq("active", true)
-      .limit(1)
-      .single();
-    fail(error);
-    if (!data?.workspace_id) throw new Error("Espaço de trabalho não encontrado.");
-    return String(data.workspace_id);
-  })();
-  return { client, user, workspaceId: await workspacePromise };
-}
+const context = workspaceContext;
 
 export const DEFAULT_WORKSPACE_SETTINGS: WorkspaceSettings = {
   workdayHours: 6,
