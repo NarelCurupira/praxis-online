@@ -1,8 +1,6 @@
-import { requireSupabase } from "./supabase";
 import { localDatePart, toStorageTimestamp, usefulElapsedHours } from "./date";
 import type { AdminAuditEntry, BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
-
-let workspacePromise: Promise<string> | null = null;
+import { clearWorkspaceContext, workspaceContext } from "./workspaceContext";
 
 function fail(error: { message: string } | null): void {
   if (error) throw new Error(error.message);
@@ -14,22 +12,7 @@ function requiredTimestamp(value: string, fieldName: string): string {
   return timestamp;
 }
 
-async function context() {
-  const client = requireSupabase();
-  const { data: userData, error: userError } = await client.auth.getUser();
-  fail(userError);
-  if (!userData.user) throw new Error("Sessão expirada. Entre novamente.");
-  if (!workspacePromise) workspacePromise = (async () => {
-    const { data: profile, error: profileError } = await client.from("profiles").select("current_workspace_id").eq("id", userData.user!.id).single();
-    fail(profileError);
-    if (profile?.current_workspace_id) return profile.current_workspace_id as string;
-    const { data, error } = await client.from("workspace_members").select("workspace_id").eq("user_id", userData.user!.id).eq("active", true).limit(1).single();
-    fail(error);
-    if (!data?.workspace_id) throw new Error("Sua conta ainda não possui um espaço de trabalho.");
-    return data.workspace_id as string;
-  })();
-  return { client, user: userData.user, workspaceId: await workspacePromise };
-}
+const context = workspaceContext;
 
 function caseRow(row: Record<string, any>): Record<string, any> {
   const value = row.cases;
@@ -175,6 +158,18 @@ export async function updateMovementStatus(movementId: number, status: WorkflowS
 
 export async function updateMovementAction(movementId: number, actionType: string): Promise<void> {
   const { client, user, workspaceId } = await context();
+  const optimized = await client.rpc("update_movement_action_v0106", {
+    target_movement: movementId,
+    new_action_type: actionType,
+  });
+  if (!optimized.error) return;
+  const missingOptimizedRpc = optimized.error.code === "PGRST202"
+    || optimized.error.code === "42883"
+    || /update_movement_action_v0106|schema cache/i.test(optimized.error.message);
+  if (!missingOptimizedRpc) fail(optimized.error);
+
+  // Compatibilidade durante a publicação: mantém a operação funcional caso
+  // o frontend seja atualizado antes da migração SQL da versão 0.10.6.
   const { data: old } = await client.from("movements").select("action_type").eq("workspace_id", workspaceId).eq("id", movementId).single();
   const { error } = await client.from("movements").update({ action_type: actionType, updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
@@ -593,7 +588,7 @@ export async function createManagedTeamMember(values: {
   });
   if (error) throw new Error(`Não foi possível cadastrar o usuário. ${error.message}`);
   if (data?.error) throw new Error(String(data.error));
-  workspacePromise = null;
+  clearWorkspaceContext();
   return { link: data?.link ?? null, emailSent: Boolean(data?.emailSent) };
 }
 

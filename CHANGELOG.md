@@ -1,3 +1,12 @@
+# Práxis 0.10.6 — Otimização de desempenho
+
+- Acelera o cálculo de horas úteis sem alterar fins de semana, feriados,
+  recessos ou jornada configurada.
+- Compartilha sessão e workspace entre as APIs para evitar consultas repetidas.
+- Reúne atualização de providência e histórico em uma única operação.
+- Adiciona índice parcial para a carga dos processos ativos.
+- Separa no diagnóstico o tempo de busca e o tempo de transformação dos dados.
+
 # Práxis 0.10.4 — Consolidação para a versão 1.0
 
 - Unifica o número da versão no pacote, interface e Service Worker.

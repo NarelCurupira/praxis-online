@@ -183,10 +183,54 @@ function workdayInstant(dateKey: string, clock: string): Date {
   return new Date(`${dateKey}T${clock}:00${PRAXIS_OFFSET}`);
 }
 
-function nextDateKey(value: string): string {
-  const date = localNoon(value);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+function dateKeyOrdinal(value: string): number {
+  const [year, month, day] = value.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86_400_000);
+}
+
+function usefulDaysInclusive(
+  startKey: string,
+  endKey: string,
+  excludedDates: ReadonlySet<string>,
+): number {
+  const startOrdinal = dateKeyOrdinal(startKey);
+  const endOrdinal = dateKeyOrdinal(endKey);
+  if (!Number.isFinite(startOrdinal) || !Number.isFinite(endOrdinal) || endOrdinal < startOrdinal) return 0;
+
+  const totalDays = endOrdinal - startOrdinal + 1;
+  const fullWeeks = Math.floor(totalDays / 7);
+  let usefulDays = fullWeeks * 5;
+  const remainder = totalDays % 7;
+  const startWeekday = localNoon(startKey).getUTCDay();
+
+  // No máximo seis iterações, independentemente da duração do processo.
+  for (let offset = 0; offset < remainder; offset += 1) {
+    const weekday = (startWeekday + offset) % 7;
+    if (weekday !== 0 && weekday !== 6) usefulDays += 1;
+  }
+
+  for (const excludedDate of excludedDates) {
+    if (excludedDate < startKey || excludedDate > endKey) continue;
+    const excludedOrdinal = dateKeyOrdinal(excludedDate);
+    if (!Number.isFinite(excludedOrdinal)) continue;
+    const weekday = localNoon(excludedDate).getUTCDay();
+    if (weekday !== 0 && weekday !== 6) usefulDays -= 1;
+  }
+
+  return Math.max(0, usefulDays);
+}
+
+function usefulIntersection(
+  dateKey: string,
+  intervalStart: number,
+  intervalEnd: number,
+  excludedDates: ReadonlySet<string>,
+): number {
+  if (!isUsefulDayKey(dateKey, excludedDates)) return 0;
+  const workStart = workdayInstant(dateKey, activeWorkdaySchedule.workdayStart).getTime();
+  const workEnd = workdayInstant(dateKey, activeWorkdaySchedule.workdayEnd).getTime();
+  if (workEnd <= workStart) return 0;
+  return Math.max(0, Math.min(intervalEnd, workEnd) - Math.max(intervalStart, workStart));
 }
 
 /**
@@ -210,23 +254,23 @@ export function usefulElapsedHours(
   const endKey = localDatePart(sentAt);
   if (!startKey || !endKey) return null;
 
-  let usefulMilliseconds = 0;
-  let cursorKey = startKey;
+  if (startKey === endKey) {
+    return usefulIntersection(startKey, start.getTime(), end.getTime(), excludedDates) / 3_600_000;
+  }
 
-  while (cursorKey <= endKey) {
-    if (isUsefulDayKey(cursorKey, excludedDates)) {
-      const workStart = workdayInstant(cursorKey, activeWorkdaySchedule.workdayStart);
-      const workEnd = workdayInstant(cursorKey, activeWorkdaySchedule.workdayEnd);
+  const workStart = workdayInstant(startKey, activeWorkdaySchedule.workdayStart).getTime();
+  const workEnd = workdayInstant(startKey, activeWorkdaySchedule.workdayEnd).getTime();
+  const workdayMilliseconds = Math.max(0, workEnd - workStart);
+  let usefulMilliseconds = usefulDaysInclusive(startKey, endKey, excludedDates) * workdayMilliseconds;
 
-      if (workEnd > workStart) {
-        const intervalStart = Math.max(start.getTime(), workStart.getTime());
-        const intervalEnd = Math.min(end.getTime(), workEnd.getTime());
-        if (intervalEnd > intervalStart) usefulMilliseconds += intervalEnd - intervalStart;
-      }
-    }
+  if (isUsefulDayKey(startKey, excludedDates)) {
+    usefulMilliseconds -= workdayMilliseconds;
+    usefulMilliseconds += usefulIntersection(startKey, start.getTime(), Number.POSITIVE_INFINITY, excludedDates);
+  }
 
-    if (cursorKey === endKey) break;
-    cursorKey = nextDateKey(cursorKey);
+  if (isUsefulDayKey(endKey, excludedDates)) {
+    usefulMilliseconds -= workdayMilliseconds;
+    usefulMilliseconds += usefulIntersection(endKey, Number.NEGATIVE_INFINITY, end.getTime(), excludedDates);
   }
 
   return usefulMilliseconds / 3_600_000;

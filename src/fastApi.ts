@@ -1,6 +1,8 @@
 import { usefulElapsedHours } from "./date";
+import { measureAsync, measureSync } from "./performanceMonitoring";
 import { requireSupabase } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ProcessMovement } from "./types";
+import { workspaceContext } from "./workspaceContext";
 
 const PAGE_SIZE = 1000;
 const CACHE_TTL_MS = 30_000;
@@ -12,7 +14,6 @@ const SELECT_MOVEMENT = [
 ].join(",");
 
 let workspaceOwner = "";
-let workspacePromise: Promise<string> | null = null;
 let inFlight: Promise<ProcessMovement[]> | null = null;
 let cachedAt = 0;
 let cachedRecords: ProcessMovement[] | null = null;
@@ -23,31 +24,17 @@ function fail(error: { message: string } | null): void {
 }
 
 async function fastContext() {
-  const client = requireSupabase();
-  const { data, error } = await client.auth.getSession();
-  fail(error);
-  const user = data.session?.user;
-  if (!user) throw new Error("Sessão expirada. Entre novamente.");
+  const context = await workspaceContext();
+  const { user } = context;
 
   if (workspaceOwner !== user.id) {
     workspaceOwner = user.id;
-    workspacePromise = null;
     cachedRecords = null;
     inFlight = null;
     exclusionsPromise = null;
   }
 
-  if (!workspacePromise) workspacePromise = (async () => {
-    const { data: profile, error: profileError } = await client.from("profiles").select("current_workspace_id").eq("id", user.id).single();
-    fail(profileError);
-    if (profile?.current_workspace_id) return String(profile.current_workspace_id);
-    const { data: member, error: memberError } = await client.from("workspace_members").select("workspace_id").eq("user_id", user.id).eq("active", true).limit(1).single();
-    fail(memberError);
-    if (!member?.workspace_id) throw new Error("Sua conta ainda não possui um espaço de trabalho.");
-    return String(member.workspace_id);
-  })();
-
-  return { client, workspaceId: await workspacePromise };
+  return context;
 }
 
 async function loadCalendarExclusions(client: ReturnType<typeof requireSupabase>, workspaceId: string): Promise<CalendarExclusion[]> {
@@ -113,35 +100,39 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
   };
 }
 
-async function fetchAllMovements(): Promise<ProcessMovement[]> {
+async function fetchAllMovements(prepareTransform?: () => Promise<void> | void): Promise<ProcessMovement[]> {
   const { client, workspaceId } = await fastContext();
   const base = (withCount = false) => client.from("movements").select(SELECT_MOVEMENT, withCount ? { count: "exact" } : undefined)
     .eq("workspace_id", workspaceId).is("deleted_at", null)
     .order("received_at", { ascending: false }).order("id", { ascending: false });
 
-  const [first, exclusionsResult] = await Promise.all([
-    base(true).range(0, PAGE_SIZE - 1),
-    loadCalendarExclusions(client, workspaceId),
-  ]);
-  fail(first.error);
+  const { rows, exclusionsResult } = await measureAsync("movements.fetch", async () => {
+    const [first, exclusions] = await Promise.all([
+      base(true).range(0, PAGE_SIZE - 1),
+      loadCalendarExclusions(client, workspaceId),
+    ]);
+    fail(first.error);
 
-  const total = first.count ?? first.data?.length ?? 0;
-  const pageCount = Math.ceil(total / PAGE_SIZE);
-  const remaining = pageCount > 1
-    ? await Promise.all(Array.from({ length: pageCount - 1 }, (_, index) => {
-        const start = (index + 1) * PAGE_SIZE;
-        return base(false).range(start, start + PAGE_SIZE - 1);
-      }))
-    : [];
+    const total = first.count ?? first.data?.length ?? 0;
+    const pageCount = Math.ceil(total / PAGE_SIZE);
+    const remaining = pageCount > 1
+      ? await Promise.all(Array.from({ length: pageCount - 1 }, (_, index) => {
+          const start = (index + 1) * PAGE_SIZE;
+          return base(false).range(start, start + PAGE_SIZE - 1);
+        }))
+      : [];
 
-  const rows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
-  for (const page of remaining) {
-    fail(page.error);
-    rows.push(...((page.data ?? []) as unknown as Record<string, unknown>[]));
-  }
+    const loadedRows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
+    for (const page of remaining) {
+      fail(page.error);
+      loadedRows.push(...((page.data ?? []) as unknown as Record<string, unknown>[]));
+    }
+    return { rows: loadedRows, exclusionsResult: exclusions };
+  });
 
+  await prepareTransform?.();
   const excludedDates = new Set(exclusionsResult.map((item) => item.date));
-  return rows.map((row) => mapMovement(row, excludedDates));
+  return measureSync("movements.transform", () => rows.map((row) => mapMovement(row, excludedDates)));
 }
 
 export function clearFastMovementCache(): void {
@@ -151,13 +142,13 @@ export function clearFastMovementCache(): void {
   exclusionsPromise = null;
 }
 
-export async function listMovementsFast(options: { force?: boolean } = {}): Promise<ProcessMovement[]> {
+export async function listMovementsFast(options: { force?: boolean; prepareTransform?: () => Promise<void> | void } = {}): Promise<ProcessMovement[]> {
   if (options.force) { cachedAt = 0; cachedRecords = null; inFlight = null; exclusionsPromise = null; }
   const now = Date.now();
   if (!options.force && cachedRecords && now - cachedAt < CACHE_TTL_MS) return cachedRecords;
   if (!options.force && inFlight) return inFlight;
 
-  inFlight = fetchAllMovements().then((records) => {
+  inFlight = fetchAllMovements(options.prepareTransform).then((records) => {
     cachedRecords = records;
     cachedAt = Date.now();
     return records;

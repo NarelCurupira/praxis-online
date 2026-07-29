@@ -22,3 +22,12 @@ export async function measureAsync<T>(operation: string, task: () => Promise<T>)
     void logSlowOperation(operation, finished - started);
   }
 }
+
+export function measureSync<T>(operation: string, task: () => T): T {
+  const started = typeof performance === "undefined" ? Date.now() : performance.now();
+  try { return task(); }
+  finally {
+    const finished = typeof performance === "undefined" ? Date.now() : performance.now();
+    void logSlowOperation(operation, finished - started);
+  }
+}

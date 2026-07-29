@@ -82,8 +82,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   async function reloadAll() {
+    const settingsPromise = getWorkspaceSettings();
     const [nextSettings, nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
-      getWorkspaceSettings(), listMovementsFast({ force: true }), listClassSettingsFast(), listCalendarExclusionsFast(), listGovernanceMembers(), listClosedPeriods(),
+      settingsPromise,
+      listMovementsFast({
+        force: true,
+        prepareTransform: async () => configureWorkdaySchedule(await settingsPromise),
+      }),
+      listClassSettingsFast(), listCalendarExclusionsFast(), listGovernanceMembers(), listClosedPeriods(),
     ]));
     configureWorkdaySchedule(nextSettings);
     setRecords(nextRecords);

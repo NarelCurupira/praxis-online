@@ -83,6 +83,22 @@ test("fim de semana e data sem expediente não entram no tempo útil", () => {
   assert.equal(hours, 1);
 });
 
+test("tempo útil de período histórico preserva fins de semana e exclusões", () => {
+  configureWorkdaySchedule({
+    workdayStart: "08:00",
+    workdayEnd: "14:00",
+    workdayHours: 6,
+  });
+
+  const hours = usefulElapsedHours(
+    "2024-01-02T11:00:00.000Z",
+    "2026-06-20T11:00:00.000Z",
+    new Set(["2024-01-15", "2025-04-21", "2026-01-01"]),
+  );
+
+  assert.equal(hours, 3846);
+});
+
 test("relatório infere cobertura pelos registros existentes", () => {
   const member: TeamMember = {
     userId: "a",
