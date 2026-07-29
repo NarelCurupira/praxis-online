@@ -50,12 +50,23 @@ async function fastContext() {
   return { client, workspaceId: await workspacePromise };
 }
 
-
 async function loadCalendarExclusions(client: ReturnType<typeof requireSupabase>, workspaceId: string): Promise<CalendarExclusion[]> {
-  if (!exclusionsPromise) exclusionsPromise = client.from("calendar_exclusions").select("date, label").eq("workspace_id", workspaceId).order("date").then(({ data, error }) => {
-    fail(error);
-    return (data ?? []) as CalendarExclusion[];
-  }).catch((error) => { exclusionsPromise = null; throw error; });
+  if (!exclusionsPromise) {
+    exclusionsPromise = (async () => {
+      try {
+        const { data, error } = await client
+          .from("calendar_exclusions")
+          .select("date, label")
+          .eq("workspace_id", workspaceId)
+          .order("date");
+        fail(error);
+        return (data ?? []) as CalendarExclusion[];
+      } catch (error) {
+        exclusionsPromise = null;
+        throw error;
+      }
+    })();
+  }
   return exclusionsPromise;
 }
 
@@ -64,7 +75,6 @@ export async function listCalendarExclusionsFast(options: { force?: boolean } = 
   if (options.force) exclusionsPromise = null;
   return loadCalendarExclusions(client, workspaceId);
 }
-
 
 export async function listClassSettingsFast(): Promise<ClassSetting[]> {
   const { client, workspaceId } = await fastContext();
@@ -124,10 +134,10 @@ async function fetchAllMovements(): Promise<ProcessMovement[]> {
       }))
     : [];
 
-  const rows: Record<string, unknown>[] = [...(first.data ?? [])] as Record<string, unknown>[];
+  const rows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
   for (const page of remaining) {
     fail(page.error);
-    rows.push(...((page.data ?? []) as Record<string, unknown>[]));
+    rows.push(...((page.data ?? []) as unknown as Record<string, unknown>[]));
   }
 
   const excludedDates = new Set(exclusionsResult.map((item) => item.date));
