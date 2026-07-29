@@ -3,7 +3,6 @@ import { CalendarRange, FileDown, FileSpreadsheet, FileText, ShieldCheck } from 
 import { localDatePart } from "../date";
 import { actionLabel } from "../labels";
 import { buildReportFileName, buildReportModel, effectiveCoverageSince, reportScopeInfo, type HighlightFilter, type ReportMode } from "../reporting";
-import { generateConfiguredManagementReportPdf } from "../reportPdfConfigured";
 import type { ProcessMovement, TeamMember, WorkspaceSettings } from "../types";
 import { PRAXIS_VERSION } from "../version";
 import { measureAsync } from "../performanceMonitoring";
@@ -59,6 +58,7 @@ export function ReportsPage({ records, members, currentUserId, onSave, accessSco
     try {
       const comparisonModel = compare && !invalidPeriod && comparableMembers.length ? buildReportModel(records, comparableMembers, { ...filters, startDate: previousStart, endDate: previousEnd }) : undefined;
       const comparisonCurrentModel = compare && !invalidPeriod && comparableMembers.length ? buildReportModel(records, comparableMembers, filters) : undefined;
+      const { generateConfiguredManagementReportPdf } = await import("../reportPdfConfigured");
       const bytes = await measureAsync("reports.generatePdf", async () => generateConfiguredManagementReportPdf(model, { mode, members, settings, comparisonModel, comparisonCurrentModel }));
       setMessage(await onSave(bytes, buildReportFileName(mode, model, members)));
     } catch (error) { setMessage(`Não foi possível gerar o relatório: ${String(error)}`); } finally { setBusy(false); }

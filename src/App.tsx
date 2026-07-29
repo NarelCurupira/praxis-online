@@ -1,41 +1,39 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Cloud, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, Sun } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { closePeriod, getWorkspaceSettings, listClosedPeriods, listGovernanceMembers, reopenPeriod, saveMemberAccess, saveWorkspaceSettings, updateMovementGoverned } from "./governanceApi";
 import { resolveAccess } from "./access";
 import { sessionUsesPasskey } from "./authenticationMethod";
-import { AboutPage } from "./components/AboutPage";
-import { AdminAuditPage } from "./components/AdminAuditPage";
+const AboutPage = lazy(() => import("./components/AboutPage").then((module) => ({ default: module.AboutPage })));
+const AdminAuditPage = lazy(() => import("./components/AdminAuditPage").then((module) => ({ default: module.AdminAuditPage })));
 import { AuthPage } from "./components/AuthPage";
-import { Dashboard } from "./components/Dashboard";
-import { DataQualityPage } from "./components/DataQualityPage";
+const Dashboard = lazy(() => import("./components/Dashboard").then((module) => ({ default: module.Dashboard })));
+const DataQualityPage = lazy(() => import("./components/DataQualityPage").then((module) => ({ default: module.DataQualityPage })));
 import { EditProcessModal } from "./components/EditProcessModal";
-import { EfficiencyPage } from "./components/EfficiencyPage";
-import { ImportPage } from "./components/ImportPage";
+const EfficiencyPage = lazy(() => import("./components/EfficiencyPage").then((module) => ({ default: module.EfficiencyPage })));
+const ImportPage = lazy(() => import("./components/ImportPage").then((module) => ({ default: module.ImportPage })));
 import { MfaGate } from "./components/MfaGate";
 import { ProcessModal } from "./components/ProcessModal";
-import { PersonalSettingsPage } from "./components/PersonalSettingsPage";
+const PersonalSettingsPage = lazy(() => import("./components/PersonalSettingsPage").then((module) => ({ default: module.PersonalSettingsPage })));
 import { ProcessTable } from "./components/ProcessTable";
-import { ReportsPage } from "./components/ReportsPage";
+const ReportsPage = lazy(() => import("./components/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
-import { SettingsPage } from "./components/SettingsPage";
+const SettingsPage = lazy(() => import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 import { SetupPage } from "./components/SetupPage";
 import { Sidebar } from "./components/Sidebar";
-import { TeamPage } from "./components/TeamPage";
-import { TrashPage } from "./components/TrashPage";
+const TeamPage = lazy(() => import("./components/TeamPage").then((module) => ({ default: module.TeamPage })));
+const TrashPage = lazy(() => import("./components/TrashPage").then((module) => ({ default: module.TrashPage })));
 import { supabase, supabaseConfigured } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
 import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
-import { PRAXIS_VERSION } from "./version";
+import { SplashScreen } from "./components/SplashScreen";
 import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast } from "./fastApi";
 
-function LoadingScreen({ message }: { message: string }) {
-  return <div className="splash-screen"><img className="splash-logo" src="/praxis-logo.png" /><div className="splash-version">Práxis Web · Versão {PRAXIS_VERSION}</div><div className="splash-progress"><span className="splash-spinner" /><span>{message}</span></div></div>;
-}
+const LoadingScreen = SplashScreen;
 
 function storedBoolean(key: string): boolean {
   try { return localStorage.getItem(key) === "true"; }
@@ -225,7 +223,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         <button className="icon-button" onClick={() => { try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } void supabase?.auth.signOut(); }}><LogOut /></button>
         {access.canCreateProcess && <button className="button primary" onClick={() => setModal(true)}><Plus />Novo processo</button>}
       </header>
-      <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>
+      <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}><Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
         {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} isAdmin={access.canViewTeamDashboard} />}
         {page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
         {page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
@@ -243,7 +241,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} /> : <PersonalSettingsPage />)}
         {page === "audit" && access.canViewAudit && <AdminAuditPage />}
         {page === "about" && <AboutPage />}
-      </div>
+      </Suspense></div>
     </main>
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}

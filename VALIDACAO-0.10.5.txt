@@ -1,0 +1,26 @@
+PRÁXIS WEB 0.10.5 — VALIDAÇÃO
+
+Verificações concluídas neste pacote:
+- versão consolidada em package.json, package-lock.json, src/version.ts e public/sw.js;
+- arquivos JSON validados;
+- revisão estrutural das alterações de lazy loading, code splitting e tela móvel;
+- preservação do Error Boundary global já existente;
+- confirmação de ausência de arquivo Wrangler no repositório recebido.
+
+Verificações que deverão ser realizadas pelo GitHub Actions após o upload:
+- npm ci;
+- npm audit --omit=dev --audit-level=high;
+- TypeScript;
+- testes automatizados;
+- build de produção.
+
+A execução integral local não foi possível no ambiente de preparação porque o espelho de pacotes disponível não conseguiu baixar algumas dependências e o pacote externo do SheetJS. Isso não indica erro do projeto; o GitHub Actions deverá realizar a validação definitiva.
+
+Testes manuais após o deploy:
+- tela inicial em celular e iPhone;
+- login por senha e passkey;
+- PWA instalado;
+- Visão Geral, Eficiência, Relatórios, Importação e Sobre;
+- geração de PDF;
+- importação e exportação de planilhas;
+- recarga após erro recuperável.

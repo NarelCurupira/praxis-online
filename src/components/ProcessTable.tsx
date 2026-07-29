@@ -13,7 +13,6 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { daysUntil, localDatePart } from "../date";
 import { actionLabel } from "../labels";
 import type { MovementSortField, ProcessMovement, ProcessPermissions, TeamMember, WorkflowStatus } from "../types";
@@ -272,6 +271,7 @@ export function ProcessTable({
     if (!permissions.canExport) return;
     setMessage("");
     try {
+      const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelRows(filtered)), "Processos filtrados");
       const bytes = Array.from(new Uint8Array(XLSX.write(workbook, { bookType: "xlsx", type: "array" })));
