@@ -4,6 +4,7 @@ import { isStandaloneMode } from "../pwa";
 import { PRAXIS_VERSION } from "../version";
 
 const VERSIONS = [
+  { version:"0.10.5", title:"Desempenho, robustez e experiência móvel", items:["Lazy loading das páginas e redução do bundle inicial","Carregamento sob demanda de PDF, planilhas e gráficos","Correção da tela inicial no celular e revisão das safe areas do iPhone","Fallback visual para páginas assíncronas e preservação do Error Boundary global","Revisão do workflow de qualidade, auditoria e dependências"] },
   { version:"0.10.3.4", title:"Passkey administrativa no backend", items:["RPCs e políticas administrativas aceitam passkey como autenticação forte","Auditoria, diagnóstico e logs técnicos liberados após login biométrico","Login por senha continua exigindo TOTP para acesso administrativo"] },
   { version:"0.10.3.3", title:"Passkey administrativa e acesso simplificado", items:["Auditoria e diagnóstico liberados por passkey","Reconhecimento ampliado de WebAuthn no JWT","Configuração biométrica transferida para Configurações","Login por senha ocultado após selecionar biometria"] },
   { version:"0.10.3.2", title:"Autenticação forte administrativa", items:["Passkey libera todas as funções administrativas","Senha continua protegida por TOTP","Operações destrutivas permitem confirmar por passkey ou código do autenticador"] },
