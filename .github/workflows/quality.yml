@@ -15,21 +15,24 @@ concurrency:
 
 jobs:
   quality:
-    name: Tipos, testes e build
+    name: Tipos, testes, auditoria e build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Baixar código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Preparar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
 
       - name: Instalar dependências reproduzíveis
         run: npm ci
+
+      - name: Verificar vulnerabilidades de produção
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Verificar versão consolidada
         run: npm run verify:version
@@ -44,7 +47,7 @@ jobs:
         run: npm run build
 
       - name: Publicar artefato da build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: praxis-dist-${{ github.sha }}
           path: dist
