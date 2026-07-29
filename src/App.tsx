@@ -254,7 +254,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     try { passkeyAuthenticated = sessionStorage.getItem("praxis-authenticated-with-passkey") === "true"; }
     catch { /* O JWT continua sendo a fonte principal. */ }
   }
-  const requiresTotp = (access.role === "admin" || currentMember?.mfaRequired) && !passkeyAuthenticated;
+ const requiresTotp = access.role === "admin" && !passkeyAuthenticated;
   return requiresTotp ? <MfaGate>{shell}</MfaGate> : shell;
 }
 
