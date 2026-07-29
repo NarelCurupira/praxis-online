@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.5-mfa-admin-only-1";
+const CACHE_NAME = "praxis-shell-0.10.5-workspace-role-1";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/praxis-icon.png"];
 
 self.addEventListener("install", (event) => {
@@ -23,7 +23,6 @@ self.addEventListener("activate", (event) => {
 
 async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-
   try {
     const response = await fetch(request, { cache: "no-store" });
     if (response.ok) await cache.put(request, response.clone());
@@ -56,7 +55,6 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
-
       return fetch(request).then((response) => {
         if (response.ok) {
           const copy = response.clone();

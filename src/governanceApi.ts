@@ -13,8 +13,22 @@ async function context() {
   if (!user) throw new Error("Sessão expirada. Entre novamente.");
   if (workspaceOwner !== user.id) { workspaceOwner = user.id; workspacePromise = null; }
   if (!workspacePromise) workspacePromise = (async () => {
-    const { data, error } = await client.from("workspace_members").select("workspace_id")
-      .eq("user_id", user.id).eq("active", true).limit(1).single();
+    const { data: profile, error: profileError } = await client
+      .from("profiles")
+      .select("current_workspace_id")
+      .eq("id", user.id)
+      .single();
+    fail(profileError);
+
+    if (profile?.current_workspace_id) return String(profile.current_workspace_id);
+
+    const { data, error } = await client
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .limit(1)
+      .single();
     fail(error);
     if (!data?.workspace_id) throw new Error("Espaço de trabalho não encontrado.");
     return String(data.workspace_id);
@@ -87,12 +101,48 @@ function mapGovernanceMember(item: Record<string, unknown>): TeamMember {
 }
 
 export async function listGovernanceMembers(): Promise<TeamMember[]> {
-  const { client } = await context();
+  const { client, user, workspaceId } = await context();
+
   const current = await client.rpc("list_current_workspace_members_v091");
-  if (!current.error) return (current.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
-  const legacy = await client.rpc("list_current_workspace_members_v09");
-  fail(legacy.error);
-  return (legacy.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
+  let members: TeamMember[];
+
+  if (!current.error) {
+    members = (current.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
+  } else {
+    const legacy = await client.rpc("list_current_workspace_members_v09");
+    fail(legacy.error);
+    members = (legacy.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
+  }
+
+  // Um usuário pode possuir mais de um workspace ativo. A RPC histórica retorna
+  // membros de todos eles; por isso, o papel do usuário autenticado deve ser
+  // confirmado especificamente no current_workspace_id.
+  const { data: ownMembership, error: membershipError } = await client
+    .from("workspace_members")
+    .select("role, active, mfa_required, historico_disponivel_desde, efficiency_access, reports_access")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", user.id)
+    .eq("active", true)
+    .maybeSingle();
+  fail(membershipError);
+
+  if (ownMembership) {
+    members = members.map((member) => member.userId !== user.id ? member : {
+      ...member,
+      role: ownMembership.role as TeamMember["role"],
+      active: Boolean(ownMembership.active),
+      mfaRequired: Boolean(ownMembership.mfa_required),
+      historicalCoverageSince: ownMembership.historico_disponivel_desde
+        ? String(ownMembership.historico_disponivel_desde)
+        : null,
+      efficiencyAccess: ownMembership.efficiency_access as AccessScope,
+      reportsAccess: ownMembership.reports_access as AccessScope,
+    });
+  }
+
+  // Evita que associações duplicadas do mesmo usuário em workspaces distintos
+  // produzam múltiplas entradas e façam a primeira função prevalecer.
+  return [...new Map(members.map((member) => [member.userId, member])).values()];
 }
 
 export async function saveMemberAccess(userId: string, efficiencyAccess: AccessScope, reportsAccess: AccessScope, displayName?: string | null): Promise<void> {
