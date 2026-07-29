@@ -1,10 +1,34 @@
-CORREÇÃO DO GITHUB ACTIONS — PRÁXIS 0.10.4
+CORREÇÃO PRÁXIS WEB 0.10.5 — MFA E WORKFLOW
 
-Substitua estes arquivos preservando os caminhos:
-- src/components/ReportsPage.tsx
-- src/fastApi.ts
-- src/governanceApi.ts
+ARQUIVOS
+- src/components/MfaGate.tsx
 - .github/workflows/quality.yml
 
-A correção resolve os erros de TypeScript indicados na primeira execução do workflow.
-Não há migração SQL e não há alteração no package-lock.json.
+CORREÇÃO DO MFA
+- impede que a tela de código apareça antes da consulta dos fatores;
+- identifica fatores TOTP verificados;
+- remove fatores TOTP incompletos, cujo QR Code não pode ser recuperado;
+- cria nova inscrição e apresenta um novo QR Code;
+- substitui mensagens "{}" por mensagens legíveis;
+- inclui botão "Tentar novamente";
+- mantém o acesso por código para usuários que já concluíram o cadastro.
+
+CORREÇÃO DO WORKFLOW
+- actions/checkout@v6;
+- actions/setup-node@v6;
+- actions/upload-artifact@v7;
+- npm audit das dependências de produção;
+- preservação de versão, TypeScript, testes e build.
+
+UPLOAD
+Extraia este ZIP e envie as pastas .github e src pelo recurso Add file > Upload files.
+
+MENSAGEM SUGERIDA
+Correção 0.10.5 — MFA de usuários e atualização do workflow
+
+VALIDAÇÃO APÓS O UPLOAD
+1. Confira o GitHub Actions.
+2. Peça a Hurias para sair completamente da conta e entrar novamente.
+3. Deve aparecer um novo QR Code.
+4. Após escanear, informe o código de seis dígitos.
+5. Em novo login, deverá aparecer apenas a solicitação do código, sem novo QR Code.
