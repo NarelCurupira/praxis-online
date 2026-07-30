@@ -1,8 +1,8 @@
 "use client";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { Cloud, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, Sun } from "lucide-react";
+import { ArrowUp, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Sun, WifiOff } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
-import { clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
+import { archiveMovements, clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, deleteMovements, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementActions, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
 import { closePeriod, getWorkspaceSettings, listClosedPeriods, listGovernanceMembers, reopenPeriod, saveMemberAccess, saveWorkspaceSettings, updateMovementGoverned } from "./governanceApi";
 import { resolveAccess } from "./access";
 import { sessionUsesPasskey } from "./authenticationMethod";
@@ -26,12 +26,13 @@ import { Sidebar } from "./components/Sidebar";
 const TeamPage = lazy(() => import("./components/TeamPage").then((module) => ({ default: module.TeamPage })));
 const TrashPage = lazy(() => import("./components/TrashPage").then((module) => ({ default: module.TrashPage })));
 import { supabase, supabaseConfigured } from "./supabase";
-import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
+import type { CalendarExclusion, ClassSetting, ClosedPeriod, Page, ProcessEditData, ProcessFormData, ProcessListPreset, ProcessMovement, TeamMember, WorkflowStatus, WorkspaceSettings } from "./types";
 import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
 import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast } from "./fastApi";
+import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 
 const LoadingScreen = SplashScreen;
 
@@ -74,6 +75,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [tableFocusMode, setTableFocusMode] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [online, setOnline] = useState(() => navigator.onLine);
+  const [processPreset, setProcessPreset] = useState<ProcessListPreset | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   async function reload() {
     const nextRecords = await measureAsync("movements.reload", () => listMovementsFast({ force: true }));
@@ -111,6 +114,18 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     return () => { window.removeEventListener("online", markOnline); window.removeEventListener("offline", markOffline); };
   }, []);
 
+  useEffect(() => {
+    const update = () => setShowBackToTop(window.scrollY > 560);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  const mobileNavigation = useMobileNavigation({
+    onOpenSidebar: () => setSidebarOpen(true),
+    onRefresh: reloadAll,
+  });
+
   const currentMember = members.find((member) => member.userId === session.user.id);
   const access = useMemo(() => resolveAccess(currentMember), [currentMember]);
 
@@ -141,6 +156,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setRecords((current) => [created, ...current.filter((item) => item.movementId !== created.movementId)]);
     setDataVersion((value) => value + 1);
     setModal(false);
+    hapticFeedback("success");
   }
 
   async function edit(id: number, data: ProcessEditData) {
@@ -160,6 +176,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }));
     setDataVersion((value) => value + 1);
     setEditing(null);
+    hapticFeedback("success");
   }
 
   async function status(id: number, value: WorkflowStatus, actionType?: string) {
@@ -176,17 +193,20 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       elapsedHours: value === "Enviado" ? usefulElapsedHours(record.receivedAt, sentAt, excludedDates) : null,
     }));
     setDataVersion((value) => value + 1);
+    hapticFeedback("success");
   }
 
   async function action(id: number, actionType: string) {
     await measureAsync("movements.action", () => updateMovementAction(id, actionType));
     setRecords((current) => current.map((record) => record.movementId === id ? { ...record, actionType } : record));
+    hapticFeedback("success");
   }
 
   async function assignment(id: number, userId: string) {
     await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId));
     const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
     setRecords((current) => current.map((record) => record.movementId === id ? { ...record, assignedTo: userId, assignedName } : record));
+    hapticFeedback("success");
   }
 
   async function bulk(ids: number[], userId: string) {
@@ -196,10 +216,32 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, assignedTo: userId, assignedName } : record));
   }
 
+  async function bulkAction(ids: number[], actionType: string) {
+    await measureAsync("movements.bulkAction", () => updateMovementActions(ids, actionType));
+    const selected = new Set(ids);
+    setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, actionType } : record));
+  }
+
+  async function bulkArchive(ids: number[]) {
+    await measureAsync("movements.bulkArchive", () => archiveMovements(ids));
+    const selected = new Set(ids);
+    const archivedAt = new Date().toISOString();
+    setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, archivedAt } : record));
+    setDataVersion((value) => value + 1);
+  }
+
+  async function bulkDelete(ids: number[]) {
+    await measureAsync("movements.bulkDelete", () => deleteMovements(ids));
+    const selected = new Set(ids);
+    setRecords((current) => current.filter((record) => !selected.has(record.movementId)));
+    setDataVersion((value) => value + 1);
+  }
+
   async function remove(id: number) {
     await measureAsync("movements.delete", () => deleteMovement(id));
     setRecords((current) => current.filter((record) => record.movementId !== id));
     setDataVersion((value) => value + 1);
+    hapticFeedback("success");
   }
 
   if (loading || !settings) return <LoadingScreen message="Preparando seus processos..." />;
@@ -212,12 +254,13 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   ].filter(Boolean).join(" ");
 
   const shell = <div className={appClassName}>
-    <Sidebar page={page} access={access} onChange={(nextPage) => { setPage(nextPage); setSidebarOpen(false); setTableFocusMode(false); }} />
+    <Sidebar page={page} access={access} onChange={(nextPage) => { hapticFeedback(); setPage(nextPage); setProcessPreset(null); setSidebarOpen(false); setTableFocusMode(false); }} />
+    {sidebarOpen && <button type="button" className="sidebar-backdrop" aria-label="Fechar menu lateral" onClick={() => setSidebarOpen(false)} />}
     <main>
       <header className="topbar">
-        <button className="mobile-menu" onClick={() => setSidebarOpen(!sidebarOpen)}><Menu /></button>
+        <button className="mobile-menu icon-button" aria-label="Abrir menu" onClick={() => { hapticFeedback(); setSidebarOpen(!sidebarOpen); }}><Menu /></button>
         <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
-        <div className={`online-indicator ${online ? "" : "offline"}`}><Cloud size={17} /><span>{online ? "Online" : "Sem conexão"}</span></div>
+        {!online && <div className="online-indicator offline" role="status"><WifiOff size={17} /><span>Sem conexão</span></div>}
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">
@@ -227,12 +270,13 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         </div>
         <button className="icon-button" title={theme === "dark" ? "Usar modo claro" : "Usar modo noturno"} onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
         <button className="icon-button" onClick={() => { try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } void supabase?.auth.signOut(); }}><LogOut /></button>
-        {access.canCreateProcess && <button className="button primary" onClick={() => setModal(true)}><Plus />Novo processo</button>}
+        {access.canCreateProcess && <button className="button primary new-process-button" aria-label="Novo processo" onClick={() => { hapticFeedback(); setModal(true); }}><Plus /><span>Novo processo</span></button>}
       </header>
+      <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} style={{ transform: `translate(-50%, ${mobileNavigation.pullDistance - 58}px)` }} aria-hidden={!mobileNavigation.pullDistance}><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : mobileNavigation.pullDistance >= 72 ? "Solte para atualizar" : "Puxe para atualizar"}</span></div>
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}><Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
-        {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} isAdmin={access.canViewTeamDashboard} />}
-        {page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
-        {page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+        {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}
+        {page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
+        {page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
         {page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
         {page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
         {page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk} />}
@@ -251,6 +295,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     </main>
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
+    {showBackToTop && <button type="button" className="back-to-top" aria-label="Voltar ao topo" onClick={() => { hapticFeedback(); window.scrollTo({ top: 0, behavior: "smooth" }); }}><ArrowUp size={20} /><span>Voltar ao topo</span></button>}
   </div>;
 
   let passkeyAuthenticated = sessionUsesPasskey(session);

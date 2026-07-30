@@ -1,5 +1,16 @@
-const CACHE_NAME = "praxis-shell-0.10.6-performance-1";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/praxis-icon.png"];
+const CACHE_NAME = "praxis-shell-0.10.7-mobile-brand-1";
+const SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/offline.html",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/brand/logo-horizontal-light.webp",
+  "/brand/logo-horizontal-dark.webp",
+  "/brand/empty-processes.webp",
+  "/brand/empty-search.webp",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)));
@@ -30,6 +41,10 @@ async function networkFirst(request) {
   } catch {
     const cached = await cache.match(request);
     if (cached) return cached;
+    if (request.mode === "navigate") {
+      const offline = await cache.match("/offline.html");
+      if (offline) return offline;
+    }
     throw new Error("Recurso indisponível na rede e no cache.");
   }
 }

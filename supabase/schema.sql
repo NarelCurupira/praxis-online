@@ -1,4 +1,4 @@
--- Práxis Online 0.8.2
+-- Práxis Online 0.10.7
 -- Para novas instalações. Em bancos existentes, execute primeiro
 -- supabase/migrations/20260724_fix_received_at_timestamptz.sql.
 
@@ -75,6 +75,7 @@ create table if not exists public.movements (
   document_path text not null default '',
   elapsed_hours numeric,
   deleted_at timestamptz,
+  archived_at timestamptz,
   row_version integer not null default 1,
   created_by uuid references auth.users(id),
   updated_by uuid references auth.users(id),
@@ -102,6 +103,8 @@ create table if not exists public.change_history (
   movement_id bigint not null references public.movements(id) on delete cascade,
   changed_by uuid references auth.users(id),
   changed_at timestamptz not null default now(),
+  actor_name text not null default '',
+  action_name text not null default 'Alteração',
   field_name text not null,
   old_value text not null default '',
   new_value text not null default ''

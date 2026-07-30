@@ -3,7 +3,8 @@ import { Cloud, Database, KeyRound } from "lucide-react";
 export function SetupPage() {
   return <div className="auth-shell">
     <section className="auth-card setup-card">
-      <img src="/praxis-logo.png" alt="Práxis — Controle de Processos" />
+      <img className="auth-logo auth-logo-light" src="/brand/logo-horizontal-light.webp" alt="Práxis — Controle de Processos" />
+      <img className="auth-logo auth-logo-dark" src="/brand/logo-horizontal-dark.webp" alt="Práxis — Controle de Processos" />
       <p className="eyebrow">Práxis Online</p>
       <h1>Conecte o projeto ao Supabase</h1>
       <p>A interface online está pronta para receber as credenciais do projeto gratuito. Nenhum dado é armazenado enquanto a conexão não estiver configurada.</p>
@@ -16,4 +17,3 @@ export function SetupPage() {
     </section>
   </div>;
 }
-

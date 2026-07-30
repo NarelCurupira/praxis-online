@@ -1,0 +1,31 @@
+PRÁXIS ONLINE 0.10.7 — VALIDAÇÃO
+
+Data: 29/07/2026
+
+VALIDAÇÕES EXECUTADAS
+
+[OK] Consistência da versão 0.10.7
+[OK] TypeScript sem erros (tsc --noEmit)
+[OK] 74 testes automatizados aprovados
+[OK] Testes novos de qualidade de dados aprovados
+[OK] Manifesto PWA, ícones comuns e maskable verificados
+[OK] Build Vite de produção concluído
+[OK] Divisão de código e carregamento sob demanda preservados
+
+VALIDAÇÕES FUNCIONAIS IMPLEMENTADAS
+
+[OK] Permissões usadas para exibir cada operação em lote
+[OK] Permissões revalidadas nas RPCs do Supabase
+[OK] Arquivamento separado da lixeira
+[OK] Histórico do processo separado da auditoria administrativa
+[OK] Processos enviados sem data com diagnóstico direto
+[OK] Classificação da intervenção ausente com severidade Leve
+[OK] Indicadores e pontos do gráfico conectados aos filtros da lista
+[OK] Safe areas de iPhone preservadas
+
+ARQUIVO SQL
+
+EXECUTAR-NO-SUPABASE-0.10.7.sql
+
+A query é idempotente para colunas, índices e funções e deve ser executada
+antes da publicação do frontend 0.10.7.

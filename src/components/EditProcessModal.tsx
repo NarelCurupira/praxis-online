@@ -11,6 +11,20 @@ import { getMovementProvenance, type MovementProvenance } from "../intelligentIm
 interface Props { record: ProcessMovement; classes: ClassSetting[]; members: TeamMember[]; permissions: ProcessPermissions; onClose: () => void; onSave: (movementId: number, data: ProcessEditData) => Promise<void>; }
 const standardActions = ["Manifestação", "DI", "Diligência", "Prevenção", "Suspeição", "Ciência", "CTRZ", "Recurso", "Sobrestamento", "Ratifico"];
 
+function historyValue(fieldName: string, value: string, members: TeamMember[]): string {
+  if (!value) return "(vazio)";
+  if (fieldName === "Responsável") {
+    return members.find((member) => member.userId === value)?.fullName || value;
+  }
+  if (fieldName === "Entrada" || fieldName === "Data de envio") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return formatDate(parsed.toISOString(), true);
+  }
+  if (value === "true") return "Sim";
+  if (value === "false") return "Não";
+  return value;
+}
+
 export function EditProcessModal({ record, classes, members, permissions, onClose, onSave }: Props) {
   const [form, setForm] = useState<ProcessEditData>({ assignedTo: record.assignedTo, receivedAt: toLocalInput(new Date(record.receivedAt)), receivedTimePrecise: Boolean(record.receivedTimePrecise), sentAt: record.sentAt ? toLocalInput(new Date(record.sentAt)) : null, sentTimePrecise: Boolean(record.sentTimePrecise), className: record.className, subject: record.subject, deadlineAt: record.deadlineAt.slice(0, 10), actionType: record.actionType, notes: record.notes, priority: record.priority, documentPath: record.documentPath, sociallyRelevant: record.sociallyRelevant, extremelyComplex: record.extremelyComplex, socialTheme: record.socialTheme, relevanceReason: record.relevanceReason, fundamentalRight: record.fundamentalRight, affectedGroup: record.affectedGroup, reach: record.reach, territorialScope: record.territorialScope, impactType: record.impactType, socialResult: record.socialResult, sdgs: record.sdgs, complexityReason: record.complexityReason, sensitiveChangeReason: "" });
   const [saving, setSaving] = useState(false); const [history, setHistory] = useState<ChangeHistory[]>([]); const [showHistory, setShowHistory] = useState(false); const [provenance, setProvenance] = useState<MovementProvenance | null>(null);
@@ -40,7 +54,7 @@ export function EditProcessModal({ record, classes, members, permissions, onClos
     </div>
     {provenance && provenance.dataOrigin !== "manual" && <div className="data-provenance-note"><strong>Origem dos dados</strong><span>Importado{provenance.sourceFileName ? ` de ${provenance.sourceFileName}` : ""}{provenance.batchCode ? ` · ${provenance.batchCode}` : ""}.</span><small>Entrada: {provenance.receivedOrigin === "imported_confirmed" ? "horário confirmado na planilha" : provenance.receivedOrigin === "imported_date_only" ? "somente data disponível" : provenance.receivedOrigin}. Envio: {provenance.sentOrigin === "system_estimated" ? "estimado pelo sistema" : provenance.sentOrigin === "imported_confirmed" ? "horário confirmado na planilha" : provenance.sentOrigin}.</small></div>}
     {permissions.canChangeReceivedAt && receivedChanged && <div className="sensitive-change-box"><strong>Alteração sensível</strong><p>A mudança da entrada afeta prazos, eficiência e relatórios. Informe a justificativa para a auditoria.</p><textarea required rows={2} value={form.sensitiveChangeReason ?? ""} onChange={(event) => change("sensitiveChangeReason", event.target.value)} placeholder="Justificativa obrigatória" /></div>}
-    <div className="history-section"><button type="button" className="history-toggle" onClick={() => setShowHistory(!showHistory)}><History size={17} /><span><strong>Histórico de alterações</strong><small>{history.length ? `${history.length} alteração(ões) registrada(s) neste processo` : "Nenhuma alteração registrada"}</small></span><b>{showHistory ? "Ocultar" : "Exibir"}</b></button>{showHistory && <div className="history-list">{history.map((item) => <div className="history-item" key={item.id}><div><strong>{item.fieldName}</strong><small>{formatDate(item.changedAt, true)} · registro #{item.movementId}</small></div><p><span>{item.oldValue || "(vazio)"}</span><b>→</b><span>{item.newValue || "(vazio)"}</span></p></div>)}{!history.length && <div className="empty-state">O histórico começará a ser registrado a partir desta versão.</div>}</div>}</div>
+    <div className="history-section"><button type="button" className="history-toggle" onClick={() => setShowHistory(!showHistory)}><History size={17} /><span><strong>Histórico do processo</strong><small>{history.length ? `${history.length} alteração(ões) registrada(s) neste processo` : "Nenhuma alteração registrada"}</small></span><b>{showHistory ? "Ocultar" : "Exibir"}</b></button>{showHistory && <div className="history-list process-history-list">{history.map((item) => <article className="history-item process-history-item" key={item.id}><header><div><strong>{item.actionName}</strong><small>{formatDate(item.changedAt, true)}</small></div><span>{item.actorName}</span></header><div className="history-change"><b>{item.fieldName}</b><p><span>{historyValue(item.fieldName, item.oldValue, members)}</span><i aria-hidden="true">→</i><span>{historyValue(item.fieldName, item.newValue, members)}</span></p></div></article>)}{!history.length && <div className="empty-state">O histórico próprio deste processo começará a ser registrado após a instalação da versão 0.10.7.</div>}</div>}</div>
     <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={saving || (receivedChanged && permissions.canChangeReceivedAt && !form.sensitiveChangeReason?.trim())}>{saving ? "Salvando..." : "Salvar alterações"}</button></div>
   </form></div>;
 }

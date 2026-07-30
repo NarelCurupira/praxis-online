@@ -7,11 +7,13 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#08141d",
-  "theme_color": "#102a43",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0A2B52",
   "categories": ["productivity", "business"],
   "icons": [
-    { "src": "/praxis-icon.png", "sizes": "any", "type": "image/png", "purpose": "any" },
-    { "src": "/praxis-icon.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
