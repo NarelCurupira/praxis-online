@@ -49,7 +49,7 @@ html[data-theme="dark"] {
 }
 
 body, .app, main { background: var(--canvas) !important; color: var(--text-primary); }
-button, input, select, textarea { min-height: 44px; }
+button:not(.copy-number-button), input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 44px; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
@@ -75,7 +75,8 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 }
 .sidebar-foot { color: var(--text-muted); border-color: var(--divider); }
 .sidebar-collapsed .brand-logo { display: none !important; }
-.sidebar-collapsed .brand-symbol { display: block; width: 48px; height: 48px; border-radius: 12px; }
+.sidebar-collapsed .brand-symbol-light { display: block; width: 54px; height: 54px; object-fit: contain; }
+.sidebar-collapsed .brand-symbol-dark { display: none; }
 
 .topbar {
   min-height: 68px;
@@ -321,4 +322,144 @@ html[data-theme="dark"] .about-logo-dark { display: block !important; }
 @media (prefers-reduced-motion: reduce) {
   .stat-card-link, .pull-refresh-indicator { transition: none; }
   .stat-card-link:hover { transform: none; }
+}
+
+/* Práxis 0.10.7.1 — correções de layout e tema */
+.topbar .mobile-menu {
+  display: none !important;
+}
+
+.sidebar-collapsed .brand {
+  min-height: 76px;
+  padding: 2px 0 18px;
+  overflow: hidden;
+}
+
+.sidebar-collapsed .brand .brand-logo {
+  display: none !important;
+}
+
+html[data-theme="dark"] .sidebar-collapsed .brand-symbol-light {
+  display: none !important;
+}
+
+html[data-theme="dark"] .sidebar-collapsed .brand-symbol-dark {
+  display: block !important;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+
+button.copy-number-button {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px !important;
+  max-height: 30px;
+  padding: 0;
+  line-height: 1;
+}
+
+.number-copy-line .copy-number-button {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px !important;
+  max-height: 26px;
+}
+
+.locked-fields .copy-number-button {
+  align-self: center;
+}
+
+.governance-section .settings-grid > label:not(.check-row),
+.managed-member-form > label,
+.member-editor-grid > label:not(.member-check) {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.governance-section .settings-grid > label:not(.check-row) > input:not([type="checkbox"]),
+.governance-section .settings-grid > label:not(.check-row) > select,
+.governance-section .settings-grid > label:not(.check-row) > textarea,
+.period-close-form > input,
+.managed-member-form > label > input,
+.managed-member-form > label > select,
+.member-editor-grid > label > input:not([type="checkbox"]),
+.member-editor-grid > label > select,
+.member-editor-grid > label > textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px;
+  padding: 9px 11px;
+  background: var(--surface-subtle) !important;
+  color: var(--text-primary) !important;
+}
+
+.governance-section .settings-grid > .check-row,
+.member-editor-grid > label:has(input[type="checkbox"]) {
+  min-height: 44px;
+  align-items: center;
+}
+
+.governance-section input[type="checkbox"],
+.managed-member-form input[type="checkbox"],
+.member-editor-grid input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+}
+
+.period-close-form {
+  align-items: end;
+}
+
+.period-close-form > .button,
+.managed-member-form > .button {
+  align-self: end;
+  min-height: 44px;
+}
+
+.managed-member-form > .button {
+  width: 100%;
+}
+
+.classification-switch,
+.locked-fields > div {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+
+.classification-switch > span strong,
+.locked-fields > div strong {
+  color: var(--text-primary) !important;
+}
+
+.classification-switch > span small,
+.locked-fields > div small {
+  color: var(--text-muted) !important;
+}
+
+.classification-switch.active {
+  background: var(--selected) !important;
+  border-color: var(--praxis-primary) !important;
+}
+
+html[data-theme="dark"] .locked-fields > div {
+  background: var(--surface-subtle) !important;
+  border-color: var(--border) !important;
+}
+
+@media (max-width: 760px) {
+  .topbar .mobile-menu {
+    display: inline-grid !important;
+  }
 }

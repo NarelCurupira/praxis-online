@@ -1,0 +1,16 @@
+PRÁXIS ONLINE 0.10.7.1 — VALIDAÇÃO
+
+Versão consolidada: aprovada
+TypeScript (tsc --noEmit): aprovado
+Testes automatizados: 78 aprovados
+Testes de regressão visual: 4 aprovados
+Build de produção (Vite): aprovado
+
+Pontos cobertos pelos testes de regressão visual:
+- menu móvel oculto no desktop e disponível no breakpoint móvel;
+- símbolos separados para os temas claro e escuro;
+- botões de copiar fora da altura mínima global;
+- cartões especiais e campos administrativos vinculados aos tokens do tema.
+
+Banco de dados:
+- nenhuma query ou migration necessária.

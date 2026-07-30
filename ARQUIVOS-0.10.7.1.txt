@@ -1,0 +1,15 @@
+ATUALIZACAO-0.10.7.1.md
+ARQUIVOS-0.10.7.1.txt
+CHANGELOG-0.10.7.1.md
+CHANGELOG.md
+package-lock.json
+package.json
+public/brand/symbol-dark.webp
+public/brand/symbol-light.webp
+public/sw.js
+src/components/AboutPage.tsx
+src/components/Sidebar.tsx
+src/layoutRegression.test.ts
+src/v0107.css
+src/version.ts
+VALIDACAO-0.10.7.1.txt

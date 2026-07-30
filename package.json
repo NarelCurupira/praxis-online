@@ -1,7 +1,7 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.10.7",
+  "version": "0.10.7.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
@@ -19,10 +19,11 @@
     "test:pwa": "node --import tsx --test src/pwa.test.ts",
     "test:passkeys": "node --import tsx --test src/passkeySupport.test.ts",
     "test:auth-method": "node --import tsx --test src/authenticationMethod.test.ts",
-    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:data-quality && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method && npm run test:configuration-export",
+    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:data-quality && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method && npm run test:configuration-export && npm run test:layout-regression",
     "report:sample": "node --import tsx scripts/generate-report-sample.ts",
     "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts",
     "test:configuration-export": "node --import tsx --test src/configurationExport.test.ts",
+    "test:layout-regression": "node --import tsx --test src/layoutRegression.test.ts",
     "verify:version": "node scripts/check-version-consistency.mjs",
     "quality": "npm run verify:version && npm run check && npm test && npm run build"
   },
