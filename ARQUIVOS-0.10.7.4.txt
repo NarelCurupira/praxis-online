@@ -1,0 +1,18 @@
+Práxis Online 0.10.7.4
+Arquivos novos ou substituídos sobre a versão 0.10.7.3
+
+ARQUIVOS-0.10.7.4.txt
+CHANGELOG.md
+package-lock.json
+package.json
+public/sw.js
+src/App.tsx
+src/components/AboutPage.tsx
+src/components/EditProcessModal.tsx
+src/components/ProcessTable.tsx
+src/layoutRegression.test.ts
+src/mobileInteractions.ts
+src/v0107.css
+src/version.ts
+
+Esta revisão não exige query ou migration no Supabase.

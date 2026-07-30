@@ -9,18 +9,20 @@ export function hapticFeedback(kind: HapticKind = "tap"): void {
 }
 
 interface MobileNavigationOptions {
+  sidebarOpen: boolean;
   onOpenSidebar: () => void;
+  onCloseSidebar: () => void;
   onRefresh: () => Promise<void>;
 }
 
-export function useMobileNavigation({ onOpenSidebar, onRefresh }: MobileNavigationOptions) {
-  const touch = useRef({ x: 0, y: 0, edge: false, pulling: false });
-  const callbacks = useRef({ onOpenSidebar, onRefresh });
+export function useMobileNavigation({ sidebarOpen, onOpenSidebar, onCloseSidebar, onRefresh }: MobileNavigationOptions) {
+  const touch = useRef({ x: 0, y: 0, edge: false, sidebar: false, pulling: false });
+  const callbacks = useRef({ sidebarOpen, onOpenSidebar, onCloseSidebar, onRefresh });
   const pullDistanceRef = useRef(0);
   const refreshingRef = useRef(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  callbacks.current = { onOpenSidebar, onRefresh };
+  callbacks.current = { sidebarOpen, onOpenSidebar, onCloseSidebar, onRefresh };
 
   function updatePullDistance(value: number) {
     pullDistanceRef.current = value;
@@ -42,8 +44,9 @@ export function useMobileNavigation({ onOpenSidebar, onRefresh }: MobileNavigati
       touch.current = {
         x: point.clientX,
         y: point.clientY,
-        edge: point.clientX <= 28,
-        pulling: window.scrollY <= 0 && !interactive(event.target),
+        edge: !callbacks.current.sidebarOpen && point.clientX <= 28,
+        sidebar: callbacks.current.sidebarOpen && event.target instanceof Element && Boolean(event.target.closest(".sidebar")),
+        pulling: !callbacks.current.sidebarOpen && window.scrollY <= 0 && !interactive(event.target),
       };
     };
 
@@ -66,6 +69,10 @@ export function useMobileNavigation({ onOpenSidebar, onRefresh }: MobileNavigati
       if (touch.current.edge && deltaX >= 72 && Math.abs(deltaY) <= 64) {
         hapticFeedback();
         callbacks.current.onOpenSidebar();
+      }
+      if (touch.current.sidebar && deltaX <= -72 && Math.abs(deltaY) <= 64) {
+        hapticFeedback();
+        callbacks.current.onCloseSidebar();
       }
       if (pullDistanceRef.current >= 72 && !refreshingRef.current) {
         updateRefreshing(true);

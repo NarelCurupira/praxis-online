@@ -122,7 +122,9 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }, []);
 
   const mobileNavigation = useMobileNavigation({
+    sidebarOpen,
     onOpenSidebar: () => setSidebarOpen(true),
+    onCloseSidebar: () => setSidebarOpen(false),
     onRefresh: reloadAll,
   });
 

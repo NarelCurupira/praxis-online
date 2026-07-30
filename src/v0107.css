@@ -565,3 +565,58 @@ html[data-theme="dark"] .locked-fields > div {
     padding-top: calc(var(--praxis-safe-top) + 18px) !important;
   }
 }
+
+/* Práxis 0.10.7.4 — leitura de status/prazo e edição sensível */
+.processes-table-panel .status-enviado {
+  border-color: var(--praxis-navy) !important;
+  background: var(--praxis-navy) !important;
+  color: #fff !important;
+  font-weight: 750;
+}
+
+html[data-theme="dark"] .processes-table-panel .status-enviado {
+  border-color: var(--praxis-primary) !important;
+  background: #153E6B !important;
+  color: #F8FAFC !important;
+}
+
+.deadline-urgent {
+  color: #B44747 !important;
+  font-weight: 800;
+}
+
+html[data-theme="dark"] .deadline-urgent {
+  color: #F08C8C !important;
+}
+
+.sensitive-change-inline {
+  margin: 0;
+  border-color: #C5912F;
+}
+
+.sensitive-change-inline.has-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px rgba(199, 62, 62, .12);
+}
+
+.sensitive-change-inline p {
+  margin: 4px 0 9px;
+  color: var(--text-secondary);
+}
+
+.sensitive-change-inline small {
+  display: block;
+  margin-top: 6px;
+  color: var(--danger);
+  font-weight: 750;
+}
+
+.modal-save-error {
+  margin: 0 24px 14px;
+  padding: 11px 13px;
+  border: 1px solid rgba(199, 62, 62, .45);
+  border-radius: 10px;
+  background: rgba(199, 62, 62, .10);
+  color: var(--danger);
+  font-weight: 700;
+}
