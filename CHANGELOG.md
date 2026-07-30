@@ -1,3 +1,13 @@
+# Práxis 0.10.7.4 — Leitura da fila e gestos móveis
+
+- Destaca o status “Enviado” com o azul-marinho da identidade visual na aba Processos.
+- Destaca em vermelho sóbrio os prazos inferiores a cinco dias.
+- Reorganiza os filtros em Ano, Responsável, Status e Destacados.
+- Adiciona swipe para a esquerda para fechar o menu lateral no celular.
+- Mantém a exigência de justificativa ao alterar a entrada, mas apresenta o campo junto à data e hora.
+- Impede o bloqueio silencioso do botão Salvar e mostra falhas de gravação no próprio modal.
+- Renova o cache do PWA para distribuir as correções.
+
 # Práxis 0.10.7.3 — Ajustes móveis e classes recursais
 
 - Respeita a área segura superior do iPhone ao abrir o menu lateral.

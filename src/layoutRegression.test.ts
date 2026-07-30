@@ -7,6 +7,9 @@ const sidebar = readFileSync(new URL("./components/Sidebar.tsx", import.meta.url
 const about = readFileSync(new URL("./components/AboutPage.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 const processModal = readFileSync(new URL("./components/ProcessModal.tsx", import.meta.url), "utf8");
+const editModal = readFileSync(new URL("./components/EditProcessModal.tsx", import.meta.url), "utf8");
+const processTable = readFileSync(new URL("./components/ProcessTable.tsx", import.meta.url), "utf8");
+const mobileInteractions = readFileSync(new URL("./mobileInteractions.ts", import.meta.url), "utf8");
 
 test("menu móvel permanece oculto no desktop e reaparece no breakpoint móvel", () => {
   assert.match(css, /\.topbar \.mobile-menu\s*\{\s*display:\s*none !important;/);
@@ -64,4 +67,35 @@ test("cadastro usa colagem e edição continua usando cópia", () => {
 test("Minha fila reserva largura legível para classe e assunto", () => {
   assert.match(css, /\.queue-data-table\s*\{[\s\S]*?min-width:\s*1080px;/);
   assert.match(css, /\.queue-data-table \.col-subject\s*\{[\s\S]*?width:\s*260px;/);
+});
+
+test("status enviado usa o azul-marinho da identidade na aba Processos", () => {
+  assert.match(css, /\.processes-table-panel \.status-enviado\s*\{[\s\S]*?background:\s*var\(--praxis-navy\) !important;/);
+});
+
+test("prazo inferior a cinco dias recebe destaque próprio", () => {
+  assert.match(processTable, /remaining < 5 && record\.workflowStatus !== "Enviado" \? "deadline-urgent"/);
+  assert.match(css, /\.deadline-urgent\s*\{[\s\S]*?color:\s*#B44747 !important;/);
+});
+
+test("filtros da aba Processos seguem Ano, Responsável, Status e Destacados", () => {
+  const filterStart = processTable.indexOf('className="table-toolbar-row table-filter-row"');
+  const filterEnd = processTable.indexOf('className="table-toolbar-row table-sort-row"');
+  const filters = processTable.slice(filterStart, filterEnd);
+  assert.ok(filters.indexOf("<span>Ano</span>") < filters.indexOf("<span>Responsável</span>"));
+  assert.ok(filters.indexOf("<span>Responsável</span>") < filters.indexOf("<span>Status</span>"));
+  assert.ok(filters.indexOf("<span>Status</span>") < filters.indexOf("<span>Destacados</span>"));
+});
+
+test("swipe para a esquerda fecha o menu móvel", () => {
+  assert.match(mobileInteractions, /touch\.current\.sidebar && deltaX <= -72/);
+  assert.match(mobileInteractions, /callbacks\.current\.onCloseSidebar\(\)/);
+  assert.match(app, /onCloseSidebar:\s*\(\) => setSidebarOpen\(false\)/);
+});
+
+test("alteração da entrada direciona à justificativa sem desabilitar silenciosamente o salvamento", () => {
+  assert.match(editModal, /reasonRef\.current\?\.focus\(\)/);
+  assert.match(editModal, /Preencha a justificativa para salvar a alteração da entrada/);
+  assert.match(editModal, /disabled=\{saving\}/);
+  assert.doesNotMatch(editModal, /disabled=\{saving \|\| \(receivedChanged/);
 });
