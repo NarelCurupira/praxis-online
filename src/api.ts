@@ -38,6 +38,7 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
     reach: item.reach ?? "", territorialScope: item.territorial_scope ?? "",
     impactType: item.impact_type ?? "", socialResult: item.social_result ?? "", sdgs: Array.isArray(item.sdgs) ? item.sdgs : [],
     complexityReason: item.complexity_reason ?? "", deletedAt: row.deleted_at,
+    archivedAt: row.archived_at ?? null,
     assignedTo: row.assigned_to ?? "", assignedName: assignee.full_name ?? "",
   };
 }
@@ -153,7 +154,13 @@ export async function updateMovementStatus(movementId: number, status: WorkflowS
   else { values.sent_at = null; values.sent_time_precise = false; values.elapsed_hours = null; }
   const { error } = await client.from("movements").update(values).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
-  await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: "Status", old_value: old!.workflow_status, new_value: status });
+  const history = await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, action_name: "Alteração de status", field_name: "Status", old_value: old!.workflow_status, new_value: status });
+  if (history.error && /action_name|schema cache/i.test(history.error.message)) {
+    const legacyHistory = await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: "Status", old_value: old!.workflow_status, new_value: status });
+    fail(legacyHistory.error);
+  } else {
+    fail(history.error);
+  }
 }
 
 export async function updateMovementAction(movementId: number, actionType: string): Promise<void> {
@@ -180,9 +187,40 @@ export async function updateMovementAssignment(movementId: number, assignedTo: s
   await updateMovementAssignments([movementId], assignedTo);
 }
 
+function missingV0107Rpc(error: { code?: string; message: string } | null): boolean {
+  return Boolean(error && (
+    error.code === "PGRST202"
+    || error.code === "42883"
+    || /bulk_update_movements_v0107|list_process_history_v0107|schema cache/i.test(error.message)
+  ));
+}
+
+async function bulkMovementOperation(
+  movementIds: number[],
+  operation: "assignment" | "action" | "archive" | "delete",
+  value = "",
+): Promise<void> {
+  if (!movementIds.length) return;
+  const { client } = await context();
+  const { error } = await client.rpc("bulk_update_movements_v0107", {
+    target_movements: movementIds,
+    operation_name: operation,
+    operation_value: value || null,
+  });
+  fail(error);
+}
+
 export async function updateMovementAssignments(movementIds: number[], assignedTo: string): Promise<void> {
   if (!movementIds.length) return;
   const { client, user, workspaceId } = await context();
+  const optimized = await client.rpc("bulk_update_movements_v0107", {
+    target_movements: movementIds,
+    operation_name: "assignment",
+    operation_value: assignedTo,
+  });
+  if (!optimized.error) return;
+  if (!missingV0107Rpc(optimized.error)) fail(optimized.error);
+
   const { data: current, error: currentError } = await client.from("movements").select("id, assigned_to").eq("workspace_id", workspaceId).in("id", movementIds);
   fail(currentError);
   const { error } = await client.from("movements").update({ assigned_to: assignedTo, updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).in("id", movementIds);
@@ -197,8 +235,27 @@ export async function updateMovementAssignments(movementIds: number[], assignedT
 
 export async function deleteMovement(movementId: number): Promise<void> {
   const { client, user, workspaceId } = await context();
+  const optimized = await client.rpc("bulk_update_movements_v0107", {
+    target_movements: [movementId],
+    operation_name: "delete",
+    operation_value: null,
+  });
+  if (!optimized.error) return;
+  if (!missingV0107Rpc(optimized.error)) fail(optimized.error);
   const { error } = await client.from("movements").update({ deleted_at: new Date().toISOString(), updated_by: user.id }).eq("workspace_id", workspaceId).eq("id", movementId);
   fail(error);
+}
+
+export async function updateMovementActions(movementIds: number[], actionType: string): Promise<void> {
+  await bulkMovementOperation(movementIds, "action", actionType);
+}
+
+export async function archiveMovements(movementIds: number[]): Promise<void> {
+  await bulkMovementOperation(movementIds, "archive");
+}
+
+export async function deleteMovements(movementIds: number[]): Promise<void> {
+  await bulkMovementOperation(movementIds, "delete");
 }
 
 export async function listDeletedMovements(): Promise<ProcessMovement[]> {
@@ -541,9 +598,33 @@ export async function deleteCalendarExclusion(date: string): Promise<void> {
 
 export async function listChangeHistory(movementId: number): Promise<ChangeHistory[]> {
   const { client, workspaceId } = await context();
+  const current = await client.rpc("list_process_history_v0107", { target_movement: movementId });
+  if (!current.error) {
+    return (current.data ?? []).map((item: Record<string, any>) => ({
+      id: Number(item.id),
+      movementId: Number(item.movement_id),
+      changedAt: item.changed_at,
+      actorName: item.actor_name || "Usuário não identificado",
+      actionName: item.action_name || "Alteração",
+      fieldName: item.field_name,
+      oldValue: item.old_value,
+      newValue: item.new_value,
+    }));
+  }
+  if (!missingV0107Rpc(current.error)) fail(current.error);
+
   const { data, error } = await client.from("change_history").select("id, movement_id, changed_at, field_name, old_value, new_value").eq("workspace_id", workspaceId).eq("movement_id", movementId).order("changed_at", { ascending: false });
   fail(error);
-  return (data ?? []).map((item: Record<string, any>) => ({ id: Number(item.id), movementId: Number(item.movement_id), changedAt: item.changed_at, fieldName: item.field_name, oldValue: item.old_value, newValue: item.new_value }));
+  return (data ?? []).map((item: Record<string, any>) => ({
+    id: Number(item.id),
+    movementId: Number(item.movement_id),
+    changedAt: item.changed_at,
+    actorName: "Usuário não identificado",
+    actionName: "Alteração",
+    fieldName: item.field_name,
+    oldValue: item.old_value,
+    newValue: item.new_value,
+  }));
 }
 
 export async function getStorageSettings(): Promise<StorageSettings> {

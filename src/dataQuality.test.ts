@@ -77,3 +77,21 @@ test("data de envio realmente anterior continua crítica quando não há horári
   })]);
   assert.equal(issues.some((issue) => issue.category === "Envio anterior à entrada"), true);
 });
+
+test("processos enviados sem data recebem diagnóstico específico", () => {
+  const issues = inspectDataQuality([movement({
+    sentAt: null,
+    sentTimePrecise: false,
+    workflowStatus: "Enviado",
+  })]);
+  const issue = issues.find((item) => item.category === "Processos enviados sem data");
+  assert.ok(issue);
+  assert.equal(issue.severity, "Atenção");
+});
+
+test("classificação da intervenção ausente é apontamento leve", () => {
+  const issues = inspectDataQuality([movement({ actionType: "" })]);
+  const issue = issues.find((item) => item.category === "Classificação da intervenção");
+  assert.ok(issue);
+  assert.equal(issue.severity, "Leve");
+});

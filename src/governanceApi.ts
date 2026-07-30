@@ -183,6 +183,12 @@ export async function reopenPeriod(id: number, reason: string): Promise<void> {
 export async function updateMovementGoverned(movementId: number, data: ProcessEditData): Promise<void> {
   const { client } = await context();
   const payload = { ...data, receivedAt: toStorageTimestamp(data.receivedAt), sentAt: toStorageTimestamp(data.sentAt) };
-  const { error } = await client.rpc("update_movement_v09", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
-  fail(error);
+  const current = await client.rpc("update_movement_v0107", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
+  if (!current.error) return;
+  const missingCurrent = current.error.code === "PGRST202"
+    || current.error.code === "42883"
+    || /update_movement_v0107|schema cache/i.test(current.error.message);
+  if (!missingCurrent) fail(current.error);
+  const legacy = await client.rpc("update_movement_v09", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
+  fail(legacy.error);
 }

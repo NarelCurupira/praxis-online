@@ -1,7 +1,7 @@
 {
   "name": "praxis-online",
   "private": true,
-  "version": "0.10.6",
+  "version": "0.10.7",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420",
@@ -14,11 +14,12 @@
     "test:reliability": "node --import tsx --test src/reliability.test.ts",
     "test:action-groups": "node --import tsx --test src/actionGroups.test.ts",
     "test:diagnostics": "node --import tsx --test src/diagnostics.test.ts",
+    "test:data-quality": "node --import tsx --test src/dataQuality.test.ts",
     "test:intelligent-import": "node --import tsx --test src/intelligentImport.test.ts",
     "test:pwa": "node --import tsx --test src/pwa.test.ts",
     "test:passkeys": "node --import tsx --test src/passkeySupport.test.ts",
     "test:auth-method": "node --import tsx --test src/authenticationMethod.test.ts",
-    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method && npm run test:configuration-export",
+    "test": "npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:data-quality && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method && npm run test:configuration-export",
     "report:sample": "node --import tsx scripts/generate-report-sample.ts",
     "report:scenarios": "node --import tsx scripts/generate-report-scenarios.ts",
     "test:configuration-export": "node --import tsx --test src/configurationExport.test.ts",

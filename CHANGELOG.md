@@ -1,3 +1,21 @@
+# Práxis 0.10.7 — Mobile, produtividade e identidade visual
+
+- Adiciona swipe para abrir o menu, pull-to-refresh, feedback tátil e botão
+  para voltar ao topo.
+- Reorganiza o cabeçalho móvel, padroniza áreas de toque e transforma “Novo
+  processo” em botão de ícone nas telas estreitas.
+- Cria diagnóstico direto para processos enviados sem data e classifica como
+  leve a ausência da intervenção quando ela não afeta a eficiência.
+- Amplia o histórico próprio do processo com data, hora, usuário, ação, campo,
+  valor anterior e novo valor.
+- Adiciona seleção múltipla e barra flutuante para responsável, intervenção,
+  exportação, arquivamento e exclusão.
+- Transforma os indicadores da Visão Geral em atalhos para listas filtradas.
+- Reformula o Movimento Mensal com comparação ao ano anterior, últimos 12
+  meses e navegação por mês.
+- Aplica a nova identidade visual, paleta, logos, ícones PWA, favicon, splash
+  e estados vazios.
+
 # Práxis 0.10.6 — Otimização de desempenho
 
 - Acelera o cálculo de horas úteis sem alterar fins de semana, feriados,

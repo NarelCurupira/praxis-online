@@ -8,7 +8,7 @@ const PAGE_SIZE = 1000;
 const CACHE_TTL_MS = 30_000;
 const SELECT_MOVEMENT = [
   "id", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
-  "sent_at", "sent_time_precise", "action_type", "notes", "priority", "document_path", "deleted_at", "assigned_to",
+  "sent_at", "sent_time_precise", "action_type", "notes", "priority", "document_path", "deleted_at", "archived_at", "assigned_to",
   "cases!inner(mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex,social_theme,relevance_reason,fundamental_right,affected_group,reach,territorial_scope,impact_type,social_result,sdgs,complexity_reason)",
   "assignee:profiles!movements_assigned_to_fkey(id,full_name)",
 ].join(",");
@@ -96,6 +96,7 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
     reach: String(item.reach ?? ""), territorialScope: String(item.territorial_scope ?? ""), impactType: String(item.impact_type ?? ""),
     socialResult: String(item.social_result ?? ""), sdgs: Array.isArray(item.sdgs) ? item.sdgs.map(String) : [],
     complexityReason: String(item.complexity_reason ?? ""), deletedAt: row.deleted_at ? String(row.deleted_at) : null,
+    archivedAt: row.archived_at ? String(row.archived_at) : null,
     assignedTo: String(row.assigned_to ?? ""), assignedName: String(assignee.full_name ?? ""),
   };
 }

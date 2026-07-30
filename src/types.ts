@@ -33,6 +33,7 @@ export interface ProcessMovement {
   sdgs: string[];
   complexityReason: string;
   deletedAt: string | null;
+  archivedAt?: string | null;
   assignedTo: string;
   assignedName: string;
 }
@@ -111,7 +112,31 @@ export interface ClassSetting { name: string; businessDays: number; }
 export interface CalendarExclusion { date: string; label: string; }
 export interface CalendarExclusionRange { startDate: string; endDate: string; label: string; }
 export interface BackupInfo { fileName: string; modifiedAt: string; sizeBytes: number; }
-export interface ChangeHistory { id: number; movementId: number; changedAt: string; fieldName: string; oldValue: string; newValue: string; }
+export interface ChangeHistory {
+  id: number;
+  movementId: number;
+  changedAt: string;
+  actorName: string;
+  actionName: string;
+  fieldName: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export type ProcessListPresetKind =
+  | "pending"
+  | "sent-today"
+  | "sent-week"
+  | "overdue"
+  | "month";
+
+export interface ProcessListPreset {
+  kind: ProcessListPresetKind;
+  label: string;
+  assignedTo?: string;
+  year?: number;
+  month?: number;
+}
 
 export type MovementSortField = "receivedAt" | "judicialNumber" | "mpNumber" | "className" | "deadlineAt" | "actionType" | "workflowStatus" | "assignedName";
 export interface MovementQuery {

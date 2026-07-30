@@ -1,7 +1,7 @@
 import { localDatePart } from "./date";
 import type { ProcessMovement } from "./types";
 
-export type QualitySeverity = "Crítico" | "Atenção" | "Cadastro";
+export type QualitySeverity = "Crítico" | "Atenção" | "Cadastro" | "Leve";
 
 export interface QualityIssue {
   id: string;
@@ -94,8 +94,8 @@ export function inspectDataQuality(records: ProcessMovement[]): QualityIssue[] {
       issues.push({ id: `deadline-${record.movementId}`, severity: "Crítico", category: "Prazo anterior à entrada", description: "A data de prazo é anterior à data de entrada.", record });
     }
 
-    if (record.workflowStatus === "Enviado" && !record.sentAt) issues.push({ id: `sent-${record.movementId}`, severity: "Atenção", category: "Envio sem data", description: "O registro está como enviado, mas não possui data de envio.", record });
-    if (record.workflowStatus === "Enviado" && !record.actionType.trim()) issues.push({ id: `action-${record.movementId}`, severity: "Atenção", category: "Envio sem providência", description: "O registro está como enviado, mas não possui providência definida.", record });
+    if (record.workflowStatus === "Enviado" && !record.sentAt) issues.push({ id: `sent-${record.movementId}`, severity: "Atenção", category: "Processos enviados sem data", description: "O registro está como enviado, mas não possui data de envio.", record });
+    if (record.workflowStatus === "Enviado" && !record.actionType.trim()) issues.push({ id: `action-${record.movementId}`, severity: "Leve", category: "Classificação da intervenção", description: "O registro está como enviado, mas não possui providência definida. Essa ausência não altera os cálculos de eficiência.", record });
 
     if (sentBeforeReceived(record)) {
       issues.push({
@@ -115,6 +115,6 @@ export function inspectDataQuality(records: ProcessMovement[]): QualityIssue[] {
     items.slice(1).forEach((record) => issues.push({ id: `duplicate-${key}-${record.movementId}`, severity: "Atenção", category: "Possível duplicidade", description: "Há outra movimentação do mesmo processo, na mesma data e com a mesma providência.", record }));
   });
 
-  const rank: Record<QualitySeverity, number> = { "Crítico": 0, "Atenção": 1, "Cadastro": 2 };
+  const rank: Record<QualitySeverity, number> = { "Crítico": 0, "Atenção": 1, "Cadastro": 2, "Leve": 3 };
   return issues.sort((a, b) => rank[a.severity] - rank[b.severity] || b.record.receivedAt.localeCompare(a.record.receivedAt));
 }
