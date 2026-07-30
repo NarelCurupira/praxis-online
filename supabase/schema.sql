@@ -161,6 +161,8 @@ begin
     (new_workspace, 'Mandado de Segurança', 5),
     (new_workspace, 'Conflito Negativo de Competência', 5),
     (new_workspace, 'Conflito de Competência', 5),
+    (new_workspace, 'Recurso Especial', 30),
+    (new_workspace, 'Recurso Extraordinário', 30),
     (new_workspace, 'Outro', 30);
   return new;
 end $$;

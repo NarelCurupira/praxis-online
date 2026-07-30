@@ -5,6 +5,8 @@ import test from "node:test";
 const css = readFileSync(new URL("./v0107.css", import.meta.url), "utf8");
 const sidebar = readFileSync(new URL("./components/Sidebar.tsx", import.meta.url), "utf8");
 const about = readFileSync(new URL("./components/AboutPage.tsx", import.meta.url), "utf8");
+const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+const processModal = readFileSync(new URL("./components/ProcessModal.tsx", import.meta.url), "utf8");
 
 test("menu móvel permanece oculto no desktop e reaparece no breakpoint móvel", () => {
   assert.match(css, /\.topbar \.mobile-menu\s*\{\s*display:\s*none !important;/);
@@ -39,4 +41,27 @@ test("aba Sobre exibe somente as três versões mais recentes e centraliza os t�
   assert.match(about, /VERSIONS\.slice\(0,\s*3\)\.map/);
   assert.match(css, /\.version-history summary\s*\{[\s\S]*?text-align:\s*center;/);
   assert.match(css, /\.version-history summary > span\s*\{[\s\S]*?text-align:\s*center;/);
+});
+
+test("menu móvel respeita a área segura superior do iPhone", () => {
+  assert.match(css, /@media \(max-width:\s*900px\) and \(display-mode:\s*standalone\)[\s\S]*?padding-top:\s*calc\(var\(--praxis-safe-top\) \+ 18px\) !important;/);
+});
+
+test("pull-to-refresh só é montado após o limiar ou durante a atualização", () => {
+  assert.match(app, /pullDistance >= 72 \|\| mobileNavigation\.refreshing/);
+  assert.doesNotMatch(app, /Puxe para atualizar/);
+  assert.match(app, /Solte para atualizar/);
+  assert.match(app, /Atualizando…/);
+});
+
+test("cadastro usa colagem e edição continua usando cópia", () => {
+  assert.match(processModal, /PasteButton/);
+  assert.match(processModal, /Colar número MP/);
+  assert.match(processModal, /Colar número judicial/);
+  assert.doesNotMatch(processModal, /CopyButton/);
+});
+
+test("Minha fila reserva largura legível para classe e assunto", () => {
+  assert.match(css, /\.queue-data-table\s*\{[\s\S]*?min-width:\s*1080px;/);
+  assert.match(css, /\.queue-data-table \.col-subject\s*\{[\s\S]*?width:\s*260px;/);
 });

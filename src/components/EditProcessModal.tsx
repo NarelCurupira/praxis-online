@@ -3,6 +3,7 @@ import { History, LockKeyhole, X } from "lucide-react";
 import { listChangeHistory } from "../api";
 import { formatDate, toLocalInput } from "../date";
 import { actionLabel } from "../labels";
+import { withRequiredAppealClasses } from "../classOptions";
 import type { ChangeHistory, ClassSetting, Priority, ProcessEditData, ProcessMovement, ProcessPermissions, TeamMember } from "../types";
 import { SpecialClassificationFields } from "./SpecialClassificationFields";
 import { CopyButton } from "./CopyButton";
@@ -28,7 +29,7 @@ function historyValue(fieldName: string, value: string, members: TeamMember[]): 
 export function EditProcessModal({ record, classes, members, permissions, onClose, onSave }: Props) {
   const [form, setForm] = useState<ProcessEditData>({ assignedTo: record.assignedTo, receivedAt: toLocalInput(new Date(record.receivedAt)), receivedTimePrecise: Boolean(record.receivedTimePrecise), sentAt: record.sentAt ? toLocalInput(new Date(record.sentAt)) : null, sentTimePrecise: Boolean(record.sentTimePrecise), className: record.className, subject: record.subject, deadlineAt: record.deadlineAt.slice(0, 10), actionType: record.actionType, notes: record.notes, priority: record.priority, documentPath: record.documentPath, sociallyRelevant: record.sociallyRelevant, extremelyComplex: record.extremelyComplex, socialTheme: record.socialTheme, relevanceReason: record.relevanceReason, fundamentalRight: record.fundamentalRight, affectedGroup: record.affectedGroup, reach: record.reach, territorialScope: record.territorialScope, impactType: record.impactType, socialResult: record.socialResult, sdgs: record.sdgs, complexityReason: record.complexityReason, sensitiveChangeReason: "" });
   const [saving, setSaving] = useState(false); const [history, setHistory] = useState<ChangeHistory[]>([]); const [showHistory, setShowHistory] = useState(false); const [provenance, setProvenance] = useState<MovementProvenance | null>(null);
-  const classNames = useMemo(() => [...new Set([record.className, ...classes.map((item) => item.name)])], [classes, record.className]);
+  const classNames = useMemo(() => [...new Set([record.className, ...withRequiredAppealClasses(classes).map((item) => item.name)])], [classes, record.className]);
   const actions = useMemo(() => [...new Set([record.actionType, ...standardActions].filter(Boolean))], [record.actionType]);
   useEffect(() => { listChangeHistory(record.movementId).then(setHistory).catch(() => setHistory([])); getMovementProvenance(record.movementId).then(setProvenance).catch(() => setProvenance(null)); }, [record.movementId]);
   function change<K extends keyof ProcessEditData>(key: K, value: ProcessEditData[K]) { setForm((current) => { const next = { ...current, [key]: value }; if (key === "receivedAt") next.receivedTimePrecise = true; if (key === "sentAt") next.sentTimePrecise = Boolean(value); return next; }); }

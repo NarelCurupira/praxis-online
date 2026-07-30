@@ -517,3 +517,51 @@ html[data-theme="dark"] .locked-fields > div {
   justify-items: center;
   text-align: center;
 }
+
+/* Práxis 0.10.7.3 — correções móveis, colagem e largura da Minha fila */
+.paste-number-button {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px !important;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.paste-number-button:hover {
+  border-color: var(--praxis-light-blue);
+  color: var(--praxis-primary-fill);
+}
+
+.queue-data-table {
+  min-width: 1080px;
+}
+
+.queue-data-table .col-subject {
+  width: 260px;
+}
+
+.pull-refresh-indicator {
+  top: calc(var(--praxis-safe-top) + 8px);
+  transform: translateX(-50%);
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    padding-top: max(18px, var(--praxis-safe-top)) !important;
+    padding-bottom: max(18px, var(--praxis-safe-bottom)) !important;
+  }
+}
+
+@media (max-width: 900px) and (display-mode: standalone),
+       (max-width: 900px) and (display-mode: fullscreen) {
+  .sidebar {
+    padding-top: calc(var(--praxis-safe-top) + 18px) !important;
+  }
+}

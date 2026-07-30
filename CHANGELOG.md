@@ -1,3 +1,13 @@
+# Práxis 0.10.7.3 — Ajustes móveis e classes recursais
+
+- Respeita a área segura superior do iPhone ao abrir o menu lateral.
+- Exibe o pull-to-refresh somente ao atingir o limiar “Solte para atualizar” e durante a atualização.
+- Substitui por “Colar” os botões ao lado dos números no cadastro, preservando “Copiar” na edição.
+- Reserva largura legível para a coluna Classe/assunto na Minha fila móvel.
+- Disponibiliza Recurso Especial e Recurso Extraordinário no cadastro e na edição.
+- Inclui migração idempotente para cadastrar as duas classes nos workspaces existentes.
+- Renova o cache do PWA para distribuir as correções.
+
 # Práxis 0.10.7.2 — Seletores e histórico
 
 - Padroniza em 44 px as listas suspensas de formulários, relatórios e equipe.

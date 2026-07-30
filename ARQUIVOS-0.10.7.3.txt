@@ -1,0 +1,23 @@
+Práxis Online 0.10.7.3
+Arquivos novos ou substituídos
+
+ARQUIVOS-0.10.7.3.txt
+CHANGELOG.md
+EXECUTAR-NO-SUPABASE-0.10.7.3.sql
+package-lock.json
+package.json
+public/sw.js
+src/App.tsx
+src/classOptions.test.ts
+src/classOptions.ts
+src/components/AboutPage.tsx
+src/components/EditProcessModal.tsx
+src/components/PasteButton.tsx
+src/components/ProcessModal.tsx
+src/layoutRegression.test.ts
+src/pwaSafeArea.css
+src/v0107.css
+src/version.ts
+supabase/002-equipe-convites.sql
+supabase/migrations/20260729_praxis_v01073_classes_recursais.sql
+supabase/schema.sql

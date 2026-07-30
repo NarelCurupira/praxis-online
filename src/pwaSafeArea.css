@@ -15,8 +15,8 @@
   }
 
   .sidebar {
-    padding-top: max(18px, var(--praxis-safe-top));
-    padding-bottom: max(18px, var(--praxis-safe-bottom));
+    padding-top: calc(var(--praxis-safe-top) + 18px) !important;
+    padding-bottom: max(18px, var(--praxis-safe-bottom)) !important;
   }
 
   .content {
