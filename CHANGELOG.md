@@ -1,3 +1,12 @@
+# Práxis 0.10.7.2 — Seletores e histórico
+
+- Padroniza em 44 px as listas suspensas de formulários, relatórios e equipe.
+- Amplia para 40 px os seletores de filtros e paginação.
+- Amplia para 36 px os seletores compactos das tabelas, preservando a densidade das linhas.
+- Limita o histórico da aba Sobre às três versões mais recentes.
+- Centraliza os nomes e as descrições das versões apresentadas.
+- Renova o cache do PWA para distribuir os novos estilos.
+
 # Práxis 0.10.7.1 — Correções visuais
 
 - Oculta o botão de menu móvel quando a barra lateral já está disponível no desktop.

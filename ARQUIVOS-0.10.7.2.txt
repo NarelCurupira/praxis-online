@@ -1,0 +1,12 @@
+ATUALIZACAO-0.10.7.2.md
+ARQUIVOS-0.10.7.2.txt
+CHANGELOG-0.10.7.2.md
+CHANGELOG.md
+package-lock.json
+package.json
+public/sw.js
+src/components/AboutPage.tsx
+src/layoutRegression.test.ts
+src/v0107.css
+src/version.ts
+VALIDACAO-0.10.7.2.txt

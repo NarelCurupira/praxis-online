@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.7.1-layout-fixes-1";
+const CACHE_NAME = "praxis-shell-0.10.7.2-selects-about-1";
 const SHELL = [
   "/",
   "/index.html",

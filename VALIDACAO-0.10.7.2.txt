@@ -1,0 +1,17 @@
+PRÁXIS ONLINE 0.10.7.2 — VALIDAÇÃO
+
+Versão consolidada: aprovada
+TypeScript (tsc --noEmit): aprovado
+Testes automatizados: 80 aprovados
+Testes de regressão visual: 6 aprovados
+Build de produção (Vite): aprovado
+
+Pontos acrescentados à regressão visual:
+- seletores de formulários com 44 px;
+- seletores de filtros com 40 px;
+- seletores internos das tabelas com 36 px;
+- histórico da aba Sobre limitado às três versões mais recentes;
+- nomes e descrições das versões centralizados.
+
+Banco de dados:
+- nenhuma query ou migration necessária.
