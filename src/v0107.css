@@ -463,3 +463,57 @@ html[data-theme="dark"] .locked-fields > div {
     display: inline-grid !important;
   }
 }
+
+/* Práxis 0.10.7.2 — altura coerente dos seletores e histórico compacto */
+.process-form-grid select,
+.report-period-grid select,
+.report-filter-grid select,
+.managed-member-form select,
+.member-editor-grid select,
+.settings-grid select,
+.calendar-form select,
+.technical-settings-grid select,
+.import-rules-grid select {
+  height: 44px;
+  min-height: 44px !important;
+  box-sizing: border-box;
+  padding-block: 0;
+  padding-inline: 12px 34px;
+  line-height: normal;
+}
+
+.table-toolbar-v091 select,
+.table-toolbar-v092 select,
+.table-filter-row select,
+.table-sort-row select,
+.quality-toolbar select,
+.quality-bulk select,
+.year-control select,
+.pagination-controls select {
+  height: 40px;
+  min-height: 40px !important;
+  box-sizing: border-box;
+  padding-block: 0;
+  padding-inline: 10px 32px;
+  line-height: normal;
+}
+
+.process-data-table .table-inline-select,
+.process-data-table .table-pill-select {
+  height: 36px;
+  min-height: 36px !important;
+  box-sizing: border-box;
+  padding-block: 0 !important;
+  line-height: normal;
+}
+
+.version-history summary {
+  justify-content: center;
+  text-align: center;
+}
+
+.version-history summary > span {
+  width: 100%;
+  justify-items: center;
+  text-align: center;
+}
