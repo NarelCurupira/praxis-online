@@ -1,3 +1,14 @@
+# Práxis 0.10.7.1 — Correções visuais
+
+- Oculta o botão de menu móvel quando a barra lateral já está disponível no desktop.
+- Usa símbolos próprios para os modos claro e escuro no menu recolhido.
+- Corrige o alinhamento do símbolo da marca no menu recolhido.
+- Impede que a altura mínima acessível amplie os botões compactos de copiar.
+- Padroniza campos, seletores e áreas de texto em Configurações e Equipe.
+- Corrige os cartões de Relevância social e Alta complexidade no modo escuro.
+- Corrige os campos bloqueados e os botões de copiar na edição de processos.
+- Atualiza o cache do PWA para distribuir imediatamente as correções.
+
 # Práxis 0.10.7 — Mobile, produtividade e identidade visual
 
 - Adiciona swipe para abrir o menu, pull-to-refresh, feedback tátil e botão

@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.7-mobile-brand-1";
+const CACHE_NAME = "praxis-shell-0.10.7.1-layout-fixes-1";
 const SHELL = [
   "/",
   "/index.html",
@@ -8,6 +8,8 @@ const SHELL = [
   "/icons/icon-512.png",
   "/brand/logo-horizontal-light.webp",
   "/brand/logo-horizontal-dark.webp",
+  "/brand/symbol-light.webp",
+  "/brand/symbol-dark.webp",
   "/brand/empty-processes.webp",
   "/brand/empty-search.webp",
 ];
