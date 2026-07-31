@@ -183,12 +183,11 @@ export async function reopenPeriod(id: number, reason: string): Promise<void> {
 export async function updateMovementGoverned(movementId: number, data: ProcessEditData): Promise<void> {
   const { client } = await context();
   const payload = { ...data, receivedAt: toStorageTimestamp(data.receivedAt), sentAt: toStorageTimestamp(data.sentAt) };
-  const current = await client.rpc("update_movement_v0107", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
+  const current = await client.rpc("update_movement_v01076", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
   if (!current.error) return;
   const missingCurrent = current.error.code === "PGRST202"
     || current.error.code === "42883"
-    || /update_movement_v0107|schema cache/i.test(current.error.message);
+    || /update_movement_v01076|schema cache/i.test(current.error.message);
   if (!missingCurrent) fail(current.error);
-  const legacy = await client.rpc("update_movement_v09", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
-  fail(legacy.error);
+  throw new Error("A atualização do Supabase da versão 0.10.7.6 ainda não foi executada.");
 }

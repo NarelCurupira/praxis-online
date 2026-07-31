@@ -1,3 +1,15 @@
+# Práxis 0.10.7.6 — Comparativo responsivo e prioridades processuais
+
+- Corrige a sobreposição do gráfico e da tabela do Comparativo anual em telas verticais.
+- Faz o painel responder à largura efetivamente disponível após o menu lateral.
+- Preserva a rolagem horizontal somente dentro da tabela quando necessária.
+- Renomeia a prioridade interna para “Urgência da fila”.
+- Adiciona campo independente de prioridade processual no cadastro e na edição.
+- Inclui pessoa idosa, pessoa com 80 anos ou mais, ECA e doença grave.
+- Registra mudanças de prioridade processual no histórico do processo.
+- Inclui a nova informação nas exportações e nos backups.
+- Renova o cache do PWA para distribuir as correções.
+
 # Práxis 0.10.7.5 — Redefinição administrativa de senha
 
 - Corrige o botão “Redefinir senha” na edição de usuários.

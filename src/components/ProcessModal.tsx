@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { addBusinessDays, toLocalInput } from "../date";
 import { withRequiredAppealClasses } from "../classOptions";
-import type { CalendarExclusion, ClassSetting, Priority, ProcessFormData, TeamMember } from "../types";
+import type { CalendarExclusion, ClassSetting, Priority, ProceduralPriority, ProcessFormData, TeamMember } from "../types";
+import { PROCEDURAL_PRIORITY_OPTIONS } from "../proceduralPriorities";
 import { SpecialClassificationFields } from "./SpecialClassificationFields";
 import { PasteButton } from "./PasteButton";
 
@@ -18,7 +19,7 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
   const [form, setForm] = useState<ProcessFormData>({
     assignedTo: currentUserId,
     mpNumber: "", judicialNumber: "", className: initialClass.name, subject: "", receivedAt: now,
-    deadlineAt: addBusinessDays(now, initialClass.businessDays, exclusions.map((item) => item.date)).slice(0, 10), actionType: "", notes: "", priority: "Normal", documentPath: "",
+    deadlineAt: addBusinessDays(now, initialClass.businessDays, exclusions.map((item) => item.date)).slice(0, 10), actionType: "", notes: "", priority: "Normal", proceduralPriority: "Nenhuma", documentPath: "",
     sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "", fundamentalRight: "",
     affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", sdgs: [], complexityReason: "",
   });
@@ -51,7 +52,8 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
         <label>Classe<select value={form.className} onChange={(e) => change("className", e.target.value)}>{selectableClasses.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}</select></label>
         <label>Entrada<input type="datetime-local" required value={form.receivedAt} onChange={(e) => change("receivedAt", e.target.value)} /></label>
         <label className="field-with-help">Prazo<input type="date" value={form.deadlineAt} onChange={(e) => change("deadlineAt", e.target.value)} /><small>Calculado com fins de semana e exclusões cadastradas. Deixe vazio se não houver prazo aplicável.</small></label>
-        <label>Prioridade<select value={form.priority} onChange={(e) => change("priority", e.target.value as Priority)}><option>Baixa</option><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
+        <label>Urgência da fila<select value={form.priority} onChange={(e) => change("priority", e.target.value as Priority)}><option>Baixa</option><option>Normal</option><option>Alta</option><option>Urgente</option></select></label>
+        <label>Prioridade processual<select value={form.proceduralPriority} onChange={(e) => change("proceduralPriority", e.target.value as ProceduralPriority)}>{PROCEDURAL_PRIORITY_OPTIONS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
         {isAdmin ? <label>Responsável<select value={form.assignedTo} onChange={(e) => change("assignedTo", e.target.value)}>{members.filter((member) => member.active).map((member) => <option key={member.userId} value={member.userId}>{member.fullName || member.email}</option>)}</select></label> : <div />}
         <label>Documento relacionado<input value={form.documentPath} onChange={(e) => change("documentPath", e.target.value)} placeholder="C:\\Processos\\manifestacao.docx" /></label>
         <label className="full">Assunto/observação da fila<textarea required rows={3} value={form.subject} onChange={(e) => change("subject", e.target.value)} placeholder="Descreva brevemente a controvérsia e a providência..." /></label>

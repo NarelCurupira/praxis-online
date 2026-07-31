@@ -8,7 +8,7 @@ const PAGE_SIZE = 1000;
 const CACHE_TTL_MS = 30_000;
 const SELECT_MOVEMENT = [
   "id", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
-  "sent_at", "sent_time_precise", "action_type", "notes", "priority", "document_path", "deleted_at", "archived_at", "assigned_to",
+  "sent_at", "sent_time_precise", "action_type", "notes", "priority", "procedural_priority", "document_path", "deleted_at", "archived_at", "assigned_to",
   "cases!inner(mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex,social_theme,relevance_reason,fundamental_right,affected_group,reach,territorial_scope,impact_type,social_result,sdgs,complexity_reason)",
   "assignee:profiles!movements_assigned_to_fkey(id,full_name)",
 ].join(",");
@@ -88,7 +88,7 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
     receivedAt, receivedTimePrecise: Boolean(row.received_time_precise), deadlineAt: String(row.deadline_at ?? ""),
     draftStatus: String(row.draft_status ?? "Pendente"), workflowStatus: String(row.workflow_status ?? "Recebido") as ProcessMovement["workflowStatus"],
     sentAt, sentTimePrecise: Boolean(row.sent_time_precise), actionType: String(row.action_type ?? ""), notes: String(row.notes ?? ""),
-    priority: String(row.priority ?? "Normal") as ProcessMovement["priority"], documentPath: String(row.document_path ?? ""),
+    priority: String(row.priority ?? "Normal") as ProcessMovement["priority"], proceduralPriority: String(row.procedural_priority ?? "Nenhuma") as ProcessMovement["proceduralPriority"], documentPath: String(row.document_path ?? ""),
     elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
     sociallyRelevant: Boolean(item.socially_relevant), extremelyComplex: Boolean(item.extremely_complex),
     socialTheme: String(item.social_theme ?? ""), relevanceReason: String(item.relevance_reason ?? ""),

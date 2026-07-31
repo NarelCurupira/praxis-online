@@ -375,6 +375,7 @@ export async function executeIntelligentImport(
           action_type: record.actionType,
           notes: record.notes,
           priority: record.priority,
+          procedural_priority: record.proceduralPriority,
           document_path: record.documentPath,
           elapsed_hours: usefulElapsedHours(receivedAt, estimatedSentAt),
           assigned_to: assignedTo,

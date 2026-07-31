@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const css = readFileSync(new URL("./v0107.css", import.meta.url), "utf8");
+const baseCss = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
 const sidebar = readFileSync(new URL("./components/Sidebar.tsx", import.meta.url), "utf8");
 const about = readFileSync(new URL("./components/AboutPage.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
@@ -10,6 +11,7 @@ const processModal = readFileSync(new URL("./components/ProcessModal.tsx", impor
 const editModal = readFileSync(new URL("./components/EditProcessModal.tsx", import.meta.url), "utf8");
 const processTable = readFileSync(new URL("./components/ProcessTable.tsx", import.meta.url), "utf8");
 const mobileInteractions = readFileSync(new URL("./mobileInteractions.ts", import.meta.url), "utf8");
+const dashboard = readFileSync(new URL("./components/Dashboard.tsx", import.meta.url), "utf8");
 
 test("menu móvel permanece oculto no desktop e reaparece no breakpoint móvel", () => {
   assert.match(css, /\.topbar \.mobile-menu\s*\{\s*display:\s*none !important;/);
@@ -98,4 +100,19 @@ test("alteração da entrada direciona à justificativa sem desabilitar silencio
   assert.match(editModal, /Preencha a justificativa para salvar a alteração da entrada/);
   assert.match(editModal, /disabled=\{saving\}/);
   assert.doesNotMatch(editModal, /disabled=\{saving \|\| \(receivedChanged/);
+});
+
+test("comparativo anual responde à largura do painel sem sobreposição", () => {
+  assert.match(dashboard, /annual-comparison-panel/);
+  assert.match(baseCss, /\.annual-comparison-panel\s*\{[^}]*container-type:\s*inline-size;/);
+  assert.match(baseCss, /@container \(max-width:\s*860px\)[\s\S]*?\.annual-layout\s*\{\s*grid-template-columns:\s*1fr;/);
+  assert.match(baseCss, /\.annual-table-wrap\s*\{[^}]*max-width:\s*100%;[^}]*overflow-x:\s*auto;/);
+});
+
+test("cadastro e edição separam urgência da prioridade processual", () => {
+  for (const source of [processModal, editModal]) {
+    assert.match(source, /Urgência da fila/);
+    assert.match(source, /Prioridade processual/);
+    assert.match(source, /PROCEDURAL_PRIORITY_OPTIONS/);
+  }
 });

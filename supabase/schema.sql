@@ -72,6 +72,7 @@ create table if not exists public.movements (
   action_type text not null default '',
   notes text not null default '',
   priority text not null default 'Normal' check (priority in ('Baixa', 'Normal', 'Alta', 'Urgente')),
+  procedural_priority text not null default 'Nenhuma' check (procedural_priority in ('Nenhuma', 'Idoso', 'Idoso +80', 'ECA', 'Doença grave')),
   document_path text not null default '',
   elapsed_hours numeric,
   deleted_at timestamptz,
