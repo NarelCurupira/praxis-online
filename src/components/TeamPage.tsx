@@ -34,6 +34,7 @@ export function TeamPage({ onChanged }: Props) {
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [editMessage, setEditMessage] = useState("");
 
   const [name, setName] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -100,6 +101,7 @@ export function TeamPage({ onChanged }: Props) {
 
   function open(member: TeamMember) {
     setEditing(member);
+    setEditMessage("");
     setEditName(member.fullName);
     setEditDisplayName(member.displayName || suggestedDisplayName(member.fullName, member.email));
     setEditEmail(member.email);
@@ -133,6 +135,20 @@ export function TeamPage({ onChanged }: Props) {
       setMessage("Usuário atualizado.");
     } catch (error) {
       setMessage(String(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resetPassword() {
+    if (!editing) return;
+    setBusy(true);
+    setEditMessage("");
+    try {
+      await sendMemberPasswordReset(editing);
+      setEditMessage(`E-mail de redefinição enviado para ${editing.email}. Oriente o usuário a verificar também a caixa de spam.`);
+    } catch (error) {
+      setEditMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(false);
     }
@@ -178,7 +194,8 @@ export function TeamPage({ onChanged }: Props) {
         <label><input type="checkbox" checked={editActive} onChange={(event) => setEditActive(event.target.checked)} />Conta ativa</label>
         <label><input type="checkbox" checked={editMfa} onChange={(event) => setEditMfa(event.target.checked)} />Exigir 2FA</label>
       </div>
-      <div className="modal-actions"><button type="button" className="button secondary" onClick={() => editing && sendMemberPasswordReset(editing)}>Redefinir senha</button><button type="button" className="button secondary" onClick={() => setEditing(null)}>Cancelar</button><button className="button primary" disabled={busy}>Salvar</button></div>
+      {editMessage && <div className="member-editor-message" role="status">{editMessage}</div>}
+      <div className="modal-actions"><button type="button" className="button secondary" disabled={busy} onClick={() => void resetPassword()}>{busy ? "Enviando..." : "Redefinir senha"}</button><button type="button" className="button secondary" disabled={busy} onClick={() => setEditing(null)}>Cancelar</button><button className="button primary" disabled={busy}>Salvar</button></div>
     </form></div>}
   </div>;
 }
