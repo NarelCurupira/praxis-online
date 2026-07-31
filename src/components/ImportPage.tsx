@@ -38,16 +38,20 @@ function normalizeStatus(value: unknown): WorkflowStatus {
   return "Recebido";
 }
 
+function specialDefaults() {
+  return {
+    proceduralPriority: "Nenhuma" as const,
+    sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "", fundamentalRight: "",
+    affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", sdgs: [] as string[], complexityReason: "",
+  };
+}
+
 function boundedRows(sheet: XLSX.WorkSheet): unknown[][] {
   let maxRow = 0; let maxColumn = 0;
   for (const address of Object.keys(sheet).filter((key) => !key.startsWith("!"))) {
     const cell = XLSX.utils.decode_cell(address); maxRow = Math.max(maxRow, cell.r); maxColumn = Math.max(maxColumn, cell.c);
   }
   return XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null, range: { s: { r: 0, c: 0 }, e: { r: maxRow, c: maxColumn } } });
-}
-
-function specialDefaults() {
-  return { sociallyRelevant: false, extremelyComplex: false, socialTheme: "", relevanceReason: "", fundamentalRight: "", affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", sdgs: [], complexityReason: "" };
 }
 
 function inferAction(value: string): string {
@@ -179,7 +183,7 @@ export function ImportPage({ isAdmin, onBackup, onChanged, records: currentRecor
 
   async function backup() { setBusy(true); setMessage(await onBackup()); setBusy(false); }
   async function restore() { if (!restoreFile) return; setBusy(true); setMessage(""); try { const restored = await onRestoreBackup(restoreFile); await onChanged(); setMessage(restored); setShowRestore(false); setRestoreText(""); setRestoreFile(null); setSensitiveConfirmation(null); } catch (error) { setMessage(`Não foi possível restaurar: ${String(error)}`); setShowRestore(false); setSensitiveConfirmation(null); } finally { setBusy(false); } }
-  async function exportExcel() { setBusy(true); const rows = currentRecords.map((record) => ({ "Nº MP": record.mpNumber, "Nº Judicial": record.judicialNumber, Classe: record.className, Assunto: record.subject, Entrada: record.receivedAt, "Horário de entrada confirmado": record.receivedTimePrecise ? "Sim" : "Não", Prazo: record.deadlineAt, Minuta: record.draftStatus, Status: record.workflowStatus, Envio: record.sentAt ?? "", "Horário de envio confirmado": record.sentTimePrecise ? "Sim" : "Não", Providência: actionLabel(record.actionType), Prioridade: record.priority, Observações: record.notes, Documento: record.documentPath })); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), "Processos"); const bytes = Array.from(new Uint8Array(XLSX.write(workbook, { bookType: "xlsx", type: "array" }))); setMessage(await onExport(bytes)); setBusy(false); }
+  async function exportExcel() { setBusy(true); const rows = currentRecords.map((record) => ({ "Nº MP": record.mpNumber, "Nº Judicial": record.judicialNumber, Classe: record.className, Assunto: record.subject, Entrada: record.receivedAt, "Horário de entrada confirmado": record.receivedTimePrecise ? "Sim" : "Não", Prazo: record.deadlineAt, Minuta: record.draftStatus, Status: record.workflowStatus, Envio: record.sentAt ?? "", "Horário de envio confirmado": record.sentTimePrecise ? "Sim" : "Não", Providência: actionLabel(record.actionType), Prioridade: record.priority, "Prioridade processual": record.proceduralPriority ?? "Nenhuma", Observações: record.notes, Documento: record.documentPath })); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), "Processos"); const bytes = Array.from(new Uint8Array(XLSX.write(workbook, { bookType: "xlsx", type: "array" }))); setMessage(await onExport(bytes)); setBusy(false); }
   async function clearAll() { setBusy(true); try { const resultMessage = await onClear(); await onChanged(); setMessage(resultMessage); setShowClear(false); setClearText(""); setResult(null); setSensitiveConfirmation(null); } finally { setBusy(false); } }
 
   const visiblePreview = useMemo(() => preview?.items.slice(0, showAllPreview ? 500 : 30) ?? [], [preview, showAllPreview]);

@@ -1,5 +1,6 @@
 export type WorkflowStatus = "Recebido" | "Em análise" | "Minutado" | "Enviado" | "Sobrestado";
 export type Priority = "Baixa" | "Normal" | "Alta" | "Urgente";
+export type ProceduralPriority = "Nenhuma" | "Idoso" | "Idoso +80" | "ECA" | "Doença grave";
 
 export interface ProcessMovement {
   movementId: number;
@@ -18,6 +19,7 @@ export interface ProcessMovement {
   actionType: string;
   notes: string;
   priority: Priority;
+  proceduralPriority?: ProceduralPriority;
   documentPath: string;
   elapsedHours: number | null;
   sociallyRelevant: boolean;
@@ -50,6 +52,7 @@ export interface ProcessFormData {
   actionType: string;
   notes: string;
   priority: Priority;
+  proceduralPriority: ProceduralPriority;
   documentPath: string;
   sociallyRelevant: boolean;
   extremelyComplex: boolean;
@@ -78,6 +81,7 @@ export interface ProcessEditData {
   actionType: string;
   notes: string;
   priority: Priority;
+  proceduralPriority: ProceduralPriority;
   documentPath: string;
   sociallyRelevant: boolean;
   extremelyComplex: boolean;

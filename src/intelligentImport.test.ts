@@ -15,6 +15,7 @@ function imported(overrides: Partial<ImportRecord> = {}): ImportRecord {
     actionType: "Manifestação",
     notes: "",
     priority: "Normal",
+    proceduralPriority: "Nenhuma",
     documentPath: "",
     sociallyRelevant: false,
     extremelyComplex: false,

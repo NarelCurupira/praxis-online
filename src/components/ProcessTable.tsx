@@ -138,6 +138,7 @@ function excelRows(records: ProcessMovement[]) {
     Envio: record.sentAt ?? "",
     Providência: actionLabel(record.actionType),
     Prioridade: record.priority,
+    "Prioridade processual": record.proceduralPriority ?? "Nenhuma",
     "Observações internas": record.notes,
     "Relevância social": record.sociallyRelevant ? "Sim" : "Não",
     "Alta complexidade": record.extremelyComplex ? "Sim" : "Não",
