@@ -134,6 +134,36 @@ Deno.serve(async (request) => {
       });
     }
 
+    if (action === "reset_password") {
+      const targetUserId = String(body.targetUserId ?? "");
+      const { data: membership, error: membershipError } = await adminClient.from("workspace_members")
+        .select("user_id").eq("workspace_id", profile.current_workspace_id).eq("user_id", targetUserId).maybeSingle();
+      if (membershipError || !membership) throw new Error("Usuário não pertence a este espaço");
+
+      const { data: targetData, error: targetError } = await adminClient.auth.admin.getUserById(targetUserId);
+      if (targetError || !targetData.user?.email) throw new Error("Não foi possível localizar o e-mail do usuário");
+
+      const requestedRedirect = String(body.redirectTo ?? "").trim();
+      const configuredSite = Deno.env.get("PUBLIC_SITE_URL")?.trim() ?? "";
+      const redirectTo = configuredSite || requestedRedirect;
+      if (!redirectTo || !/^https?:\/\//.test(redirectTo)) throw new Error("Endereço de retorno inválido");
+
+      const { error: resetError } = await adminClient.auth.resetPasswordForEmail(targetData.user.email, { redirectTo });
+      if (resetError) throw resetError;
+
+      const { error: auditError } = await adminClient.from("admin_audit_log").insert({
+        workspace_id: profile.current_workspace_id,
+        actor_id: userData.user.id,
+        event_type: "member_password_reset_requested",
+        details: { target_user: targetUserId },
+      });
+      if (auditError) throw auditError;
+
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
+      });
+    }
+
     throw new Error("Ação administrativa desconhecida");
   } catch (error) {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {

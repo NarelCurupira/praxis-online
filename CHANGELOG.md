@@ -1,3 +1,12 @@
+# Práxis 0.10.7.5 — Redefinição administrativa de senha
+
+- Corrige o botão “Redefinir senha” na edição de usuários.
+- Transfere o envio do e-mail para a função protegida `admin-manage-user`.
+- Valida administrador, autenticação forte e vínculo do usuário antes do envio.
+- Exibe confirmação ou erro diretamente no modal, com estado “Enviando...”.
+- Registra a solicitação na auditoria administrativa sem expor credenciais no navegador.
+- Renova o cache do PWA para distribuir a correção.
+
 # Práxis 0.10.7.4 — Leitura da fila e gestos móveis
 
 - Destaca o status “Enviado” com o azul-marinho da identidade visual na aba Processos.

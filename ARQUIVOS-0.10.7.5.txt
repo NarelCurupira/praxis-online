@@ -1,0 +1,13 @@
+ATUALIZACAO-0.10.7.5.md
+ARQUIVOS-0.10.7.5.txt
+CHANGELOG.md
+package-lock.json
+package.json
+public/sw.js
+src/adminUserManagement.test.ts
+src/api.ts
+src/components/AboutPage.tsx
+src/components/TeamPage.tsx
+src/v0107.css
+src/version.ts
+supabase/functions/admin-manage-user/index.ts

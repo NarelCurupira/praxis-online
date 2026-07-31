@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.7.4-table-swipe-edit-1";
+const CACHE_NAME = "praxis-shell-0.10.7.5-admin-password-reset-1";
 const SHELL = [
   "/",
   "/index.html",

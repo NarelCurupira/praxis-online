@@ -620,3 +620,13 @@ html[data-theme="dark"] .deadline-urgent {
   color: var(--danger);
   font-weight: 700;
 }
+
+.member-editor-message {
+  margin: 0 24px 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-subtle);
+  color: var(--text-secondary);
+  line-height: 1.45;
+}

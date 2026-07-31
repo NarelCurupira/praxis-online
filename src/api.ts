@@ -712,9 +712,15 @@ export async function updateTeamMemberProfile(member: TeamMember, values: { full
 
 export async function sendMemberPasswordReset(member: TeamMember): Promise<void> {
   const { client } = await context();
-  const { error } = await client.auth.resetPasswordForEmail(member.email, { redirectTo: window.location.origin });
-  fail(error);
-  await recordAdminAudit("member_password_reset_requested", { target_user: member.userId });
+  const { data, error } = await client.functions.invoke("admin-manage-user", {
+    body: {
+      action: "reset_password",
+      targetUserId: member.userId,
+      redirectTo: window.location.origin,
+    },
+  });
+  if (error) throw new Error(`Não foi possível enviar a redefinição de senha. ${error.message}`);
+  if (data?.error) throw new Error(String(data.error));
 }
 
 export async function teamComparativeReport(startDate: string, endDate: string): Promise<TeamComparison[]> {
