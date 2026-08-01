@@ -103,31 +103,32 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
 
 async function fetchAllMovements(prepareTransform?: () => Promise<void> | void): Promise<ProcessMovement[]> {
   const { client, workspaceId } = await fastContext();
-  const base = (withCount = false) => client.from("movements").select(SELECT_MOVEMENT, withCount ? { count: "exact" } : undefined)
+  const base = () => client.from("movements").select(SELECT_MOVEMENT)
     .eq("workspace_id", workspaceId).is("deleted_at", null)
     .order("received_at", { ascending: false }).order("id", { ascending: false });
 
   const { rows, exclusionsResult } = await measureAsync("movements.fetch", async () => {
     const [first, exclusions] = await Promise.all([
-      base(true).range(0, PAGE_SIZE - 1),
+      base().range(0, PAGE_SIZE - 1),
       loadCalendarExclusions(client, workspaceId),
     ]);
     fail(first.error);
 
-    const total = first.count ?? first.data?.length ?? 0;
-    const pageCount = Math.ceil(total / PAGE_SIZE);
-    const remaining = pageCount > 1
-      ? await Promise.all(Array.from({ length: pageCount - 1 }, (_, index) => {
-          const start = (index + 1) * PAGE_SIZE;
-          return base(false).range(start, start + PAGE_SIZE - 1);
-        }))
-      : [];
-
     const loadedRows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
-    for (const page of remaining) {
+    let loaded = first.data?.length ?? 0;
+    let start = PAGE_SIZE;
+
+    // Evita count: "exact": o total não é necessário para carregar todos os registros.
+    // As páginas seguintes são buscadas somente enquanto a anterior vier completa.
+    while (loaded === PAGE_SIZE) {
+      const page = await base().range(start, start + PAGE_SIZE - 1);
       fail(page.error);
-      loadedRows.push(...((page.data ?? []) as unknown as Record<string, unknown>[]));
+      const pageRows = (page.data ?? []) as unknown as Record<string, unknown>[];
+      loadedRows.push(...pageRows);
+      loaded = pageRows.length;
+      start += PAGE_SIZE;
     }
+
     return { rows: loadedRows, exclusionsResult: exclusions };
   });
 
