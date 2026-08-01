@@ -1,6 +1,7 @@
--- Práxis Online 0.10.7
--- Para novas instalações. Em bancos existentes, execute primeiro
--- supabase/migrations/20260724_fix_received_at_timestamptz.sql.
+-- Práxis Online — esquema-base
+-- Para novas instalações, execute este arquivo e depois todas as migrações de
+-- supabase/migrations em ordem cronológica, até 20260801_praxis_v01077_security_retention.sql.
+-- Em bancos existentes, execute somente as migrações ainda não aplicadas.
 
 create extension if not exists pgcrypto;
 

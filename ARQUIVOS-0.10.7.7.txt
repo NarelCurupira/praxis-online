@@ -1,0 +1,14 @@
+ARQUIVOS-0.10.7.7.txt
+ATUALIZACAO-0.10.7.7.md
+CHANGELOG.md
+EXECUTAR-NO-SUPABASE-0.10.7.7.sql
+README.md
+package.json
+package-lock.json
+public/sw.js
+src/version.ts
+src/diagnosticsApi.ts
+src/components/AdminAuditPage.tsx
+src/components/AboutPage.tsx
+supabase/schema.sql
+supabase/migrations/20260801_praxis_v01077_security_retention.sql
