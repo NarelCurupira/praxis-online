@@ -11,6 +11,7 @@ export interface PerformanceMetricEntry {
   id: number; operation: string; page: string; durationMs: number; occurredAt: string; archivedAt: string | null;
 }
 export interface TechnicalSettings { slowOperationThresholdMs: number; performanceRetentionDays: number; }
+export interface TechnicalTelemetryCleanupResult { deletedErrors: number; deletedPerformance: number; cutoffAt: string; }
 export interface SystemDiagnostics {
   workspaceName: string; processes: number; movements: number; activeUsers: number;
   impreciseReceived: number; impreciseSent: number; technicalErrors: number;
@@ -64,13 +65,24 @@ export async function archivePerformanceMetrics(): Promise<number> {
   return Number(data ?? 0);
 }
 
+export async function cleanupTechnicalTelemetry(retentionDays = 15): Promise<TechnicalTelemetryCleanupResult> {
+  const { data, error } = await requireClient().rpc("cleanup_technical_telemetry_v0108", { retention_days: retentionDays });
+  if (error) throw error;
+  const value = Array.isArray(data) ? (data[0] ?? {}) : (data ?? {});
+  return {
+    deletedErrors: Number((value as Record<string, unknown>).deleted_errors ?? 0),
+    deletedPerformance: Number((value as Record<string, unknown>).deleted_performance ?? 0),
+    cutoffAt: String((value as Record<string, unknown>).cutoff_at ?? ""),
+  };
+}
+
 export async function getTechnicalSettings(): Promise<TechnicalSettings> {
   const { data, error } = await requireClient().rpc("get_technical_settings_v0102");
-  if (error) return { slowOperationThresholdMs: 2000, performanceRetentionDays: 30 };
+  if (error) return { slowOperationThresholdMs: 2000, performanceRetentionDays: 15 };
   const value = (data ?? {}) as Record<string, unknown>;
   return {
     slowOperationThresholdMs: Number(value.slow_operation_threshold_ms ?? 2000),
-    performanceRetentionDays: Number(value.performance_retention_days ?? 30),
+    performanceRetentionDays: Number(value.performance_retention_days ?? 15),
   };
 }
 

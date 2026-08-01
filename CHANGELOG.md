@@ -1,3 +1,13 @@
+# Práxis 0.10.7.7 — Segurança do banco e retenção técnica
+
+- Endurece as funções `SECURITY DEFINER` e bloqueia execução por usuários anônimos.
+- Torna efetiva a exigência de MFA/passkey nas rotinas administrativas sensíveis.
+- Usa o workspace atual nas RPCs e valida responsáveis ativos do mesmo workspace.
+- Protege o aceite de convites contra concorrência e divergência de e-mail.
+- Adiciona limpeza administrativa de erros e métricas técnicas com mais de 15 dias.
+- Preserva auditoria administrativa, histórico processual e dados funcionais.
+- Mantém funções antigas ainda chamadas como fallback pelo frontend.
+
 # Práxis 0.10.7.6 — Comparativo responsivo e prioridades processuais
 
 - Corrige a sobreposição do gráfico e da tabela do Comparativo anual em telas verticais.

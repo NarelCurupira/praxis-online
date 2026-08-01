@@ -1,83 +1,53 @@
 # Práxis Online
 
-Versão atual: **0.8.0**, conectada ao projeto Atrium no Supabase.
+Versão atual: **0.10.7.7**, conectada ao PostgreSQL do Supabase.
 
-Versão web e multiusuário do **Práxis — Controle de Processos**, derivada da interface local 0.9.3. Este projeto é independente do Práxis Local e não altera o banco SQLite nem o instalador do Windows.
+Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, governança de acesso, relatórios, auditoria, diagnóstico e funcionamento responsivo.
 
-## Estado atual
+## Configuração
 
-- autenticação por e-mail e senha;
-- convites com código para usuários trabalharem no mesmo espaço;
-- perfis de procurador, assessor/servidor e somente consulta;
-- administração, suspensão e reativação de membros;
-- criação automática do primeiro espaço de trabalho;
-- PostgreSQL no Supabase;
-- isolamento dos dados por espaço de trabalho com Row Level Security;
-- perfis previstos: administrador, procurador, assessor e consulta;
-- cadastro, edição, fila, lixeira, histórico, relatórios e importação conectados ao banco online;
-- atribuição individual de responsáveis, filtro na tabela e correção em bloco na qualidade dos dados;
-- exportação em Excel, PDF e backup JSON pelo navegador;
-- relatórios gerenciais Executivo, Completo e Anexo de Processos Destacados;
-- estoque conciliado, situações de prazo separadas, mediana e percentis em horas úteis;
-- gráficos dinâmicos de fluxo, equipe, prazos, tramitação, relevância social, ODS e providências;
-- build de produção validado.
-
-Use somente dados fictícios ou anonimizados nesta fase de protótipo.
-
-## Configuração do Supabase Free
-
-1. Crie um projeto em https://supabase.com/dashboard.
-2. Abra **SQL Editor**, crie uma consulta e execute todo o conteúdo de `supabase/schema.sql`.
-3. Em seguida, execute, na ordem, as migrações numeradas de `supabase/002-equipe-convites.sql` até `supabase/009-relatorios-gerenciais.sql`.
-4. Em **Project Settings > API**, copie a URL do projeto e a chave pública `anon`/`publishable`.
-5. Copie `.env.example` para `.env.local` e preencha:
-
-```env
-VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
-VITE_SUPABASE_ANON_KEY=SUA_CHAVE_ANON_PUBLICA
-```
+1. Crie um projeto no Supabase.
+2. Em uma instalação nova, execute `supabase/schema.sql`.
+3. Execute **todas** as migrações de `supabase/migrations/` em ordem cronológica.
+4. Em um banco existente, execute somente as migrações ainda não aplicadas.
+5. Copie `.env.example` para `.env.local` e informe `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
 
 Nunca coloque a senha do banco ou a chave `service_role` no frontend.
 
-## Execução
-
-### Windows, forma guiada
-
-1. Execute `01-instalar-online.bat` uma única vez.
-2. Execute `02-abrir-praxis-online.bat` sempre que quiser iniciar o teste.
-3. Mantenha a janela preta aberta durante o uso.
-
-O endereço local de teste é `http://127.0.0.1:1420`.
-
-### Terminal
+## Execução local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Validação e compilação:
+Validação:
 
 ```bash
+npm run check
+npm test
 npm run build
-npm run test:reports
 ```
 
-## Primeiro usuário
+## Usuários e workspaces
 
-Ao criar a primeira conta, o esquema cria automaticamente:
+O cadastro cria o perfil do usuário. O acesso a um workspace depende de vínculo ativo ou aceite de convite. Papéis disponíveis: administrador, procurador, assessor e consulta.
 
-- perfil do usuário;
-- espaço de trabalho próprio;
-- vínculo como administrador;
-- classes e prazos iniciais.
+## Segurança do banco
 
-Cada novo cadastro cria inicialmente um espaço separado. O administrador pode convidar usuários para trabalhar no mesmo espaço e distribuir os processos entre os membros ativos.
+- Row Level Security para isolamento por workspace.
+- Funções sensíveis com `SECURITY DEFINER` e `search_path` fixado.
+- Execução anônima bloqueada nas RPCs administrativas.
+- MFA ou passkey exigidos para operações administrativas críticas.
+- Workspace atual validado nas funções sensíveis.
+- Atribuição de processos limitada a membros ativos do mesmo workspace.
+- Aceite de convite associado ao usuário e ao e-mail autenticado.
+- Auditoria administrativa preservada.
 
-## Segurança implementada no banco
+## Telemetria técnica
 
-As políticas RLS impedem que um usuário consulte tabelas de um espaço do qual não seja membro. Usuários com perfil de consulta não podem alterar dados. Exclusões definitivas e determinadas operações administrativas exigem perfil de administrador.
+Erros técnicos e métricas de desempenho podem ser excluídos pela área **Auditoria e diagnóstico** quando tiverem mais de 15 dias. A limpeza exige administrador com autenticação forte e não alcança auditoria, histórico processual ou dados funcionais.
 
-## Observação sobre o projeto recebido
+## Funções legadas
 
-O ZIP usado como base continha a interface React, mas não continha `src-tauri`, onde ficaria o código Rust e SQLite da versão local. Essa ausência não bloqueia o Práxis Online, porque a camada local foi substituída pelo Supabase.
+As funções `get_praxis_diagnostics_v0101`, `list_performance_metrics_v0101` e `list_current_workspace_members_v09` permanecem porque ainda são utilizadas como fallbacks de compatibilidade no frontend.
