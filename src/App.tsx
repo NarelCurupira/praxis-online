@@ -104,6 +104,26 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setDataVersion((value) => value + 1);
   }
 
+  async function reloadReferenceData() {
+    const [nextSettings, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadReferenceData", () => Promise.all([
+      getWorkspaceSettings(), listClassSettingsFast(), listCalendarExclusionsFast({ force: true }), listGovernanceMembers(), listClosedPeriods(),
+    ]));
+    configureWorkdaySchedule(nextSettings);
+    const excludedDates = new Set(nextExclusions.map((item) => item.date));
+    const memberNames = new Map(nextMembers.map((member) => [member.userId, member.fullName]));
+    setRecords((current) => current.map((record) => ({
+      ...record,
+      elapsedHours: usefulElapsedHours(record.receivedAt, record.sentAt, excludedDates),
+      assignedName: memberNames.get(record.assignedTo) || record.assignedName,
+    })));
+    setClasses(nextClasses);
+    setExclusions(nextExclusions);
+    setMembers(nextMembers);
+    setSettings(nextSettings);
+    setClosed(nextClosed);
+    setDataVersion((value) => value + 1);
+  }
+
   useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
 
   useEffect(() => {
@@ -284,12 +304,17 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk} />}
         {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
         {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash} />}
-        {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadAll} />}
-        {page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadAll(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadAll(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadAll(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadAll(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadAll(); }} onSaveSettings={async (value) => {
+        {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadReferenceData} />}
+        {page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadReferenceData(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadReferenceData(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadReferenceData(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadReferenceData(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadReferenceData(); }} onSaveSettings={async (value) => {
           await saveWorkspaceSettings(value);
           configureWorkdaySchedule(value);
           setSettings(value);
-          await reload();
+          const excludedDates = new Set(exclusions.map((item) => item.date));
+          setRecords((current) => current.map((record) => ({
+            ...record,
+            elapsedHours: usefulElapsedHours(record.receivedAt, record.sentAt, excludedDates),
+          })));
+          setDataVersion((current) => current + 1);
         }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} /> : <PersonalSettingsPage />)}
         {page === "audit" && access.canViewAudit && <AdminAuditPage />}
         {page === "about" && <AboutPage />}
