@@ -1,5 +1,5 @@
 import { usefulElapsedHours } from "./date";
-import { measureAsync, measureSync } from "./performanceMonitoring";
+import { measureAsync, measureAsyncResult, measureSync } from "./performanceMonitoring";
 import { requireSupabase } from "./supabase";
 import type { CalendarExclusion, ClassSetting, ProcessMovement } from "./types";
 import { workspaceContext } from "./workspaceContext";
@@ -101,40 +101,52 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
   };
 }
 
-async function fetchAllMovements(prepareTransform?: () => Promise<void> | void): Promise<ProcessMovement[]> {
-  const { client, workspaceId } = await fastContext();
+export type MovementLoadReason = "initial" | "pull" | "refresh" | "import" | "restore" | "trash" | "other";
+
+async function fetchAllMovements(context: Awaited<ReturnType<typeof fastContext>>, reason: MovementLoadReason, prepareTransform?: () => Promise<void> | void): Promise<ProcessMovement[]> {
+  const { client, workspaceId } = context;
   const base = () => client.from("movements").select(SELECT_MOVEMENT)
     .eq("workspace_id", workspaceId).is("deleted_at", null)
     .order("received_at", { ascending: false }).order("id", { ascending: false });
 
-  const { rows, exclusionsResult } = await measureAsync("movements.fetch", async () => {
-    const [first, exclusions] = await Promise.all([
-      base().range(0, PAGE_SIZE - 1),
-      loadCalendarExclusions(client, workspaceId),
-    ]);
-    fail(first.error);
+  const loadPage = (pageNumber: number, start: number) => measureAsyncResult(
+    async () => await base().range(start, start + PAGE_SIZE - 1),
+    (result) => `movements.page.${reason}.${pageNumber}.rows${result.data?.length ?? 0}`,
+  );
 
-    const loadedRows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
-    let loaded = first.data?.length ?? 0;
-    let start = PAGE_SIZE;
+  const { rows, exclusionsResult, pageCount } = await measureAsyncResult(
+    async () => {
+      const [first, exclusions] = await Promise.all([
+        loadPage(1, 0),
+        loadCalendarExclusions(client, workspaceId),
+      ]);
+      fail(first.error);
 
-    // Evita count: "exact": o total não é necessário para carregar todos os registros.
-    // As páginas seguintes são buscadas somente enquanto a anterior vier completa.
-    while (loaded === PAGE_SIZE) {
-      const page = await base().range(start, start + PAGE_SIZE - 1);
-      fail(page.error);
-      const pageRows = (page.data ?? []) as unknown as Record<string, unknown>[];
-      loadedRows.push(...pageRows);
-      loaded = pageRows.length;
-      start += PAGE_SIZE;
-    }
+      const loadedRows = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
+      let loaded = first.data?.length ?? 0;
+      let start = PAGE_SIZE;
+      let pages = 1;
 
-    return { rows: loadedRows, exclusionsResult: exclusions };
-  });
+      // Evita count: "exact": o total não é necessário para carregar todos os registros.
+      // As páginas seguintes são buscadas somente enquanto a anterior vier completa.
+      while (loaded === PAGE_SIZE) {
+        pages += 1;
+        const page = await loadPage(pages, start);
+        fail(page.error);
+        const pageRows = (page.data ?? []) as unknown as Record<string, unknown>[];
+        loadedRows.push(...pageRows);
+        loaded = pageRows.length;
+        start += PAGE_SIZE;
+      }
+
+      return { rows: loadedRows, exclusionsResult: exclusions, pageCount: pages };
+    },
+    (result) => `movements.fetch.${reason}.pages${result.pageCount}.rows${result.rows.length}`,
+  );
 
   await prepareTransform?.();
   const excludedDates = new Set(exclusionsResult.map((item) => item.date));
-  return measureSync("movements.transform", () => rows.map((row) => mapMovement(row, excludedDates)));
+  return measureSync(`movements.transform.${reason}.pages${pageCount}.rows${rows.length}`, () => rows.map((row) => mapMovement(row, excludedDates)));
 }
 
 export function clearFastMovementCache(): void {
@@ -144,16 +156,32 @@ export function clearFastMovementCache(): void {
   exclusionsPromise = null;
 }
 
-export async function listMovementsFast(options: { force?: boolean; prepareTransform?: () => Promise<void> | void } = {}): Promise<ProcessMovement[]> {
-  if (options.force) { cachedAt = 0; cachedRecords = null; inFlight = null; exclusionsPromise = null; }
+export async function listMovementsFast(options: { force?: boolean; reason?: MovementLoadReason; prepareTransform?: () => Promise<void> | void } = {}): Promise<ProcessMovement[]> {
+  // Sincroniza o proprietário do cache antes de reaproveitar uma chamada em andamento.
+  const context = await fastContext();
+
+  if (inFlight) {
+    return measureAsync(
+      (records) => `movements.inFlightReuse.${options.reason ?? "other"}.rows${records.length}`,
+      () => inFlight as Promise<ProcessMovement[]>,
+    );
+  }
+
+  if (options.force) {
+    cachedAt = 0;
+    cachedRecords = null;
+  }
+
   const now = Date.now();
   if (!options.force && cachedRecords && now - cachedAt < CACHE_TTL_MS) return cachedRecords;
-  if (!options.force && inFlight) return inFlight;
 
-  inFlight = fetchAllMovements(options.prepareTransform).then((records) => {
+  const request = fetchAllMovements(context, options.reason ?? "other", options.prepareTransform).then((records) => {
     cachedRecords = records;
     cachedAt = Date.now();
     return records;
-  }).finally(() => { inFlight = null; });
-  return inFlight;
+  }).finally(() => {
+    if (inFlight === request) inFlight = null;
+  });
+  inFlight = request;
+  return request;
 }
