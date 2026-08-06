@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.7.7-security-retention-1";
+const CACHE_NAME = "praxis-shell-0.10.7.8-loading-telemetry-1";
 const SHELL = [
   "/",
   "/index.html",

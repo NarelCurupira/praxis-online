@@ -1,6 +1,6 @@
 # Práxis Online
 
-Versão atual: **0.10.7.7**, conectada ao PostgreSQL do Supabase.
+Versão atual: **0.10.7.8**, conectada ao PostgreSQL do Supabase.
 
 Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, governança de acesso, relatórios, auditoria, diagnóstico e funcionamento responsivo.
 
