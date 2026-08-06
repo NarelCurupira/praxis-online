@@ -31,7 +31,7 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
-import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast } from "./fastApi";
+import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 
 const LoadingScreen = SplashScreen;
@@ -78,18 +78,19 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [processPreset, setProcessPreset] = useState<ProcessListPreset | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
 
-  async function reload() {
-    const nextRecords = await measureAsync("movements.reload", () => listMovementsFast({ force: true }));
+  async function reload(reason: MovementLoadReason = "refresh") {
+    const nextRecords = await measureAsync(`movements.reload.${reason}`, () => listMovementsFast({ force: true, reason }));
     setRecords(nextRecords);
     setDataVersion((value) => value + 1);
   }
 
-  async function reloadAll() {
+  async function reloadAll(reason: MovementLoadReason = "other") {
     const settingsPromise = getWorkspaceSettings();
-    const [nextSettings, nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync("app.reloadAll", () => Promise.all([
+    const [nextSettings, nextRecords, nextClasses, nextExclusions, nextMembers, nextClosed] = await measureAsync(`app.reloadAll.${reason}`, () => Promise.all([
       settingsPromise,
       listMovementsFast({
         force: true,
+        reason,
         prepareTransform: async () => configureWorkdaySchedule(await settingsPromise),
       }),
       listClassSettingsFast(), listCalendarExclusionsFast(), listGovernanceMembers(), listClosedPeriods(),
@@ -124,7 +125,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setDataVersion((value) => value + 1);
   }
 
-  useEffect(() => { reloadAll().finally(() => setLoading(false)); }, []);
+  useEffect(() => { reloadAll("initial").finally(() => setLoading(false)); }, []);
 
   useEffect(() => {
     const markOnline = () => setOnline(true);
@@ -145,7 +146,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     sidebarOpen,
     onOpenSidebar: () => setSidebarOpen(true),
     onCloseSidebar: () => setSidebarOpen(false),
-    onRefresh: reloadAll,
+    onRefresh: () => reload("pull"),
   });
 
   const currentMember = members.find((member) => member.userId === session.user.id);
@@ -302,8 +303,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
         {page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
         {page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk} />}
-        {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={reloadAll} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
-        {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={reload} canManage={access.canManageTrash} />}
+        {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={() => reloadAll("import")} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
+        {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={() => reload("trash")} canManage={access.canManageTrash} />}
         {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadReferenceData} />}
         {page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadReferenceData(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadReferenceData(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadReferenceData(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadReferenceData(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadReferenceData(); }} onSaveSettings={async (value) => {
           await saveWorkspaceSettings(value);

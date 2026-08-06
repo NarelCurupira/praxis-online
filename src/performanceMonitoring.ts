@@ -14,13 +14,27 @@ async function logSlowOperation(operation: string, durationMs: number): Promise<
   } catch { /* o monitoramento nunca deve interromper a aplicação */ }
 }
 
-export async function measureAsync<T>(operation: string, task: () => Promise<T>): Promise<T> {
+type AsyncOperationName<T> = string | ((result: T) => string);
+
+export async function measureAsync<T>(operation: AsyncOperationName<T>, task: () => Promise<T>): Promise<T> {
   const started = typeof performance === "undefined" ? Date.now() : performance.now();
-  try { return await task(); }
-  finally {
+  let completed = false;
+  let result: T | undefined;
+  try {
+    result = await task();
+    completed = true;
+    return result;
+  } finally {
     const finished = typeof performance === "undefined" ? Date.now() : performance.now();
-    void logSlowOperation(operation, finished - started);
+    const operationName = typeof operation === "function" && completed
+      ? operation(result as T)
+      : typeof operation === "string" ? operation : "operation.failed";
+    void logSlowOperation(operationName, finished - started);
   }
+}
+
+export function measureAsyncResult<T>(task: () => Promise<T>, operation: (result: NoInfer<T>) => string): Promise<T> {
+  return measureAsync<T>(operation, task);
 }
 
 export function measureSync<T>(operation: string, task: () => T): T {

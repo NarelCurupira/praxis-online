@@ -1,3 +1,11 @@
+# Práxis 0.10.7.8 — Carregamento coordenado e telemetria
+
+- Preserva a chamada de movimentações em andamento mesmo quando uma nova atualização forçada é solicitada.
+- Faz o pull-to-refresh atualizar somente as movimentações, sem recarregar configurações, equipe, classes, calendário e períodos fechados.
+- Identifica na telemetria o motivo da carga, o número da página e a quantidade de linhas retornadas.
+- Registra separadamente a carga total, a transformação e o reaproveitamento de uma requisição em andamento.
+- Mantém nesta rodada a consulta e o conjunto de dados atuais para permitir comparação isolada do novo fluxo.
+
 # Práxis 0.10.7.7 — Segurança do banco e retenção técnica
 
 - Endurece as funções `SECURITY DEFINER` e bloqueia execução por usuários anônimos.
