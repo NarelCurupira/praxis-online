@@ -1,0 +1,27 @@
+PRÁXIS ONLINE 0.11.0 — VALIDAÇÃO
+
+Escopo validado:
+- IndexedDB isolado por usuário + Procuradoria.
+- Retenção local de 72 horas.
+- Snapshot operacional sem documentos, observações e metadados detalhados.
+- Entrada automática em contingência na indisponibilidade de rede.
+- Fallback para contingência quando atualização do servidor falha e existe snapshot válido.
+- Somente leitura em contingência.
+- Troca offline limitada às Procuradorias com snapshot válido.
+- Reconexão automática ao Supabase.
+- Exclusão do cache local no logout.
+- Service Worker devolvendo o shell principal em navegação offline.
+
+Resultados executados neste ambiente:
+- Consistência de versão: PASS — 0.11.0.
+- Parsing/transpilação TypeScript/TSX dos arquivos funcionais alterados: PASS.
+- Sintaxe do Service Worker (`node --check`): PASS.
+- Testes específicos de contingência: 6/6 PASS.
+- Testes de regressão de layout/fluxos existentes: 28/28 PASS.
+- Total da rodada estrutural: 34/34 PASS.
+
+Limitação do ambiente:
+O `npm run check` completo não pôde ser concluído porque o node_modules deste ambiente contém diretórios incompletos de @types/node e vite/client. O GitHub Actions deve executar `npm run quality` com as dependências instaladas normalmente antes da publicação definitiva.
+
+Banco:
+- Nenhuma migração SQL é necessária na 0.11.0.

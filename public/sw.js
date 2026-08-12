@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.8.2-multi-procuradorias-1";
+const CACHE_NAME = "praxis-shell-0.11.0-contingencia-leitura-1";
 const SHELL = [
   "/",
   "/index.html",
@@ -44,6 +44,8 @@ async function networkFirst(request) {
     const cached = await cache.match(request);
     if (cached) return cached;
     if (request.mode === "navigate") {
+      const shell = await cache.match("/") ?? await cache.match("/index.html");
+      if (shell) return shell;
       const offline = await cache.match("/offline.html");
       if (offline) return offline;
     }

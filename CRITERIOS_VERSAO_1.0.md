@@ -47,3 +47,29 @@
 - [x] Passkeys/biometria opcional em Mac e celulares.
 - [x] Otimização do carregamento integral de movimentações.
 - [x] Redução de validações repetidas de sessão.
+
+
+## Roadmap de contingência até a 1.0
+
+### 0.11.0 — leitura offline
+- [x] IndexedDB por usuário + Procuradoria.
+- [x] Snapshot operacional com retenção de 72 horas.
+- [x] Modo somente leitura automático.
+- [x] Troca entre Procuradorias previamente sincronizadas.
+- [x] Retorno automático ao Supabase após reconexão.
+- [x] Exclusão do cache no logout.
+
+### 0.11.1-RC — escrita offline e sincronização
+- [ ] Fila local de operações pendentes.
+- [ ] Cadastro e edição básica em contingência.
+- [ ] Alteração offline de responsável, providência e status.
+- [ ] Sincronização automática das operações sem conflito.
+- [ ] Painel de pendências de sincronização.
+
+### 1.0 — conflitos, segurança e estabilização
+- [ ] Versionamento otimista dos registros.
+- [ ] Detecção e resolução assistida de conflitos.
+- [ ] Testes multiusuário, multi-Procuradoria e de queda abrupta da rede.
+- [ ] Revisão final de segurança do armazenamento local.
+- [ ] Telemetria específica de contingência e sincronização.
+- [ ] Documentação operacional final e release estável.
