@@ -1,0 +1,49 @@
+PRÁXIS ONLINE 0.11.1-RC — VALIDAÇÃO LOCAL
+
+Versão
+- scripts/check-version-consistency.mjs: PASS
+- versão consolidada: 0.11.1-RC
+
+TypeScript / TSX — transpilação sintática
+PASS src/App.tsx
+PASS src/api.ts
+PASS src/offlineStore.ts
+PASS src/offlineSync.ts
+PASS src/components/OfflineQueuePanel.tsx
+PASS src/components/ProcessModal.tsx
+PASS src/components/ProcessTable.tsx
+PASS src/components/AboutPage.tsx
+PASS src/contingencyRegression.test.ts
+
+Service Worker
+- node --check public/sw.js: PASS
+
+Testes específicos da contingência
+- 11 testes executados
+- 11 PASS
+- 0 FAIL
+
+Cobertura estrutural dos testes novos
+- IndexedDB v2 e fila por usuário/Procuradoria
+- snapshot de leitura continua removendo campos sensíveis/detalhados
+- gravações operacionais permitidas e ações sensíveis bloqueadas
+- fallback somente para falhas transitórias de rede/servidor
+- sincronização usa APIs normais do Práxis
+- idempotência prática para repetição após perda de confirmação
+- preservação do horário de envio offline
+- painel da fila e limite explícito de conflitos da RC
+- confirmação antes do logout com alterações pendentes
+- limpeza de snapshots + fila no logout
+- fallback do Service Worker
+
+npm run check
+- Tentado neste ambiente.
+- Não pôde completar porque a instalação local de dependências ficou incompleta e faltaram as definições @types/node e vite/client (TS2688).
+- Por isso, o GitHub Actions permanece a validação autoritativa do `tsc --noEmit` e do `npm run quality`.
+
+Banco de dados
+- Nenhuma migração SQL nesta versão.
+- A sincronização não usa service_role, não contorna RLS e reaproveita as APIs existentes.
+
+Limite conhecido e deliberado
+- 0.11.1-RC não implementa detecção/resolução de alterações concorrentes entre usuários; isso fica para a versão 1.0.

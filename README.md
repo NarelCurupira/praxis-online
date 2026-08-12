@@ -1,9 +1,21 @@
 # Práxis Online
 
-Versão atual: **0.11.0**, conectada ao PostgreSQL do Supabase e com contingência local de leitura.
+Versão atual: **0.11.1-RC**, conectada ao PostgreSQL do Supabase e com contingência local de leitura e gravação operacional.
 
-Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local de leitura.
+Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local com leitura e fila de gravações operacionais.
 
+
+## Contingência 0.11.1-RC
+
+- Mantém o snapshot de leitura da 0.11.0 e acrescenta fila local de sincronização no IndexedDB.
+- Em contingência, respeitadas as permissões do perfil em cache, podem ser cadastrados processos e alterados status, providência e responsável; edição completa só é permitida quando o registro detalhado já está disponível localmente.
+- Exclusão, arquivamento, exportação, transferência entre Procuradorias, administração, importação e demais ações sensíveis continuam dependentes do servidor.
+- Ao reconectar, as operações são reenviadas na ordem original pelas mesmas APIs do Práxis e continuam sujeitas às RLS, permissões e validações do Supabase.
+- A fila mostra operações pendentes e falhas e permite nova tentativa ou descarte explícito.
+- Cadastro offline recebe identificador temporário negativo até ser confirmado pelo servidor; uma verificação de idempotência reduz o risco de duplicidade se a confirmação da primeira tentativa se perder.
+- A data/hora de envio registrada offline é preservada quando o status Enviado é sincronizado.
+- Detecção e resolução de alterações concorrentes entre usuários permanecem fora desta RC e serão incorporadas na versão 1.0.
+- Logout com alterações pendentes exige confirmação, pois a fila local é apagada junto com os demais dados do usuário.
 
 ## Contingência 0.11.0
 
