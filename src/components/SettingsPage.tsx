@@ -157,6 +157,7 @@ export function SettingsPage(props: Props) {
   const [end, setEnd] = useState(today());
   const [period, setPeriod] = useState(today().slice(0, 7));
   const [reason, setReason] = useState("");
+  const [settingsSection, setSettingsSection] = useState<"procuradorias" | "equipe" | "prazos" | "relatorios" | "governanca">("procuradorias");
 
   const calendarYears = useMemo(
     () => groupCalendar(props.exclusions),
@@ -187,11 +188,18 @@ export function SettingsPage(props: Props) {
         </div>
       </div>
 
-      <DeviceAccessPanel />
 
-      <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />
+      <nav className="settings-subnav" aria-label="Seções de Configurações">
+        {[
+          ["procuradorias", "Procuradorias"], ["equipe", "Equipe e permissões"], ["prazos", "Prazos e calendário"], ["relatorios", "Relatórios"], ["governanca", "Governança e dados"],
+        ].map(([key, title]) => <button type="button" key={key} className={settingsSection === key ? "active" : ""} onClick={() => setSettingsSection(key as typeof settingsSection)}>{title}</button>)}
+      </nav>
 
-      <section className="panel governance-section configuration-export-panel">
+      {settingsSection === "equipe" && <DeviceAccessPanel />}
+
+      {settingsSection === "procuradorias" && <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />}
+
+      {settingsSection === "relatorios" && (<section className="panel governance-section configuration-export-panel">
         <div className="panel-title">
           <div>
             <div className="title-with-help"><h2>Exportação de configurações</h2><HelpTip title="O que é exportado">Gera um arquivo JSON com configurações institucionais, prazos por classe, calendário e períodos fechados. Não inclui processos, senhas, passkeys, tokens ou conteúdo processual.</HelpTip></div>
@@ -221,9 +229,9 @@ export function SettingsPage(props: Props) {
             <Download size={17} /> Exportar configurações
           </button>
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel governance-section">
+      {settingsSection === "equipe" && (<section className="panel governance-section">
         <div className="panel-title">
           <div>
             <h2>Perfis e permissões</h2>
@@ -294,9 +302,9 @@ export function SettingsPage(props: Props) {
             );
           })}
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel governance-section">
+      {settingsSection === "prazos" && (<section className="panel governance-section">
         <div className="panel-title">
           <div>
             <div className="title-with-help"><h2>Prazos e jornada</h2><HelpTip title="Horas úteis">Os cálculos consideram apenas a interseção entre entrada, envio, expediente, fins de semana e datas sem expediente.</HelpTip></div>
@@ -385,9 +393,9 @@ export function SettingsPage(props: Props) {
             Contar a partir do próximo dia útil
           </label>
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel governance-section">
+      {settingsSection === "relatorios" && (<section className="panel governance-section">
         <div className="panel-title">
           <div>
             <h2>Relatórios e privacidade</h2>
@@ -466,9 +474,9 @@ export function SettingsPage(props: Props) {
             Permitir comparações nominais nos relatórios da equipe
           </label>
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel governance-section">
+      {settingsSection === "governanca" && (<section className="panel governance-section">
         <div className="panel-title">
           <div>
             <h2>Integridade dos dados</h2>
@@ -510,9 +518,9 @@ export function SettingsPage(props: Props) {
           <Save size={17} />
           Salvar configurações
         </button>
-      </section>
+      </section>)}
 
-      <section className="panel">
+      {settingsSection === "prazos" && (<section className="panel">
         <div className="panel-title">
           <div><h2>Classes e prazos</h2></div>
         </div>
@@ -574,9 +582,9 @@ export function SettingsPage(props: Props) {
             </div>
           ))}
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel calendar-settings">
+      {settingsSection === "prazos" && (<section className="panel calendar-settings">
         <div className="panel-title">
           <div>
             <div className="title-with-help"><h2>Feriados, recessos e dias sem expediente</h2><HelpTip title="Calendário institucional">As datas cadastradas são excluídas dos cálculos de prazo e de horas úteis. Dias consecutivos com a mesma descrição são apresentados em conjunto.</HelpTip></div>
@@ -682,9 +690,9 @@ export function SettingsPage(props: Props) {
             </details>
           ))}
         </div>
-      </section>
+      </section>)}
 
-      <section className="panel governance-section">
+      {settingsSection === "governanca" && (<section className="panel governance-section">
         <div className="panel-title">
           <div>
             <div className="title-with-help"><h2>Fechamento mensal</h2><HelpTip title="Fechamento mensal">O fechamento protege o histórico contra alterações comuns. Somente o administrador pode reabrir o período, mediante justificativa.</HelpTip></div>
@@ -748,7 +756,7 @@ export function SettingsPage(props: Props) {
             </div>
           ))}
         </div>
-      </section>
+      </section>)}
 
       {message && <div className="info-box">{message}</div>}
     </div>

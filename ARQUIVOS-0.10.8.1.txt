@@ -1,0 +1,21 @@
+PRÁXIS ONLINE 0.10.8.1 — ARQUIVOS ALTERADOS/ADICIONADOS
+
+- ATUALIZACAO-0.10.8.1.md
+- CHANGELOG.md
+- EXECUTAR-NO-SUPABASE-0.10.8.1.sql
+- README.md
+- package-lock.json
+- package.json
+- public/sw.js
+- src/App.tsx
+- src/components/AboutPage.tsx
+- src/components/ProcuradoriasPanel.tsx
+- src/components/ReportsPage.tsx
+- src/components/SettingsPage.tsx
+- src/fastApi.ts
+- src/v0107.css
+- src/version.ts
+- src/workspaceApi.ts
+- supabase/migrations/20260812_praxis_v01081_ux_performance.sql
+- supabase/schema.sql
+- VALIDACAO-0.10.8.1.txt

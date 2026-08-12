@@ -159,14 +159,26 @@ async function fetchMovements(
       let start = PAGE_SIZE;
       let pages = 1;
 
+      // Depois da primeira página completa, busca duas páginas por rodada.
+      // Para bases com mais de 2.000 registros, isso reduz um round-trip inteiro
+      // sem exigir COUNT(*) ou alterar o limite de 1.000 linhas do PostgREST.
       while (loaded === PAGE_SIZE) {
-        pages += 1;
-        const page = await loadPage(pages, start);
-        fail(page.error);
-        const pageRows = (page.data ?? []) as unknown as Record<string, unknown>[];
-        loadedRows.push(...pageRows);
-        loaded = pageRows.length;
-        start += PAGE_SIZE;
+        const page2Number = pages + 1;
+        const page3Number = pages + 2;
+        const [page2, page3] = await Promise.all([
+          loadPage(page2Number, start),
+          loadPage(page3Number, start + PAGE_SIZE),
+        ]);
+        fail(page2.error);
+        fail(page3.error);
+        const rows2 = (page2.data ?? []) as unknown as Record<string, unknown>[];
+        const rows3 = (page3.data ?? []) as unknown as Record<string, unknown>[];
+        loadedRows.push(...rows2, ...rows3);
+        pages += 2;
+        if (rows2.length < PAGE_SIZE) break;
+        if (rows3.length < PAGE_SIZE) break;
+        loaded = rows3.length;
+        start += PAGE_SIZE * 2;
       }
 
       return { rows: loadedRows, exclusionsResult: exclusions, pageCount: pages };
@@ -292,4 +304,73 @@ export async function getMovementDetailsBatchFast(movementIds: number[]): Promis
   fail(error);
   const excludedDates = new Set(exclusions.map((item) => item.date));
   return (data ?? []).map((row) => mapMovement(row as unknown as Record<string, unknown>, excludedDates, true));
+}
+
+
+export interface ReportMovementQuery {
+  startDate: string;
+  endDate: string;
+  comparisonStartDate?: string;
+  scopeUserId?: string;
+  className?: string;
+  sociallyRelevant?: boolean;
+  extremelyComplex?: boolean;
+}
+
+/**
+ * Busca somente os registros capazes de participar da consolidação do relatório.
+ * Registros encerrados antes do início mais antigo solicitado não influenciam
+ * estoque, fluxo, produtividade ou prazos do período e são eliminados no servidor.
+ */
+export async function listReportMovementsFast(query: ReportMovementQuery): Promise<ProcessMovement[]> {
+  const { client, workspaceId } = await fastContext();
+  const exclusions = await loadCalendarExclusions(client, workspaceId);
+  const earliestStart = query.comparisonStartDate && query.comparisonStartDate < query.startDate
+    ? query.comparisonStartDate
+    : query.startDate;
+  const startIso = `${earliestStart}T00:00:00-03:00`;
+  const endIso = `${query.endDate}T23:59:59.999-03:00`;
+
+  const base = () => {
+    let request = client.from("movements")
+      .select(SELECT_MOVEMENT_DETAIL)
+      .eq("workspace_id", workspaceId)
+      .is("deleted_at", null)
+      .lte("received_at", endIso)
+      .or(`received_at.gte.${startIso},sent_at.gte.${startIso},sent_at.is.null`);
+    if (query.scopeUserId) request = request.eq("assigned_to", query.scopeUserId);
+    if (query.className && query.className !== "all") request = request.eq("cases.class_name", query.className);
+    if (query.sociallyRelevant) request = request.eq("cases.socially_relevant", true);
+    if (query.extremelyComplex) request = request.eq("cases.extremely_complex", true);
+    return request.order("received_at", { ascending: false }).order("id", { ascending: false });
+  };
+
+  const loadPage = (page: number, start: number) => measureAsyncResult(
+    async () => await base().range(start, start + PAGE_SIZE - 1),
+    (result) => `reports.page.generate.${page}.rows${result.data?.length ?? 0}`,
+  );
+
+  const rows = await measureAsyncResult(async () => {
+    const first = await loadPage(1, 0);
+    fail(first.error);
+    const result = [...(first.data ?? [])] as unknown as Record<string, unknown>[];
+    let previousLength = first.data?.length ?? 0;
+    let start = PAGE_SIZE;
+    let page = 1;
+    while (previousLength === PAGE_SIZE) {
+      const [next, following] = await Promise.all([loadPage(page + 1, start), loadPage(page + 2, start + PAGE_SIZE)]);
+      fail(next.error); fail(following.error);
+      const nextRows = (next.data ?? []) as unknown as Record<string, unknown>[];
+      const followingRows = (following.data ?? []) as unknown as Record<string, unknown>[];
+      result.push(...nextRows, ...followingRows);
+      page += 2;
+      if (nextRows.length < PAGE_SIZE || followingRows.length < PAGE_SIZE) break;
+      previousLength = followingRows.length;
+      start += PAGE_SIZE * 2;
+    }
+    return result;
+  }, (result) => `reports.fetch.generate.rows${result.length}`);
+
+  const excludedDates = new Set(exclusions.map((item) => item.date));
+  return measureSync(`reports.transform.generate.rows${rows.length}`, () => rows.map((row) => mapMovement(row, excludedDates, true)));
 }
