@@ -38,6 +38,7 @@ export interface ProcessMovement {
   archivedAt?: string | null;
   assignedTo: string;
   assignedName: string;
+  detailsLoaded?: boolean;
 }
 
 export interface ProcessFormData {
