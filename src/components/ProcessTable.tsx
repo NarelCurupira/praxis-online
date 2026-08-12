@@ -40,8 +40,10 @@ interface Props {
   onBulkAction: (ids: number[], actionType: string) => Promise<void>;
   onBulkArchive: (ids: number[]) => Promise<void>;
   onBulkDelete: (ids: number[]) => Promise<void>;
-  onEdit: (record: ProcessMovement) => void;
+  onEdit: (record: ProcessMovement) => void | Promise<void>;
   onExport: (bytes: number[]) => Promise<string>;
+  onPrepareExportRecords?: (records: ProcessMovement[]) => Promise<ProcessMovement[]>;
+  onArchivedRequested?: () => Promise<void>;
 }
 
 type TableDensity = "compact" | "comfortable" | "spacious";
@@ -186,6 +188,8 @@ export function ProcessTable({
   onBulkDelete,
   onEdit,
   onExport,
+  onPrepareExportRecords,
+  onArchivedRequested,
 }: Props) {
   const preferencePrefix = `praxis-table-${currentUserId || "anonymous"}`;
   const columnPreferenceKey = `${preferencePrefix}-${queueOnly ? "queue" : "processes"}-columns`;
@@ -206,6 +210,7 @@ export function ProcessTable({
   const [sendAction, setSendAction] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   const memberById = useMemo(() => new Map(members.map((member) => [member.userId, member])), [members]);
   const years = useMemo(() => [...new Set(records.map((record) => Number(localDatePart(record.receivedAt).slice(0, 4))).filter(Number.isFinite))].sort((a, b) => b - a), [records]);
@@ -335,9 +340,10 @@ export function ProcessTable({
     if (!permissions.canExport || !selectedRecords.length) return;
     setBulkBusy(true);
     try {
+      const preparedRecords = onPrepareExportRecords ? await onPrepareExportRecords(selectedRecords) : selectedRecords;
       const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelRows(selectedRecords)), "Processos selecionados");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelRows(preparedRecords)), "Processos selecionados");
       const bytes = Array.from(new Uint8Array(XLSX.write(workbook, { bookType: "xlsx", type: "array" })));
       setMessage(await onExport(bytes));
       hapticFeedback("success");
@@ -392,14 +398,33 @@ export function ProcessTable({
     if (!permissions.canExport) return;
     setMessage("");
     try {
+      const preparedRecords = onPrepareExportRecords ? await onPrepareExportRecords(filtered) : filtered;
       const XLSX = await import("xlsx");
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelRows(filtered)), "Processos filtrados");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelRows(preparedRecords)), "Processos filtrados");
       const bytes = Array.from(new Uint8Array(XLSX.write(workbook, { bookType: "xlsx", type: "array" })));
       setMessage(await onExport(bytes));
     } catch (error) {
       setMessage(String(error));
     }
+  }
+
+
+  async function changeRecordViewStatus(value: string) {
+    if (value === "Arquivados" && onArchivedRequested) {
+      setArchiveLoading(true);
+      setMessage("");
+      try {
+        await onArchivedRequested();
+      } catch (error) {
+        setMessage(String(error));
+        return;
+      } finally {
+        setArchiveLoading(false);
+      }
+    }
+    setStatus(value);
+    setPage(1);
   }
 
   async function changeStatus(record: ProcessMovement, next: WorkflowStatus) {
@@ -441,7 +466,7 @@ export function ProcessTable({
         <label className="filter-field search-filter"><span>Pesquisar</span><div className="search-box"><Search size={18} /><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} placeholder="Número, assunto, classe ou providência..." /></div></label>
         {!queueOnly && <label className="filter-field filter-compact"><span>Ano</span><select value={year} onChange={(event) => { setYear(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{years.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>}
         {!queueOnly && <label className="filter-field responsible-filter"><span>Responsável</span><select value={assignedTo} onChange={(event) => { setAssignedTo(event.target.value); setPage(1); }}><option value="Todos">Todos</option>{members.map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select></label>}
-        <label className="filter-field filter-compact status-filter"><span>Status</span><select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }}><option value="Todos">Todos</option><option value="Em andamento">Em andamento</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}{!queueOnly && <option value="Arquivados">Arquivados</option>}</select></label>
+        <label className="filter-field filter-compact status-filter"><span>Status</span><select value={status} disabled={archiveLoading} onChange={(event) => void changeRecordViewStatus(event.target.value)}><option value="Todos">Todos</option><option value="Em andamento">Em andamento</option>{statuses.map((item) => <option key={item} value={item}>{item}</option>)}{!queueOnly && <option value="Arquivados">{archiveLoading ? "Carregando arquivados…" : "Arquivados"}</option>}</select></label>
         {!queueOnly && <label className="filter-field highlight-filter"><span>Destacados</span><select value={highlight} onChange={(event) => { setHighlight(event.target.value as HighlightFilter); setPage(1); }}><option value="Todos">Todos</option><option value="Relevância social">Relevância social</option><option value="Alta complexidade">Alta complexidade</option><option value="Ambos">Ambas as classificações</option></select></label>}
       </div>
       <div className="table-toolbar-row table-sort-row">
@@ -489,7 +514,7 @@ export function ProcessTable({
           {showColumn("deadlineAt") && <td className="col-deadline"><strong className={remaining < 5 && record.workflowStatus !== "Enviado" ? "deadline-urgent" : ""} title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className={remaining < 0 && record.workflowStatus !== "Enviado" ? "deadline-detail overdue" : "deadline-detail"}>{deadlineDetail}</span></td>}
           {showColumn("action") && <td className="col-action"><select disabled={!permissions.canEditWorkflow} className="action-select table-inline-select table-pill-select" aria-label="Providência" title={actionLabel(record.actionType)} value={record.actionType} onChange={(event) => onAction(record.movementId, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>}
           {showColumn("status") && <td className="col-status"><select disabled={!permissions.canEditWorkflow} className={`status-select table-inline-select table-pill-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(event) => changeStatus(record, event.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>}
-          <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => onEdit(record)}><Pencil size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>
+          <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => void onEdit(record)}><Pencil size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>
         </tr>;
       }) : <tr><td colSpan={columnCount}><div className="table-empty-state"><Search size={28} /><strong>{isDefaultEmptyQueue ? "Sua fila está em dia" : "Nenhum processo encontrado"}</strong><span>{isDefaultEmptyQueue ? "Não há processos pendentes atribuídos a você." : "Revise ou limpe os filtros para ampliar a pesquisa."}</span>{hasActiveFilters && <button type="button" className="button secondary" onClick={clearFilters}>Limpar filtros</button>}</div></td></tr>}</tbody>
     </table></div>

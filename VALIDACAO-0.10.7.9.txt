@@ -1,0 +1,12 @@
+PRÁXIS 0.10.7.9 — VALIDAÇÃO DA ALTERAÇÃO
+
+Concluído neste ambiente:
+- consistência de versão: OK (0.10.7.9 em package.json, src/version.ts e service worker);
+- validação sintática TypeScript/TSX dos arquivos alterados: OK;
+- regressões de layout e fluxo: 23/23 testes aprovados;
+- revisão do delta contra a base 0.10.7.8: somente arquivos previstos foram alterados/adicionados.
+
+Não concluído neste ambiente:
+- npm run check / npm test / npm run build completos, porque a instalação das dependências npm não concluiu dentro do ambiente de execução.
+
+Após aplicar os arquivos no GitHub, deixe o workflow quality.yml executar a validação completa antes de publicar a build.

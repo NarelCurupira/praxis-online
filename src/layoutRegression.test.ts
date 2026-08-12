@@ -13,6 +13,7 @@ const processTable = readFileSync(new URL("./components/ProcessTable.tsx", impor
 const mobileInteractions = readFileSync(new URL("./mobileInteractions.ts", import.meta.url), "utf8");
 const dashboard = readFileSync(new URL("./components/Dashboard.tsx", import.meta.url), "utf8");
 const fastApi = readFileSync(new URL("./fastApi.ts", import.meta.url), "utf8");
+const governanceApi = readFileSync(new URL("./governanceApi.ts", import.meta.url), "utf8");
 
 test("menu móvel permanece oculto no desktop e reaparece no breakpoint móvel", () => {
   assert.match(css, /\.topbar \.mobile-menu\s*\{\s*display:\s*none !important;/);
@@ -124,19 +125,40 @@ test("pull-to-refresh atualiza somente as movimentações", () => {
   assert.doesNotMatch(app, /onRefresh:\s*reloadAll/);
 });
 
-test("carga forçada preserva a chamada de movimentações em andamento", () => {
+test("carga forçada preserva a chamada ativa de movimentações em andamento", () => {
   const listStart = fastApi.indexOf("export async function listMovementsFast");
-  const inFlightGuard = fastApi.indexOf("if (inFlight)", listStart);
+  const inFlightGuard = fastApi.indexOf("if (activeInFlight)", listStart);
   const forceInvalidation = fastApi.indexOf("if (options.force)", listStart);
   assert.ok(listStart >= 0 && inFlightGuard >= 0 && forceInvalidation >= 0 && inFlightGuard < forceInvalidation);
   const forceBlock = fastApi.slice(forceInvalidation, fastApi.indexOf("const now", forceInvalidation));
-  assert.doesNotMatch(forceBlock, /inFlight\s*=\s*null/);
+  assert.doesNotMatch(forceBlock, /activeInFlight\s*=\s*null/);
   assert.doesNotMatch(forceBlock, /exclusionsPromise\s*=\s*null/);
 });
 
-test("telemetria de movimentações identifica páginas, linhas e reaproveitamento", () => {
-  assert.match(fastApi, /movements\.page\.\$\{reason\}\.\$\{pageNumber\}\.rows/);
-  assert.match(fastApi, /movements\.fetch\.\$\{reason\}\.pages/);
-  assert.match(fastApi, /movements\.transform\.\$\{reason\}\.pages/);
+test("telemetria de movimentações identifica motivo, conjunto, formato, páginas e linhas", () => {
+  assert.match(fastApi, /movements\.page\.\$\{reason\}\.\$\{dataset\}\.\$\{shape\}\.\$\{pageNumber\}\.rows/);
+  assert.match(fastApi, /movements\.fetch\.\$\{reason\}\.\$\{dataset\}\.\$\{shape\}\.pages/);
+  assert.match(fastApi, /movements\.transform\.\$\{reason\}\.\$\{dataset\}\.\$\{shape\}\.pages/);
   assert.match(fastApi, /movements\.inFlightReuse/);
+});
+
+test("carga inicial usa núcleo ativo e reserva detalhes e arquivados para demanda", () => {
+  const coreStart = fastApi.indexOf("const SELECT_MOVEMENT_CORE");
+  const detailStart = fastApi.indexOf("const SELECT_MOVEMENT_DETAIL");
+  const core = fastApi.slice(coreStart, detailStart);
+  assert.doesNotMatch(core, /notes|document_path|relevance_reason|complexity_reason|sdgs/);
+  assert.match(fastApi, /dataset === "active"\) query = query\.is\("archived_at", null\)/);
+  assert.match(app, /listArchivedMovementsFast/);
+  assert.match(app, /listDetailedMovementsFast/);
+});
+
+test("cache rápido é isolado pelo par usuário e workspace", () => {
+  assert.match(fastApi, /const nextKey = `\$\{context\.user\.id\}:\$\{context\.workspaceId\}`/);
+  assert.match(fastApi, /if \(cacheContextKey !== nextKey\)/);
+});
+
+test("equipe é filtrada explicitamente pelo workspace ativo", () => {
+  assert.match(governanceApi, /from\("workspace_members"\)/);
+  assert.match(governanceApi, /eq\("workspace_id", workspaceId\)/);
+  assert.match(governanceApi, /filter\(\(member\) => memberships\.has\(member\.userId\)\)/);
 });
