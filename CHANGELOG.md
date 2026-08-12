@@ -1,3 +1,10 @@
+## 0.10.8.2
+
+- RLS multi-Procuradoria otimizado para resolver workspace e papel uma vez por consulta.
+- Qualidade dos Dados sem carga detalhada integral; justificativas são buscadas seletivamente.
+- Troca de Procuradoria em duas fases, sem splash global durante a carga dos processos.
+- Campo de renomeação da Procuradoria padronizado visualmente.
+
 ## 0.10.8.1
 - Configurações com navegação interna por seções.
 - Vínculos de Procuradorias salvos em lote.
