@@ -4,14 +4,14 @@ import { categoryPresentation, pluralize, reportFilterDescription, reportScopeIn
 import type { TeamMember } from "./types";
 import { PRAXIS_VERSION } from "./version";
 
-const INK: [number, number, number] = [16, 42, 67];
-const BLUE: [number, number, number] = [30, 96, 145];
-const BLUE_LIGHT: [number, number, number] = [155, 187, 212];
-const GREEN: [number, number, number] = [42, 137, 117];
-const GOLD: [number, number, number] = [184, 138, 36];
-const RED: [number, number, number] = [190, 66, 55];
-const GREY: [number, number, number] = [98, 125, 152];
-const LIGHT: [number, number, number] = [241, 245, 249];
+const INK: [number, number, number] = [10, 43, 82];
+const BLUE: [number, number, number] = [23, 105, 210];
+const BLUE_LIGHT: [number, number, number] = [140, 198, 255];
+const GREEN: [number, number, number] = [20, 128, 74];
+const GOLD: [number, number, number] = [45, 127, 249]; // acento primário do Práxis
+const RED: [number, number, number] = [199, 62, 62];
+const GREY: [number, number, number] = [107, 114, 128];
+const LIGHT: [number, number, number] = [243, 247, 252];
 const disclaimer = "Relatório gerencial auxiliar; não substitui os sistemas oficiais da Instituição.";
 
 export interface ReportPdfOptions { mode: ReportMode; members: TeamMember[]; generatedAt?: Date; comparisonModel?: ReportModel; comparisonCurrentModel?: ReportModel; }
@@ -65,7 +65,7 @@ function roundedRect(doc: jsPDF, x: number, y: number, w: number, h: number, fil
 }
 
 function emptyChart(doc: jsPDF, x: number, y: number, w: number, h: number, message = "Sem dados para os filtros aplicados") {
-  roundedRect(doc, x, y, w, h, [249, 251, 253], [220, 228, 235]);
+  roundedRect(doc, x, y, w, h, [248, 250, 252], [220, 227, 236]);
   doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
   doc.text(message, x + w / 2, y + h / 2, { align: "center" });
 }
@@ -113,7 +113,7 @@ function drawGroupedBars(
   const barW = Math.min(8, groupW / (series.length + .8));
   [0, .5, 1].forEach((ratio) => {
     const gy = plotY + plotH * (1 - ratio);
-    doc.setDrawColor(226, 233, 239); doc.line(x + 8, gy, x + w, gy);
+    doc.setDrawColor(226, 232, 240); doc.line(x + 8, gy, x + w, gy);
     doc.setFont("helvetica", "normal"); doc.setFontSize(5.5); doc.setTextColor(...GREY); doc.text(String(Math.round(max * ratio)), x + 6, gy + 1.6, { align: "right" });
   });
   rows.forEach((row, rowIndex) => {
@@ -147,7 +147,7 @@ function drawFlowChart(doc: jsPDF, model: ReportModel, x: number, y: number, w: 
   const rawMax = Math.max(...model.trend.flatMap((point) => [point.received, point.sent, point.stock]), 1);
   const max = rawMax * 1.22;
   const groupW = plotW / model.trend.length; const barW = Math.min(4, groupW / 3);
-  [0, .5, 1].forEach((ratio) => { const gy = plotY + plotH * (1 - ratio); doc.setDrawColor(226, 233, 239); doc.line(plotX, gy, plotX + plotW, gy); doc.setFontSize(5.8); doc.setTextColor(...GREY); doc.text(String(Math.round(rawMax * ratio)), plotX - 2, gy + 1.5, { align: "right" }); });
+  [0, .5, 1].forEach((ratio) => { const gy = plotY + plotH * (1 - ratio); doc.setDrawColor(226, 232, 240); doc.line(plotX, gy, plotX + plotW, gy); doc.setFontSize(5.8); doc.setTextColor(...GREY); doc.text(String(Math.round(rawMax * ratio)), plotX - 2, gy + 1.5, { align: "right" }); });
   const stockPoints: Array<{ x: number; y: number; value: number; receivedLabelY: number; sentLabelY: number }> = [];
   let previous: { x: number; y: number } | null = null;
   model.trend.forEach((point, index) => {
@@ -191,84 +191,104 @@ function drawFlowChart(doc: jsPDF, model: ReportModel, x: number, y: number, w: 
 
 function drawStackedDeadlines(doc: jsPDF, users: UserReportMetrics[], x: number, y: number, w: number, h: number) {
   chartTitle(doc, "Situação dos prazos por usuário", "Categorias separadas entre concluídos e pendentes; sem prazo não integra a barra.", x, y);
-  if (!users.length) { emptyChart(doc, x, y + 7, w, h - 7); return; }
   const series = [
     ["Concl. no prazo", "completedOnTime", GREEN], ["Concl. com atraso", "completedLate", RED], ["Pend. no prazo", "pendingOnTime", BLUE],
-    ["Próx. vencimento", "pendingNear", GOLD], ["Vencidos", "pendingOverdue", [145, 36, 36] as [number, number, number]],
+    ["Próx. vencimento", "pendingNear", GOLD], ["Vencidos", "pendingOverdue", [153, 27, 27] as [number, number, number]],
   ] as const;
-  const plotX = x + 34; const plotY = y + 13; const rowH = Math.min(9, (h - 20) / users.length); const plotW = w - 36;
-  const max = Math.max(...users.map((user) => series.reduce((sum, [, key]) => sum + user.deadline[key], 0)), 1);
-  users.forEach((user, index) => {
+  const chartUsers = users.filter((user) => {
+    const deadlineTotal = series.reduce((sum, [, key]) => sum + user.deadline[key], 0) + user.deadline.noDeadline;
+    return deadlineTotal > 0 || user.transit.count > 0;
+  });
+  if (!chartUsers.length) { emptyChart(doc, x, y + 7, w, h - 7); return; }
+  const plotX = x + 34; const plotY = y + 13; const rowH = Math.min(9, (h - 20) / chartUsers.length); const plotW = w - 36;
+  const max = Math.max(...chartUsers.map((user) => series.reduce((sum, [, key]) => sum + user.deadline[key], 0)), 1);
+  chartUsers.forEach((user, index) => {
     const top = plotY + index * rowH;
     doc.setFontSize(6.2); doc.setTextColor(...INK); doc.text(doc.splitTextToSize(text(user.name), 30)[0] || "", x, top + 4);
     let cursor = plotX;
     series.forEach(([, key, color]) => { const width = plotW * user.deadline[key] / max; doc.setFillColor(...color); doc.rect(cursor, top, width, 5, "F"); cursor += width; });
   });
   let lx = x; series.forEach(([label, , color], index) => { if (index === 3) lx = x + w / 2; const ly = y + h - (index >= 3 ? 2 : 6); doc.setFillColor(...color); doc.rect(lx, ly - 2.5, 2.5, 2.5, "F"); doc.setFontSize(5.3); doc.setTextColor(...GREY); doc.text(label, lx + 3.5, ly); lx += doc.getTextWidth(label) + 8; });
-  const noDeadline = users.reduce((sum, user) => sum + user.deadline.noDeadline, 0);
+  const noDeadline = chartUsers.reduce((sum, user) => sum + user.deadline.noDeadline, 0);
   doc.setFont("helvetica", "bold"); doc.setFontSize(6.3); doc.setTextColor(...GREY);
   doc.text(`Sem prazo aplicável: ${noDeadline}`, x + w, y + 4, { align: "right" });
 }
 
 function drawTransitChart(doc: jsPDF, users: UserReportMetrics[], x: number, y: number, w: number, h: number) {
-  chartTitle(doc, "Tempo de tramitação", "Horas úteis normalizadas; métricas coincidentes possuem rótulo consolidado.", x, y);
-  const measuredUsers = users.filter((user) => user.transit.count);
+  chartTitle(doc, "Tempo de tramitação", "Horas úteis normalizadas; rótulos organizados em faixa própria, sem sobreposição.", x, y);
+  const measuredUsers = users.filter((user) => user.transit.count > 0);
   if (!measuredUsers.length) { emptyChart(doc, x, y + 7, w, h - 7, "Não há medições suficientes"); return; }
   const series = [
     { label: "Mediana", color: GREEN, value: (user: UserReportMetrics) => user.transit.median ?? 0 },
     { label: "P75", color: BLUE, value: (user: UserReportMetrics) => user.transit.p75 ?? 0 },
     { label: "P90", color: GOLD, value: (user: UserReportMetrics) => user.transit.p90 ?? 0 },
   ];
-  const plotY = y + 13; const plotH = h - 25; const plotX = x + 9; const plotW = w - 10;
+  const labelLaneY = y + 10.5;
+  const labelLaneH = 17.5;
+  const plotY = labelLaneY + labelLaneH + 1.5;
+  const plotH = Math.max(18, h - (plotY - y) - 13);
+  const plotX = x + 9;
+  const plotW = w - 10;
   const rawMax = Math.max(...measuredUsers.flatMap((user) => series.map((item) => item.value(user))), 1);
-  const max = rawMax * 1.15;
+  const max = rawMax * 1.08;
   const groupW = plotW / measuredUsers.length;
   const barW = Math.min(8, groupW / 4.1);
+
   [0, .5, 1].forEach((ratio) => {
     const gy = plotY + plotH * (1 - ratio);
-    doc.setDrawColor(226, 233, 239); doc.line(plotX, gy, plotX + plotW, gy);
+    doc.setDrawColor(226, 232, 240); doc.line(plotX, gy, plotX + plotW, gy);
     doc.setFont("helvetica", "normal"); doc.setFontSize(5.5); doc.setTextColor(...GREY);
-    doc.text(String(Math.round(max * ratio)), plotX - 2, gy + 1.6, { align: "right" });
+    doc.text(String(Math.round(rawMax * ratio)), plotX - 2, gy + 1.6, { align: "right" });
   });
+
   measuredUsers.forEach((user, userIndex) => {
     const center = plotX + groupW * userIndex + groupW / 2;
     const metrics = series.map((item, seriesIndex) => ({ ...item, seriesIndex, numeric: item.value(user) }));
+
     metrics.forEach((metric) => {
       const barX = center - (series.length * barW) / 2 + metric.seriesIndex * barW;
       const barH = plotH * metric.numeric / max;
       doc.setFillColor(...metric.color); doc.rect(barX, plotY + plotH - barH, barW - 1, barH, "F");
     });
+
     const coincident = new Map<string, typeof metrics>();
     metrics.forEach((metric) => {
       const key = metric.numeric.toFixed(1);
       coincident.set(key, [...(coincident.get(key) ?? []), metric]);
     });
-    const labels = [...coincident.values()].map((items) => {
-      const numeric = items[0].numeric;
-      const names = items.map((item) => item.label).join("/");
-      const barCenters = items.map((item) => center - (series.length * barW) / 2 + item.seriesIndex * barW + (barW - 1) / 2);
-      const label = `${names}: ${formatChartDuration(numeric, user.transit)}`;
-      doc.setFont("helvetica", "bold"); doc.setFontSize(5.15);
-      const lines = doc.splitTextToSize(text(label), Math.max(24, groupW - 3)).slice(0, 2);
-      const height = 1.7 + lines.length * 2.8;
-      const pointY = plotY + plotH - numeric / max * plotH;
-      return { lines, height, pointY, anchorX: barCenters.reduce((sum, value) => sum + value, 0) / barCenters.length };
-    }).sort((a, b) => b.pointY - a.pointY);
-    let lowerLabelTop = plotY + plotH + 1;
-    labels.forEach((label) => {
-      let top = label.pointY - label.height - 1.4;
-      top = Math.min(top, lowerLabelTop - label.height - 1);
-      top = Math.max(plotY + .8, top);
-      const labelW = Math.max(24, groupW - 3);
-      doc.setFillColor(255, 255, 255); doc.setDrawColor(219, 227, 234); doc.setLineWidth(.2);
-      doc.roundedRect(label.anchorX - labelW / 2, top, labelW, label.height, .8, .8, "FD");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(5.15); doc.setTextColor(...INK);
-      doc.text(label.lines, label.anchorX, top + 3.1, { align: "center" });
-      lowerLabelTop = top;
+
+    const labels = [...coincident.values()]
+      .map((items) => {
+        const numeric = items[0].numeric;
+        const names = items.map((item) => item.label).join("/");
+        return {
+          label: `${names}: ${formatChartDuration(numeric, user.transit)}`,
+          numeric,
+          color: items.at(-1)?.color ?? BLUE,
+        };
+      })
+      .sort((a, b) => b.numeric - a.numeric);
+
+    const labelGap = .7;
+    const labelH = Math.min(5.1, (labelLaneH - labelGap * Math.max(labels.length - 1, 0)) / Math.max(labels.length, 1));
+    const labelW = Math.max(18, groupW - 3.2);
+    const fontSize = groupW < 28 ? 4.55 : 5.0;
+
+    labels.forEach((label, labelIndex) => {
+      const top = labelLaneY + labelIndex * (labelH + labelGap);
+      doc.setFillColor(255, 255, 255); doc.setDrawColor(220, 227, 236); doc.setLineWidth(.2);
+      doc.roundedRect(center - labelW / 2, top, labelW, labelH, .8, .8, "FD");
+      doc.setDrawColor(...label.color); doc.setLineWidth(.35);
+      doc.line(center - labelW / 2, top + labelH, center + labelW / 2, top + labelH);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(fontSize); doc.setTextColor(...INK);
+      const compactLabel = doc.splitTextToSize(text(label.label), labelW - 2.2)[0] || "";
+      doc.text(compactLabel, center, top + labelH / 2 + 1.35, { align: "center" });
     });
+
     doc.setFont("helvetica", "normal"); doc.setFontSize(5.6); doc.setTextColor(...GREY);
     doc.text(doc.splitTextToSize(text(user.name), groupW - 2)[0] || "", center, plotY + plotH + 5, { align: "center" });
   });
+
   let legendX = x + w;
   [...series].reverse().forEach((item) => {
     const width = doc.getTextWidth(item.label) + 8; legendX -= width;
@@ -320,7 +340,7 @@ class PdfBuilder {
 }
 
 function drawCard(doc: jsPDF, x: number, y: number, w: number, h: number, label: string, value: string, helper = "", tone: [number, number, number] = BLUE) {
-  roundedRect(doc, x, y, w, h, [249, 251, 253], [220, 228, 235]);
+  roundedRect(doc, x, y, w, h, [248, 250, 252], [220, 227, 236]);
   doc.setFillColor(...tone); doc.rect(x, y, 2, h, "F");
   doc.setFont("helvetica", "normal"); doc.setFontSize(6.4); doc.setTextColor(...GREY); doc.text(text(label).toUpperCase(), x + 5, y + 6);
   doc.setFont("helvetica", "bold"); doc.setFontSize(13);
@@ -401,7 +421,7 @@ function teamComparisonPage(builder: PdfBuilder, model: ReportModel) {
   const doc = builder.doc;
   drawGroupedBars(
     doc,
-    model.users.map((user) => ({ label: user.name, values: [user.received, user.sent] })),
+    model.users.filter((user) => user.received || user.sent || user.initialStock || user.finalStock).map((user) => ({ label: user.name, values: [user.received, user.sent] })),
     [{ label: "Recebidos", color: BLUE_LIGHT }, { label: "Enviados", color: BLUE }],
     14, 29, 269, 72,
     "Recebidos e enviados",
@@ -416,7 +436,7 @@ function teamComparisonPage(builder: PdfBuilder, model: ReportModel) {
       user.deadline.completedApplicable ? `${user.deadline.completedOnTime}/${user.deadline.completedApplicable}` : "Não aplicável",
       user.deadline.noDeadline, user.finalStock, formatDuration(user.transit.median, user.transit),
     ]),
-    theme: "grid", styles: { fontSize: 6.6, cellPadding: 1.6, overflow: "linebreak" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [247, 249, 251] },
+    theme: "grid", styles: { fontSize: 6.6, cellPadding: 1.6, overflow: "linebreak" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [248, 250, 252] },
   });
 }
 
@@ -436,7 +456,7 @@ function deadlinesAndTransitPage(builder: PdfBuilder, model: ReportModel, includ
         fmtPct(base ? user.transit.sameBusinessDay / base * 100 : null), fmtPct(base ? user.transit.withinOneBusinessDay / base * 100 : null), fmtPct(base ? user.transit.withinThreeBusinessDays / base * 100 : null),
       ];
     }),
-    theme: "grid", styles: { fontSize: 6.1, cellPadding: 1.45, overflow: "linebreak" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [247, 249, 251] },
+    theme: "grid", styles: { fontSize: 6.1, cellPadding: 1.45, overflow: "linebreak" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [248, 250, 252] },
   });
   const finalY = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 140) + 7;
   doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GREY);
@@ -467,7 +487,7 @@ function profilePage(builder: PdfBuilder, model: ReportModel) {
 
 function drawInsightCard(doc: jsPDF, x: number, y: number, w: number, h: number, title: string, headline: string, explanation: string, tone: [number, number, number]) {
   chartTitle(doc, title, "Síntese adequada à distribuição encontrada", x, y);
-  roundedRect(doc, x, y + 8, w, h - 8, [249, 251, 253], [220, 228, 235]);
+  roundedRect(doc, x, y + 8, w, h - 8, [248, 250, 252], [220, 227, 236]);
   doc.setFillColor(...tone); doc.rect(x, y + 8, 2, h - 8, "F");
   doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...INK);
   doc.text(doc.splitTextToSize(text(headline), w - 12), x + 7, y + 21);
@@ -529,7 +549,7 @@ function balancedComparisonPage(builder: PdfBuilder, model: ReportModel) {
       user.qualityChecked ? `${user.qualityIssues} ${pluralize(user.qualityIssues, "apontamento", "apontamentos")} em ${user.qualityChecked}` : "-",
       text(shortList(user.classes)), text(shortList(user.actions)),
     ]),
-    theme: "grid", styles: { fontSize: 6.1, cellPadding: 1.8, overflow: "linebreak", valign: "middle" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [247, 249, 251] },
+    theme: "grid", styles: { fontSize: 6.1, cellPadding: 1.8, overflow: "linebreak", valign: "middle" }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 0: { cellWidth: 30 }, 7: { cellWidth: 57 }, 8: { cellWidth: 57 } },
   });
   const y = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 80) + 8;
@@ -555,7 +575,7 @@ function historicalComparisonPage(builder: PdfBuilder, current: ReportModel, pre
       ["Relevância social", current.highlights.socialTotal, previous.highlights.socialTotal, variation(current.highlights.socialTotal, previous.highlights.socialTotal)],
       ["Alta complexidade", current.highlights.complexTotal, previous.highlights.complexTotal, variation(current.highlights.complexTotal, previous.highlights.complexTotal)],
     ],
-    theme: "grid", styles: { fontSize: 7.5, cellPadding: 2.5 }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [247, 249, 251] },
+    theme: "grid", styles: { fontSize: 7.5, cellPadding: 2.5 }, headStyles: { fillColor: INK }, alternateRowStyles: { fillColor: [248, 250, 252] },
   });
   const y = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 90) + 9;
   doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GREY);
