@@ -18,11 +18,13 @@ import { MfaGate } from "./components/MfaGate";
 import { ProcessModal } from "./components/ProcessModal";
 const PersonalSettingsPage = lazy(() => import("./components/PersonalSettingsPage").then((module) => ({ default: module.PersonalSettingsPage })));
 import { ProcessTable } from "./components/ProcessTable";
+import { ProcessTransferDialog } from "./components/ProcessTransferDialog";
 const ReportsPage = lazy(() => import("./components/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 const SettingsPage = lazy(() => import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 import { SetupPage } from "./components/SetupPage";
 import { Sidebar } from "./components/Sidebar";
+import { WorkspaceSwitcher } from "./components/WorkspaceSwitcher";
 const TeamPage = lazy(() => import("./components/TeamPage").then((module) => ({ default: module.TeamPage })));
 const TrashPage = lazy(() => import("./components/TrashPage").then((module) => ({ default: module.TrashPage })));
 import { supabase, supabaseConfigured } from "./supabase";
@@ -31,8 +33,9 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
-import { getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
+import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
+import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
 
 const LoadingScreen = SplashScreen;
 
@@ -81,6 +84,53 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [allDetailsLoaded, setAllDetailsLoaded] = useState(false);
   const [pagePreparing, setPagePreparing] = useState(false);
   const [pagePreparationError, setPagePreparationError] = useState("");
+  const [workspaces, setWorkspaces] = useState<AvailableWorkspace[]>([]);
+  const [switchingWorkspace, setSwitchingWorkspace] = useState(false);
+  const [transferRecord, setTransferRecord] = useState<ProcessMovement | null>(null);
+  const [workspaceError, setWorkspaceError] = useState("");
+
+  async function refreshWorkspaces(): Promise<AvailableWorkspace[]> {
+    const next = await listAvailableWorkspaces();
+    setWorkspaces(next);
+    return next;
+  }
+
+  async function changeWorkspace(workspaceId: string) {
+    const current = workspaces.find((workspace) => workspace.current);
+    if (!workspaceId || workspaceId === current?.workspaceId || switchingWorkspace) return;
+    let switched = false;
+    setSwitchingWorkspace(true);
+    setLoading(true);
+    setWorkspaceError("");
+    setTransferRecord(null);
+    setEditing(null);
+    setModal(false);
+    setPage("dashboard");
+    setProcessPreset(null);
+    setRecords([]);
+    setMembers([]);
+    setClasses([]);
+    setExclusions([]);
+    clearFastMovementCache();
+    try {
+      await switchWorkspace(workspaceId);
+      switched = true;
+      await Promise.all([reloadAll("initial"), refreshWorkspaces()]);
+      hapticFeedback("success");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (switched && current?.workspaceId) {
+        try { await switchWorkspace(current.workspaceId); }
+        catch { /* Se a reversão falhar, o alerta abaixo permanece visível. */ }
+      }
+      clearFastMovementCache();
+      await Promise.allSettled([reloadAll("initial"), refreshWorkspaces()]);
+      setWorkspaceError(message);
+    } finally {
+      setLoading(false);
+      setSwitchingWorkspace(false);
+    }
+  }
 
   async function reload(reason: MovementLoadReason = "refresh") {
     const detailPage = page === "reports" || page === "quality" || page === "import";
@@ -125,7 +175,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setSettings(nextSettings);
     setClosed(nextClosed);
 
-    if (page === "reports" || page === "quality" || page === "import") {
+    if (reason !== "initial" && (page === "reports" || page === "quality" || page === "import")) {
       const detailed = await listDetailedMovementsFast({ includeArchived: true, reason: "detail" });
       setRecords(detailed);
       setArchivedLoaded(true);
@@ -206,7 +256,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setDataVersion((value) => value + 1);
   }
 
-  useEffect(() => { reloadAll("initial").finally(() => setLoading(false)); }, []);
+  useEffect(() => { Promise.all([reloadAll("initial"), refreshWorkspaces()]).finally(() => setLoading(false)); }, []);
 
   useEffect(() => {
     const markOnline = () => setOnline(true);
@@ -374,7 +424,25 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     hapticFeedback("success");
   }
 
+  async function transfer(targetWorkspaceId: string, targetAssigneeId: string, reason: string) {
+    if (!transferRecord) return;
+    const movementId = transferRecord.movementId;
+    await measureAsync("movements.transfer", () => transferMovement({
+      movementId,
+      targetWorkspaceId,
+      targetAssigneeId,
+      reason,
+    }));
+    setRecords((current) => current.filter((record) => record.movementId !== movementId));
+    setTransferRecord(null);
+    setDataVersion((value) => value + 1);
+    hapticFeedback("success");
+  }
+
   if (loading || !settings) return <LoadingScreen message="Preparando seus processos..." />;
+
+  const currentWorkspace = workspaces.find((workspace) => workspace.current) ?? workspaces[0];
+  const transferTargets = workspaces.filter((workspace) => !workspace.current && workspace.role === "admin");
 
   const appClassName = [
     "app",
@@ -391,6 +459,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         <button className="mobile-menu icon-button" aria-label="Abrir menu" onClick={() => { hapticFeedback(); setSidebarOpen(!sidebarOpen); }}><Menu /></button>
         <button className="icon-button desktop-sidebar-toggle" title={sidebarCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={toggleSidebar}>{sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
         {!online && <div className="online-indicator offline" role="status"><WifiOff size={17} /><span>Sem conexão</span></div>}
+        <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={currentWorkspace?.workspaceId} busy={switchingWorkspace} onSwitch={changeWorkspace} />
         <div className="topbar-spacer" />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">
@@ -402,13 +471,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         <button className="icon-button" onClick={() => { try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } void supabase?.auth.signOut(); }}><LogOut /></button>
         {access.canCreateProcess && <button className="button primary new-process-button" aria-label="Novo processo" onClick={() => { hapticFeedback(); setModal(true); }}><Plus /><span>Novo processo</span></button>}
       </header>
+      {workspaceError && <div className="info-box workspace-switch-error" role="alert">Não foi possível trocar de Procuradoria: {workspaceError}</div>}
       {(mobileNavigation.pullDistance >= 72 || mobileNavigation.refreshing) && <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} aria-live="polite"><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : "Solte para atualizar"}</span></div>}
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}><Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
         {pagePreparing && <div className="page-loading" role="status"><span className="splash-spinner" /><span>Preparando dados desta área...</span></div>}
         {!pagePreparing && pagePreparationError && <div className="info-box">Não foi possível preparar os dados desta área: {pagePreparationError}</div>}
         {!pagePreparing && page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}
-        {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} /></div>}
-        {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={async () => { await ensureArchivedRecords(); }} /></div>}
+        {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
+        {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={async () => { await ensureArchivedRecords(); }} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
         {!pagePreparing && !pagePreparationError && page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
         {!pagePreparing && !pagePreparationError && page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
         {!pagePreparing && !pagePreparationError && page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={(record) => void openEdit(record)} onBulkAssignment={bulk} />}
@@ -425,13 +495,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
             elapsedHours: usefulElapsedHours(record.receivedAt, record.sentAt, excludedDates),
           })));
           setDataVersion((current) => current + 1);
-        }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} /> : <PersonalSettingsPage />)}
+        }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} currentWorkspaceId={currentWorkspace?.workspaceId ?? ""} onWorkspacesChanged={async () => { await Promise.all([refreshWorkspaces(), reloadReferenceData()]); }} /> : <PersonalSettingsPage />)}
         {!pagePreparing && page === "audit" && access.canViewAudit && <AdminAuditPage />}
         {!pagePreparing && page === "about" && <AboutPage />}
       </Suspense></div>
     </main>
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
+    {transferRecord && currentWorkspace && <ProcessTransferDialog record={transferRecord} currentWorkspaceId={currentWorkspace.workspaceId} workspaces={workspaces} onClose={() => setTransferRecord(null)} onTransfer={transfer} />}
     {showBackToTop && <button type="button" className="back-to-top" aria-label="Voltar ao topo" onClick={() => { hapticFeedback(); window.scrollTo({ top: 0, behavior: "smooth" }); }}><ArrowUp size={20} /><span>Voltar ao topo</span></button>}
   </div>;
 

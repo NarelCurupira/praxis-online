@@ -206,6 +206,7 @@ export interface ProcessPermissions {
   canChangeSentAt: boolean;
   canDelete: boolean;
   canExport: boolean;
+  canTransferProcess: boolean;
 }
 export interface TeamComparison { userId: string; fullName: string; email: string; role: PraxisRole; received: number; sent: number; pending: number; onTime: number; averageHours: number | null; }
 export interface AdminAuditEntry { id: number; createdAt: string; eventType: string; actorName: string; actorEmail: string; details: Record<string, unknown>; }

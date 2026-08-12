@@ -1,6 +1,6 @@
 -- Práxis Online — esquema-base
 -- Para novas instalações, execute este arquivo e depois todas as migrações de
--- supabase/migrations em ordem cronológica, até 20260801_praxis_v01077_security_retention.sql.
+-- supabase/migrations em ordem cronológica, até 20260811_praxis_v01080_multi_procuradorias.sql.
 -- Em bancos existentes, execute somente as migrações ainda não aplicadas.
 
 create extension if not exists pgcrypto;

@@ -1,5 +1,6 @@
 import {
   Archive,
+  ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -44,6 +45,7 @@ interface Props {
   onExport: (bytes: number[]) => Promise<string>;
   onPrepareExportRecords?: (records: ProcessMovement[]) => Promise<ProcessMovement[]>;
   onArchivedRequested?: () => Promise<void>;
+  onTransfer?: (record: ProcessMovement) => void;
 }
 
 type TableDensity = "compact" | "comfortable" | "spacious";
@@ -190,6 +192,7 @@ export function ProcessTable({
   onExport,
   onPrepareExportRecords,
   onArchivedRequested,
+  onTransfer,
 }: Props) {
   const preferencePrefix = `praxis-table-${currentUserId || "anonymous"}`;
   const columnPreferenceKey = `${preferencePrefix}-${queueOnly ? "queue" : "processes"}-columns`;
@@ -514,7 +517,7 @@ export function ProcessTable({
           {showColumn("deadlineAt") && <td className="col-deadline"><strong className={remaining < 5 && record.workflowStatus !== "Enviado" ? "deadline-urgent" : ""} title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className={remaining < 0 && record.workflowStatus !== "Enviado" ? "deadline-detail overdue" : "deadline-detail"}>{deadlineDetail}</span></td>}
           {showColumn("action") && <td className="col-action"><select disabled={!permissions.canEditWorkflow} className="action-select table-inline-select table-pill-select" aria-label="Providência" title={actionLabel(record.actionType)} value={record.actionType} onChange={(event) => onAction(record.movementId, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>}
           {showColumn("status") && <td className="col-status"><select disabled={!permissions.canEditWorkflow} className={`status-select table-inline-select table-pill-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(event) => changeStatus(record, event.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>}
-          <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => void onEdit(record)}><Pencil size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>
+          <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => void onEdit(record)}><Pencil size={16} /></button>}{permissions.canTransferProcess && onTransfer && <button type="button" className="icon-button" title="Transferir para outra Procuradoria" onClick={() => onTransfer(record)}><ArrowRightLeft size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>
         </tr>;
       }) : <tr><td colSpan={columnCount}><div className="table-empty-state"><Search size={28} /><strong>{isDefaultEmptyQueue ? "Sua fila está em dia" : "Nenhum processo encontrado"}</strong><span>{isDefaultEmptyQueue ? "Não há processos pendentes atribuídos a você." : "Revise ou limpe os filtros para ampliar a pesquisa."}</span>{hasActiveFilters && <button type="button" className="button secondary" onClick={clearFilters}>Limpar filtros</button>}</div></td></tr>}</tbody>
     </table></div>

@@ -1,3 +1,15 @@
+# Práxis 0.10.8.0 — Múltiplas Procuradorias de Justiça
+
+- Transforma cada `workspace` em uma Procuradoria de Justiça selecionável no topo do aplicativo.
+- Permite que o mesmo usuário participe de várias Procuradorias com perfil e permissões próprios em cada unidade.
+- Adiciona cadastro, renomeação e gestão de vínculos das Procuradorias em Configurações.
+- Mantém Visão Geral, Minha Fila, Processos, Eficiência, Relatórios e dados administrativos isolados pela Procuradoria ativa.
+- Permite ao administrador transferir processos entre Procuradorias nas quais seja administrador, com responsável de destino e justificativa obrigatória.
+- Registra as transferências na auditoria das unidades de origem e destino.
+- Endurece as políticas RLS para exigir o `current_workspace_id` nas tabelas operacionais.
+- Amplia a função administrativa de usuários para aceitar também o perfil `estagiario`.
+- Preserva a carga compacta, arquivados sob demanda e demais otimizações da 0.10.7.9.
+
 # Práxis 0.10.7.9 — Carga operacional e preparação multi-Procuradoria
 
 - Reduz a carga inicial às movimentações ativas e aos campos usados nas telas operacionais.

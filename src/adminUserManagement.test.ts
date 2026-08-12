@@ -31,3 +31,12 @@ test("interface aguarda o envio e apresenta resultado ao administrador", () => {
   assert.match(teamSource, /busy \? "Enviando\.\.\." : "Redefinir senha"/);
   assert.match(teamSource, /className="member-editor-message" role="status"/);
 });
+
+
+test("cadastro administrativo aceita o perfil estagiário", () => {
+  const createAction = functionSource.slice(
+    functionSource.indexOf('if (action === "create_member")'),
+    functionSource.indexOf('if (action === "update_email")'),
+  );
+  assert.match(createAction, /"procurador", "assessor", "estagiario", "consulta"/);
+});

@@ -15,6 +15,13 @@ const dashboard = readFileSync(new URL("./components/Dashboard.tsx", import.meta
 const fastApi = readFileSync(new URL("./fastApi.ts", import.meta.url), "utf8");
 const governanceApi = readFileSync(new URL("./governanceApi.ts", import.meta.url), "utf8");
 
+const settingsPage = readFileSync(new URL("./components/SettingsPage.tsx", import.meta.url), "utf8");
+const workspaceSwitcher = readFileSync(new URL("./components/WorkspaceSwitcher.tsx", import.meta.url), "utf8");
+const procuradoriasPanel = readFileSync(new URL("./components/ProcuradoriasPanel.tsx", import.meta.url), "utf8");
+const transferDialog = readFileSync(new URL("./components/ProcessTransferDialog.tsx", import.meta.url), "utf8");
+const workspaceApi = readFileSync(new URL("./workspaceApi.ts", import.meta.url), "utf8");
+const multiWorkspaceSql = readFileSync(new URL("../supabase/migrations/20260811_praxis_v01080_multi_procuradorias.sql", import.meta.url), "utf8");
+
 test("menu móvel permanece oculto no desktop e reaparece no breakpoint móvel", () => {
   assert.match(css, /\.topbar \.mobile-menu\s*\{\s*display:\s*none !important;/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*?\.topbar \.mobile-menu\s*\{\s*display:\s*inline-grid !important;/);
@@ -161,4 +168,46 @@ test("equipe é filtrada explicitamente pelo workspace ativo", () => {
   assert.match(governanceApi, /from\("workspace_members"\)/);
   assert.match(governanceApi, /eq\("workspace_id", workspaceId\)/);
   assert.match(governanceApi, /filter\(\(member\) => memberships\.has\(member\.userId\)\)/);
+});
+
+
+test("0.10.8 expõe seletor global e troca segura da Procuradoria ativa", () => {
+  assert.match(app, /<WorkspaceSwitcher/);
+  assert.match(app, /switchWorkspace\(workspaceId\)/);
+  assert.match(app, /clearFastMovementCache\(\)/);
+  assert.match(app, /setRecords\(\[\]\)/);
+  assert.match(workspaceSwitcher, /Procuradoria/);
+  assert.match(workspaceApi, /set_current_workspace_v01079/);
+});
+
+test("Configurações administra Procuradorias e vínculos muitos-para-muitos", () => {
+  assert.match(settingsPage, /<ProcuradoriasPanel/);
+  assert.match(procuradoriasPanel, /createWorkspace/);
+  assert.match(procuradoriasPanel, /setWorkspaceMember/);
+  assert.match(procuradoriasPanel, /O mesmo usuário pode possuir vínculos e perfis diferentes/);
+  assert.match(workspaceApi, /list_workspace_directory_v01080/);
+});
+
+test("transferência de processo é exclusiva do administrador e exige destino", () => {
+  assert.match(processTable, /permissions\.canTransferProcess/);
+  assert.match(transferDialog, /workspace\.role === "admin"/);
+  assert.match(transferDialog, /Justificativa/);
+  assert.match(workspaceApi, /transfer_movement_v01080/);
+});
+
+test("migração 0.10.8 limita dados operacionais ao workspace ativo", () => {
+  assert.match(multiWorkspaceSql, /is_current_workspace_v01080/);
+  assert.match(multiWorkspaceSql, /cases_select_current_v01080/);
+  assert.match(multiWorkspaceSql, /movements_select_current_v01080/);
+  assert.match(multiWorkspaceSql, /workspace_settings_select_current_v01080/);
+  assert.match(multiWorkspaceSql, /current_workspace_role\(workspace_id\) in \('admin','procurador','assessor','estagiario'\)/);
+});
+
+test("migração 0.10.8 cria Procuradorias e audita transferências", () => {
+  assert.match(multiWorkspaceSql, /create_workspace_v01080/);
+  assert.match(multiWorkspaceSql, /set_workspace_member_v01080/);
+  assert.match(multiWorkspaceSql, /transfer_movement_v01080/);
+  assert.match(multiWorkspaceSql, /movement_transferred_out/);
+  assert.match(multiWorkspaceSql, /movement_transferred_in/);
+  assert.match(multiWorkspaceSql, /current_workspace_id = \(/);
 });
