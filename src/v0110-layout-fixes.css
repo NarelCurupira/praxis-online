@@ -376,3 +376,37 @@ html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-overdue)
   .all-processes-data-table .col-status { width: 108px; }
 }
 
+/* 0.11.0 — equalização final das flags de prioridade e prazo */
+.process-data-table .process-priority-flags {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px !important;
+  margin-right: 6px;
+  vertical-align: top;
+}
+
+.process-data-table .process-priority-flag,
+.process-data-table tbody tr .col-process::after {
+  box-sizing: border-box;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 8px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 999px;
+  font-size: .68rem !important;
+  font-weight: 800;
+  line-height: 1 !important;
+  letter-spacing: .015em;
+  white-space: nowrap;
+}
+
+.process-data-table tbody tr .col-process::after {
+  margin-top: 7px !important;
+  vertical-align: top;
+}
+
