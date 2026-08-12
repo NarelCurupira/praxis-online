@@ -307,6 +307,36 @@ export async function getMovementDetailsBatchFast(movementIds: number[]): Promis
 }
 
 
+
+export async function hydrateQualityReasonsFast(records: ProcessMovement[]): Promise<ProcessMovement[]> {
+  const caseIds = [...new Set(records.filter((record) => record.sociallyRelevant || record.extremelyComplex).map((record) => record.caseId))];
+  if (!caseIds.length) return records;
+  const { client, workspaceId } = await fastContext();
+  const byCase = new Map<number, { relevanceReason: string; complexityReason: string }>();
+  const CHUNK_SIZE = 500;
+  for (let start = 0; start < caseIds.length; start += CHUNK_SIZE) {
+    const chunk = caseIds.slice(start, start + CHUNK_SIZE);
+    const { data, error } = await measureAsync(`quality.reasons.chunk.cases${chunk.length}`, async () =>
+      await client.from("cases")
+        .select("id,relevance_reason,complexity_reason")
+        .eq("workspace_id", workspaceId)
+        .in("id", chunk)
+    );
+    fail(error);
+    for (const item of data ?? []) {
+      const row = item as Record<string, unknown>;
+      byCase.set(Number(row.id), {
+        relevanceReason: String(row.relevance_reason ?? ""),
+        complexityReason: String(row.complexity_reason ?? ""),
+      });
+    }
+  }
+  return records.map((record) => {
+    const reasons = byCase.get(record.caseId);
+    return reasons ? { ...record, relevanceReason: reasons.relevanceReason, complexityReason: reasons.complexityReason } : record;
+  });
+}
+
 export interface ReportMovementQuery {
   startDate: string;
   endDate: string;
