@@ -3,10 +3,10 @@
 
 /* Tabelas — reserva espaço real para Editar / Transferir / Excluir. */
 .process-data-table .col-actions {
-  width: 154px !important;
-  min-width: 154px !important;
-  max-width: 154px !important;
-  padding-inline: 8px !important;
+  width: 126px !important;
+  min-width: 126px !important;
+  max-width: 126px !important;
+  padding-inline: 6px !important;
 }
 
 .process-data-table .row-actions {
@@ -16,25 +16,25 @@
   flex-wrap: nowrap;
   gap: 6px !important;
   width: 100%;
-  min-width: 138px;
+  min-width: 114px;
 }
 
 .process-data-table .row-actions .icon-button {
-  width: 40px !important;
-  min-width: 40px !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  flex: 0 0 40px;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  flex: 0 0 36px;
   padding: 0 !important;
 }
 
 /* Evita que status e ações disputem a mesma área em telas menores. */
 .all-processes-data-table .col-status {
-  min-width: 118px;
+  min-width: 108px;
 }
 
 .all-processes-data-table {
-  min-width: 1390px;
+  min-width: 1180px;
 }
 
 /* Controles de visualização — Colunas e Expandir tabela passam a usar a mesma caixa. */
@@ -254,3 +254,125 @@
     padding: 14px 18px 18px !important;
   }
 }
+
+/* 0.11.0 — flag espelhada de prazo na coluna Processo.
+   Usa as mesmas classes cromáticas já aplicadas na coluna Prazo. */
+.process-data-table .process-priority-flags {
+  display: inline-flex !important;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+.process-data-table tbody tr .col-process::after {
+  display: none;
+  width: fit-content;
+  min-height: 20px;
+  align-items: center;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .66rem;
+  font-weight: 800;
+  line-height: 1.15;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* 10–15 dias */
+.process-data-table tbody tr:has(.deadline-tone-notice) .col-process::after {
+  content: "≤15 dias";
+  display: inline-flex;
+  color: #8A5A00;
+  background: #FFFBEA;
+  border-color: #F1D58A;
+}
+
+/* 5–9 dias */
+.process-data-table tbody tr:has(.deadline-tone-warning) .col-process::after {
+  content: "≤9 dias";
+  display: inline-flex;
+  color: #9A4F00;
+  background: #FFF7E6;
+  border-color: #F4C67A;
+}
+
+/* 2–4 dias */
+.process-data-table tbody tr:has(.deadline-tone-warning-strong) .col-process::after {
+  content: "≤4 dias";
+  display: inline-flex;
+  color: #A33A00;
+  background: #FFF0DB;
+  border-color: #F4A261;
+}
+
+/* 1 dia */
+.process-data-table tbody tr:has(.deadline-tone-critical) .col-process::after {
+  content: "1 dia";
+  display: inline-flex;
+  color: #B42318;
+  background: #FEECE9;
+  border-color: #F28B82;
+}
+
+/* vence hoje */
+.process-data-table tbody tr:has(.deadline-tone-today) .col-process::after {
+  content: "Hoje";
+  display: inline-flex;
+  color: #991B1B;
+  background: #FEE2E2;
+  border-color: #EF8080;
+}
+
+/* vencido */
+.process-data-table tbody tr:has(.deadline-tone-overdue) .col-process::after {
+  content: "Vencido";
+  display: inline-flex;
+  color: #991B1B;
+  background: #FEE2E2;
+  border-color: #EF8080;
+  box-shadow: inset 3px 0 0 #B91C1C;
+}
+
+/* Mantém a flag de prazo na mesma linha das flags de prioridade quando existirem. */
+.process-data-table .col-process:has(.process-priority-flags)::after {
+  margin-left: 4px;
+}
+
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-notice) .col-process::after {
+  color: #FDE68A;
+  background: rgba(120, 78, 10, .14);
+  border-color: rgba(234, 179, 8, .32);
+}
+
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-warning) .col-process::after {
+  color: #FCD34D;
+  background: rgba(146, 64, 14, .18);
+  border-color: rgba(245, 158, 11, .42);
+}
+
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-warning-strong) .col-process::after {
+  color: #FDBA74;
+  background: rgba(154, 52, 18, .22);
+  border-color: rgba(249, 115, 22, .5);
+}
+
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-critical) .col-process::after,
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-today) .col-process::after,
+html[data-theme="dark"] .process-data-table tbody tr:has(.deadline-tone-overdue) .col-process::after {
+  color: #FCA5A5;
+  background: rgba(153, 27, 27, .24);
+  border-color: rgba(248, 113, 113, .5);
+}
+
+/* Em larguras intermediárias, prioriza caber na tela antes de recorrer ao scroll horizontal. */
+@media (min-width: 1180px) {
+  .all-processes-data-table .col-process { width: 205px; }
+  .all-processes-data-table .col-subject { width: 300px; }
+  .all-processes-data-table .col-assignee { width: 128px; }
+  .all-processes-data-table .col-date { width: 92px; }
+  .all-processes-data-table .col-deadline { width: 110px; }
+  .all-processes-data-table .col-action { width: 152px; }
+  .all-processes-data-table .col-status { width: 108px; }
+}
+
