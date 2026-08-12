@@ -1,8 +1,19 @@
 # Práxis Online
 
-Versão atual: **0.10.8.2**, conectada ao PostgreSQL do Supabase.
+Versão atual: **0.11.0**, conectada ao PostgreSQL do Supabase e com contingência local de leitura.
 
-Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, governança de acesso, relatórios, auditoria, diagnóstico e funcionamento responsivo.
+Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local de leitura.
+
+
+## Contingência 0.11.0
+
+- Os dados operacionais da Procuradoria visitada são armazenados no IndexedDB do navegador por até 72 horas.
+- O cache é isolado por usuário + Procuradoria e contém apenas dados necessários à consulta; documentos, observações e metadados detalhados não são persistidos.
+- Sem conexão, ficam disponíveis Visão Geral, Minha Fila e Processos em modo somente leitura.
+- A troca offline de Procuradoria é permitida apenas para unidades previamente sincronizadas no mesmo dispositivo.
+- O logout remove os snapshots locais do usuário.
+- Quando a conexão retorna, o Supabase volta automaticamente a ser a fonte de verdade.
+- O Service Worker armazena apenas o shell da aplicação; os dados processuais de contingência ficam no IndexedDB.
 
 ## Configuração
 

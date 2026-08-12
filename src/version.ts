@@ -1,1 +1,1 @@
-export const PRAXIS_VERSION = "0.10.8.2";
+export const PRAXIS_VERSION = "0.11.0";
