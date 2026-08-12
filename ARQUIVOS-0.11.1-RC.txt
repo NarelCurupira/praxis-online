@@ -1,0 +1,21 @@
+PRÁXIS ONLINE 0.11.1-RC — ARQUIVOS ALTERADOS/ADICIONADOS
+
+- package.json
+- package-lock.json
+- public/sw.js
+- src/App.tsx
+- src/api.ts
+- src/offlineStore.ts
+- src/offlineSync.ts
+- src/components/OfflineQueuePanel.tsx
+- src/components/ProcessModal.tsx
+- src/components/ProcessTable.tsx
+- src/components/AboutPage.tsx
+- src/contingencyRegression.test.ts
+- src/v0110-layout-fixes.css
+- src/version.ts
+- README.md
+- CHANGELOG.md
+- ATUALIZACAO-0.11.1-RC.md
+- VALIDACAO-0.11.1-RC.txt
+- ARQUIVOS-0.11.1-RC.txt

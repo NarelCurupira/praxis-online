@@ -7,9 +7,9 @@ import { PROCEDURAL_PRIORITY_OPTIONS } from "../proceduralPriorities";
 import { SpecialClassificationFields } from "./SpecialClassificationFields";
 import { PasteButton } from "./PasteButton";
 
-interface Props { classes: ClassSetting[]; exclusions: CalendarExclusion[]; members: TeamMember[]; currentUserId: string; isAdmin: boolean; onClose: () => void; onSave: (data: ProcessFormData) => Promise<void>; }
+interface Props { classes: ClassSetting[]; exclusions: CalendarExclusion[]; members: TeamMember[]; currentUserId: string; isAdmin: boolean; offlineMode?: boolean; onClose: () => void; onSave: (data: ProcessFormData) => Promise<void>; }
 
-export function ProcessModal({ classes, exclusions, members, currentUserId, isAdmin, onClose, onSave }: Props) {
+export function ProcessModal({ classes, exclusions, members, currentUserId, isAdmin, offlineMode = false, onClose, onSave }: Props) {
   const now = useMemo(() => toLocalInput(), []);
   const selectableClasses = useMemo(
     () => withRequiredAppealClasses(classes.length ? classes : [{ name: "Apelação Cível", businessDays: 30 }]),
@@ -45,7 +45,8 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
 
   return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <form className="modal" onSubmit={submit}>
-      <div className="modal-head"><div><p className="eyebrow">Novo registro</p><h2>Cadastrar processo</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={20} /></button></div>
+      <div className="modal-head"><div><p className="eyebrow">Novo registro</p><h2>{offlineMode ? "Cadastrar em contingência" : "Cadastrar processo"}</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={20} /></button></div>
+      {offlineMode && <div className="info-box offline-form-note">O cadastro será salvo neste dispositivo e enviado ao Supabase automaticamente quando a conexão retornar. Enquanto estiver pendente, o registro é identificado apenas localmente.</div>}
       <div className="form-grid process-form-grid">
         <label>Número MP<div className="input-copy-row"><input required value={form.mpNumber} onChange={(e) => change("mpNumber", e.target.value)} placeholder="08.2026.00000000-0" /><PasteButton onPaste={(value) => change("mpNumber", value)} label="Colar número MP" /></div></label>
         <label>Número judicial<div className="input-copy-row"><input required value={form.judicialNumber} onChange={(e) => change("judicialNumber", e.target.value)} placeholder="0000000-00.2026.8.14.0000" /><PasteButton onPaste={(value) => change("judicialNumber", value)} label="Colar número judicial" /></div></label>

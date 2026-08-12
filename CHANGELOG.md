@@ -1,3 +1,15 @@
+## 0.11.1-RC
+
+- Segunda fase da contingência: gravação operacional local com fila IndexedDB por usuário e Procuradoria.
+- Cadastro local de processos e alterações de status, providência, responsável e edição quando o detalhe já estiver disponível.
+- Sincronização automática e manual em ordem cronológica pelas mesmas APIs e RLS do Supabase.
+- Painel de fila com contagem, falhas, nova tentativa e descarte confirmado.
+- Identificador temporário para novos registros e verificação idempotente antes de repetir cadastro após falha de confirmação.
+- Preservação da data/hora de envio realizada durante a contingência.
+- Ações destrutivas, transferências, exportações e administração continuam bloqueadas offline.
+- Logout alerta antes de apagar alterações ainda não sincronizadas.
+- Conflitos concorrentes permanecem explicitamente reservados para a versão 1.0.
+
 ## 0.11.0
 
 - Primeira fase da contingência: leitura offline com IndexedDB.
