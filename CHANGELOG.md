@@ -1,3 +1,10 @@
+## 0.10.8.1
+- Configurações com navegação interna por seções.
+- Vínculos de Procuradorias salvos em lote.
+- Relatórios com consulta detalhada somente na geração e recorte temporal no servidor.
+- Paginação operacional em lotes de duas páginas.
+- Correção responsiva do seletor de Procuradoria.
+
 # Práxis 0.10.8.0 — Múltiplas Procuradorias de Justiça
 
 - Transforma cada `workspace` em uma Procuradoria de Justiça selecionável no topo do aplicativo.

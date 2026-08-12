@@ -1,0 +1,19 @@
+PRÁXIS ONLINE 0.10.8.1 — VALIDAÇÃO
+
+Escopo validado:
+- Relatórios sem pré-carga detalhada ao abrir a aba.
+- Consulta específica de relatório apenas na geração.
+- Eliminação, no servidor, de registros encerrados antes da janela relevante.
+- Paginação operacional em duas páginas paralelas após a primeira página completa.
+- Configurações divididas em cinco seções internas.
+- Cadastro de Procuradoria com campo visual padronizado.
+- Salvamento transacional em lote dos integrantes de uma Procuradoria.
+- Seletor de Procuradoria em segunda linha no celular.
+
+Resultados:
+- 10/10 verificações estruturais específicas: PASS.
+- Consistência de versão: PASS (0.10.8.1).
+- Parsing/transpilação TypeScript/TSX dos 6 arquivos funcionais modificados: PASS.
+
+Limitação do ambiente:
+O npm run check completo não pôde ser executado localmente porque as dependências npm presentes no ambiente estão incompletas. O workflow do GitHub deve executar npm run quality antes da publicação.

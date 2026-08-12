@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.10.8.0-multi-procuradorias-1";
+const CACHE_NAME = "praxis-shell-0.10.8.1-multi-procuradorias-1";
 const SHELL = [
   "/",
   "/index.html",

@@ -6,7 +6,7 @@ import {
   listAdminWorkspaces,
   listWorkspaceDirectory,
   renameWorkspace,
-  setWorkspaceMember,
+  setWorkspaceMembersBatch,
   type AdminWorkspace,
   type WorkspaceDirectoryMember,
 } from "../workspaceApi";
@@ -17,6 +17,10 @@ interface Props {
 }
 
 type MemberDraft = WorkspaceDirectoryMember;
+
+function sameMember(left: MemberDraft, right: MemberDraft): boolean {
+  return left.enabled === right.enabled && left.role === right.role && left.efficiencyAccess === right.efficiencyAccess && left.reportsAccess === right.reportsAccess;
+}
 
 const roleLabels: Record<PraxisRole, string> = {
   admin: "Administrador",
@@ -36,6 +40,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
   const [workspaces, setWorkspaces] = useState<AdminWorkspace[]>([]);
   const [selectedId, setSelectedId] = useState(currentWorkspaceId);
   const [directory, setDirectory] = useState<MemberDraft[]>([]);
+  const [savedDirectory, setSavedDirectory] = useState<MemberDraft[]>([]);
   const [newName, setNewName] = useState("");
   const [copyConfiguration, setCopyConfiguration] = useState(true);
   const [renameValue, setRenameValue] = useState("");
@@ -54,8 +59,8 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
         : next.find((item) => item.current)?.workspaceId ?? next[0]?.workspaceId ?? "";
     setSelectedId(resolved);
     setRenameValue(next.find((item) => item.workspaceId === resolved)?.name ?? "");
-    if (resolved) setDirectory(await listWorkspaceDirectory(resolved));
-    else setDirectory([]);
+    if (resolved) { const members = await listWorkspaceDirectory(resolved); setDirectory(members); setSavedDirectory(members); }
+    else { setDirectory([]); setSavedDirectory([]); }
   }
 
   useEffect(() => { void loadWorkspaces(currentWorkspaceId); }, [currentWorkspaceId]);
@@ -63,7 +68,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
   useEffect(() => {
     if (!selectedId) return;
     setRenameValue(workspaces.find((item) => item.workspaceId === selectedId)?.name ?? "");
-    void listWorkspaceDirectory(selectedId).then(setDirectory).catch((error) => setMessage(String(error)));
+    void listWorkspaceDirectory(selectedId).then((members) => { setDirectory(members); setSavedDirectory(members); }).catch((error) => setMessage(String(error)));
   }, [selectedId]);
 
   async function run(operation: () => Promise<void>, success: string) {
@@ -103,22 +108,25 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
     setDirectory((current) => current.map((member) => member.userId === userId ? { ...member, ...patch } : member));
   }
 
-  async function saveMember(member: MemberDraft) {
-    if (!selectedId) return;
-    const scopes = normalizedScopes(member.role, member.efficiencyAccess, member.reportsAccess);
+  const hasMemberChanges = directory.some((member) => {
+    const saved = savedDirectory.find((item) => item.userId === member.userId);
+    return !saved || !sameMember(member, saved);
+  });
+
+  async function saveMembers() {
+    if (!selectedId || !hasMemberChanges) return;
     await run(async () => {
-      await setWorkspaceMember({
-        workspaceId: selectedId,
-        userId: member.userId,
-        enabled: member.enabled,
-        role: member.role,
-        efficiencyAccess: scopes.efficiency,
-        reportsAccess: scopes.reports,
+      const normalized = directory.map((member) => {
+        const scopes = normalizedScopes(member.role, member.efficiencyAccess, member.reportsAccess);
+        return { ...member, efficiencyAccess: scopes.efficiency, reportsAccess: scopes.reports };
       });
-      setDirectory(await listWorkspaceDirectory(selectedId));
+      await setWorkspaceMembersBatch(selectedId, normalized);
+      const refreshed = await listWorkspaceDirectory(selectedId);
+      setDirectory(refreshed);
+      setSavedDirectory(refreshed);
       await loadWorkspaces(selectedId);
       await onChanged?.();
-    }, "Vínculo atualizado.");
+    }, "Integrantes da Procuradoria atualizados.");
   }
 
   return <section className="panel governance-section procuradorias-panel">
@@ -128,7 +136,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
     </div>
 
     <div className="procuradoria-create-grid">
-      <label className="grow">Nova Procuradoria<input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Ex.: 5ª Procuradoria de Justiça Cível" /></label>
+      <label className="grow procuradoria-name-field">Nova Procuradoria<input className="procuradoria-name-input" value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Ex.: 5ª Procuradoria de Justiça Cível" /></label>
       <label className="check-row procuradoria-copy-option"><input type="checkbox" checked={copyConfiguration} onChange={(event) => setCopyConfiguration(event.target.checked)} /><Copy size={15} />Copiar prazos, jornada e calendário da unidade atual</label>
       <button type="button" className="button primary" disabled={busy || !newName.trim()} onClick={() => void create()}><Plus size={17} />Cadastrar</button>
     </div>
@@ -149,7 +157,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
 
         <div className="panel-title compact"><div><h3>Integrantes habilitados</h3><p>O mesmo usuário pode possuir vínculos e perfis diferentes em unidades distintas.</p></div><Users size={19} /></div>
         <div className="workspace-member-table">
-          <div className="workspace-member-head"><span>Acesso</span><span>Usuário</span><span>Perfil</span><span>Eficiência</span><span>Relatórios</span><span></span></div>
+          <div className="workspace-member-head"><span>Acesso</span><span>Usuário</span><span>Perfil</span><span>Eficiência</span><span>Relatórios</span></div>
           {directory.map((member) => {
             const fixedAdmin = member.role === "admin" && member.enabled;
             const scopes = normalizedScopes(member.role, member.efficiencyAccess, member.reportsAccess);
@@ -159,10 +167,10 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
               <select disabled={busy || fixedAdmin || !member.enabled} value={member.role} onChange={(event) => patchMember(member.userId, { role: event.target.value as PraxisRole })}>{Object.entries(roleLabels).filter(([role]) => role !== "admin" || member.role === "admin").map(([role, label]) => <option key={role} value={role}>{label}</option>)}</select>
               <select disabled={busy || !member.enabled || member.role !== "assessor"} value={scopes.efficiency} onChange={(event) => patchMember(member.userId, { efficiencyAccess: event.target.value as AccessScope })}><option value="none">Sem acesso</option><option value="own">Próprios</option><option value="team">Equipe</option></select>
               <select disabled={busy || !member.enabled || member.role !== "assessor"} value={scopes.reports} onChange={(event) => patchMember(member.userId, { reportsAccess: event.target.value as AccessScope })}><option value="none">Sem acesso</option><option value="own">Próprios</option><option value="team">Equipe</option></select>
-              <button type="button" className="icon-button" title="Salvar vínculo" disabled={busy || fixedAdmin} onClick={() => void saveMember(member)}><Save size={16} /></button>
             </div>;
           })}
         </div>
+        <div className="workspace-member-actions"><span>{hasMemberChanges ? "Há alterações pendentes." : "Todos os vínculos estão salvos."}</span><button type="button" className="button primary" disabled={busy || !hasMemberChanges} onClick={() => void saveMembers()}><Save size={17} />Salvar integrantes</button></div>
       </div>}
     </div>
 

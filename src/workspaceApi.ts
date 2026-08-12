@@ -121,6 +121,22 @@ export async function setWorkspaceMember(input: {
   fail(error);
 }
 
+export async function setWorkspaceMembersBatch(workspaceId: string, members: WorkspaceDirectoryMember[]): Promise<void> {
+  const { client } = await workspaceContext();
+  const payload = members.map((member) => ({
+    user_id: member.userId,
+    enabled: member.enabled,
+    role: member.role,
+    efficiency_access: member.efficiencyAccess,
+    reports_access: member.reportsAccess,
+  }));
+  const { error } = await client.rpc("set_workspace_members_batch_v01081", {
+    target_workspace: workspaceId,
+    members_payload: payload,
+  });
+  fail(error);
+}
+
 export async function transferMovement(input: TransferMovementInput): Promise<void> {
   const { client } = await workspaceContext();
   const { error } = await client.rpc("transfer_movement_v01080", {

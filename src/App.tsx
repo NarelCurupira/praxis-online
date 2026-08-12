@@ -33,7 +33,7 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
-import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
+import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, listReportMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
 
@@ -133,7 +133,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   async function reload(reason: MovementLoadReason = "refresh") {
-    const detailPage = page === "reports" || page === "quality" || page === "import";
+    const detailPage = page === "quality" || page === "import";
     const nextRecords = await measureAsync(`movements.reload.${reason}`, async () => {
       if (detailPage) {
         return listDetailedMovementsFast({ includeArchived: true, reason });
@@ -175,7 +175,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setSettings(nextSettings);
     setClosed(nextClosed);
 
-    if (reason !== "initial" && (page === "reports" || page === "quality" || page === "import")) {
+    if (reason !== "initial" && (page === "quality" || page === "import")) {
       const detailed = await listDetailedMovementsFast({ includeArchived: true, reason: "detail" });
       setRecords(detailed);
       setArchivedLoaded(true);
@@ -294,7 +294,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   useEffect(() => {
     let cancelled = false;
     const prepare = async () => {
-      const needsDetails = page === "reports" || page === "quality" || page === "import";
+      const needsDetails = page === "quality" || page === "import";
       const needsArchive = page === "efficiency";
       if (!needsDetails && !needsArchive) {
         setPagePreparing(false);
@@ -480,7 +480,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
         {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={async () => { await ensureArchivedRecords(); }} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
         {!pagePreparing && !pagePreparationError && page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
-        {!pagePreparing && !pagePreparationError && page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
+        {!pagePreparing && !pagePreparationError && page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} onLoadRecords={listReportMovementsFast} accessScope={access.reportsScope} settings={settings} />}
         {!pagePreparing && !pagePreparationError && page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={(record) => void openEdit(record)} onBulkAssignment={bulk} />}
         {!pagePreparing && !pagePreparationError && page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={() => reloadAll("import")} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
         {!pagePreparing && page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={() => reload("trash")} canManage={access.canManageTrash} />}
