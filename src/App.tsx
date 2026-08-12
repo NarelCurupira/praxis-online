@@ -33,7 +33,7 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
-import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, listReportMovementsFast, type MovementLoadReason } from "./fastApi";
+import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, hydrateQualityReasonsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, listReportMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
 
@@ -88,6 +88,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [switchingWorkspace, setSwitchingWorkspace] = useState(false);
   const [transferRecord, setTransferRecord] = useState<ProcessMovement | null>(null);
   const [workspaceError, setWorkspaceError] = useState("");
+  const [workspaceDataLoading, setWorkspaceDataLoading] = useState(false);
 
   async function refreshWorkspaces(): Promise<AvailableWorkspace[]> {
     const next = await listAvailableWorkspaces();
@@ -100,43 +101,73 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (!workspaceId || workspaceId === current?.workspaceId || switchingWorkspace) return;
     let switched = false;
     setSwitchingWorkspace(true);
-    setLoading(true);
+    setWorkspaceDataLoading(false);
     setWorkspaceError("");
     setTransferRecord(null);
     setEditing(null);
     setModal(false);
     setPage("dashboard");
     setProcessPreset(null);
-    setRecords([]);
-    setMembers([]);
-    setClasses([]);
-    setExclusions([]);
-    clearFastMovementCache();
     try {
       await switchWorkspace(workspaceId);
       switched = true;
-      await Promise.all([reloadAll("initial"), refreshWorkspaces()]);
+      clearFastMovementCache();
+
+      // Fase 1: troca o contexto visual apenas após carregar os dados de referência.
+      // A tela antiga continua utilizável até este ponto, evitando o splash global.
+      const [nextSettings, nextClasses, nextExclusions, nextMembers, nextClosed, nextWorkspaces] = await Promise.all([
+        getWorkspaceSettings(), listClassSettingsFast(), listCalendarExclusionsFast({ force: true }),
+        listGovernanceMembers(), listClosedPeriods(), listAvailableWorkspaces(),
+      ]);
+      configureWorkdaySchedule(nextSettings);
+      setSettings(nextSettings);
+      setClasses(nextClasses);
+      setExclusions(nextExclusions);
+      setMembers(nextMembers);
+      setClosed(nextClosed);
+      setWorkspaces(nextWorkspaces);
+      setRecords([]);
+      setArchivedLoaded(false);
+      setAllDetailsLoaded(false);
+      setDataVersion((value) => value + 1);
+      setWorkspaceDataLoading(true);
+
+      // Fase 2: os processos chegam em segundo plano; somente a área de dados sinaliza carga.
+      const nextRecords = await listMovementsFast({
+        force: true, reason: "initial", prepareTransform: () => configureWorkdaySchedule(nextSettings),
+      });
+      setRecords(nextRecords);
+      setDataVersion((value) => value + 1);
       hapticFeedback("success");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (switched && current?.workspaceId) {
-        try { await switchWorkspace(current.workspaceId); }
-        catch { /* Se a reversão falhar, o alerta abaixo permanece visível. */ }
+        try {
+          await switchWorkspace(current.workspaceId);
+          clearFastMovementCache();
+          await Promise.all([reloadAll("initial"), refreshWorkspaces()]);
+        } catch { /* Se a reversão falhar, o alerta abaixo permanece visível. */ }
       }
-      clearFastMovementCache();
-      await Promise.allSettled([reloadAll("initial"), refreshWorkspaces()]);
       setWorkspaceError(message);
     } finally {
-      setLoading(false);
+      setWorkspaceDataLoading(false);
       setSwitchingWorkspace(false);
     }
   }
 
   async function reload(reason: MovementLoadReason = "refresh") {
-    const detailPage = page === "quality" || page === "import";
+    const detailPage = page === "import";
+    const qualityPage = page === "quality";
     const nextRecords = await measureAsync(`movements.reload.${reason}`, async () => {
       if (detailPage) {
         return listDetailedMovementsFast({ includeArchived: true, reason });
+      }
+      if (qualityPage) {
+        const [active, archived] = await Promise.all([
+          listMovementsFast({ force: true, reason }),
+          listArchivedMovementsFast({ force: true, reason: "archive" }),
+        ]);
+        return hydrateQualityReasonsFast([...active, ...archived]);
       }
       const [active, archived] = await Promise.all([
         listMovementsFast({ force: true, reason }),
@@ -148,6 +179,9 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (detailPage) {
       setArchivedLoaded(true);
       setAllDetailsLoaded(true);
+    } else if (qualityPage) {
+      setArchivedLoaded(true);
+      setAllDetailsLoaded(false);
     } else {
       setAllDetailsLoaded(false);
     }
@@ -175,7 +209,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setSettings(nextSettings);
     setClosed(nextClosed);
 
-    if (reason !== "initial" && (page === "quality" || page === "import")) {
+    if (reason !== "initial" && page === "import") {
       const detailed = await listDetailedMovementsFast({ includeArchived: true, reason: "detail" });
       setRecords(detailed);
       setArchivedLoaded(true);
@@ -211,6 +245,17 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     setAllDetailsLoaded(true);
     setDataVersion((value) => value + 1);
     return detailed;
+  }
+
+  async function ensureQualityRecords(): Promise<ProcessMovement[]> {
+    const archived = archivedLoaded ? records.filter((record) => Boolean(record.archivedAt)) : await listArchivedMovementsFast({ reason: "archive" });
+    const combined = mergeRecords(records, archived);
+    const hydrated = await measureAsync("quality.prepare.reasons", () => hydrateQualityReasonsFast(combined));
+    setRecords(hydrated);
+    setArchivedLoaded(true);
+    setAllDetailsLoaded(false);
+    setDataVersion((value) => value + 1);
+    return hydrated;
   }
 
   async function prepareExportRecords(items: ProcessMovement[]): Promise<ProcessMovement[]> {
@@ -294,9 +339,10 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   useEffect(() => {
     let cancelled = false;
     const prepare = async () => {
-      const needsDetails = page === "quality" || page === "import";
+      const needsDetails = page === "import";
+      const needsQuality = page === "quality";
       const needsArchive = page === "efficiency";
-      if (!needsDetails && !needsArchive) {
+      if (!needsDetails && !needsQuality && !needsArchive) {
         setPagePreparing(false);
         setPagePreparationError("");
         return;
@@ -305,6 +351,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       setPagePreparationError("");
       try {
         if (needsDetails) await ensureAllDetailedRecords("detail");
+        else if (needsQuality) await ensureQualityRecords();
         else await ensureArchivedRecords();
       } catch (error) {
         if (!cancelled) setPagePreparationError(error instanceof Error ? error.message : String(error));
@@ -473,7 +520,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       </header>
       {workspaceError && <div className="info-box workspace-switch-error" role="alert">Não foi possível trocar de Procuradoria: {workspaceError}</div>}
       {(mobileNavigation.pullDistance >= 72 || mobileNavigation.refreshing) && <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} aria-live="polite"><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : "Solte para atualizar"}</span></div>}
-      <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}><Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
+      <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>{workspaceDataLoading && <div className="workspace-data-loading" role="status"><span className="splash-spinner" /><span>Carregando processos da Procuradoria em segundo plano...</span></div>}<Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
         {pagePreparing && <div className="page-loading" role="status"><span className="splash-spinner" /><span>Preparando dados desta área...</span></div>}
         {!pagePreparing && pagePreparationError && <div className="info-box">Não foi possível preparar os dados desta área: {pagePreparationError}</div>}
         {!pagePreparing && page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}

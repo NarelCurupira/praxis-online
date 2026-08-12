@@ -735,3 +735,10 @@ html[data-theme="dark"] .deadline-urgent {
   .workspace-member-actions { align-items:stretch; flex-direction:column; }
   .workspace-member-actions .button { width:100%; justify-content:center; }
 }
+
+
+/* 0.10.8.2 — refinamentos de Procuradorias e carga progressiva */
+.procuradoria-rename-row .procuradoria-name-input { min-height:42px; border:1px solid var(--border); border-radius:10px; padding:.65rem .8rem; background:var(--surface-raised); color:var(--text-primary); font:inherit; outline:none; }
+.procuradoria-rename-row .procuradoria-name-input:focus { border-color:var(--praxis-primary); box-shadow:0 0 0 3px color-mix(in srgb,var(--praxis-primary) 16%,transparent); }
+.workspace-data-loading { display:flex; align-items:center; gap:.65rem; margin-bottom:.85rem; padding:.7rem .85rem; border:1px solid var(--border); border-radius:10px; background:var(--surface-subtle); color:var(--text-secondary); font-size:.88rem; }
+.workspace-data-loading .splash-spinner { width:18px; height:18px; flex:0 0 18px; }

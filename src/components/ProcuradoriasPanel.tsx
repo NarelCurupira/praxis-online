@@ -151,7 +151,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
 
       {selected && <div className="procuradoria-editor">
         <div className="procuradoria-rename-row">
-          <label>Nome da Procuradoria<input value={renameValue} onChange={(event) => setRenameValue(event.target.value)} /></label>
+          <label>Nome da Procuradoria<input className="procuradoria-name-input" value={renameValue} onChange={(event) => setRenameValue(event.target.value)} /></label>
           <button type="button" className="button secondary" disabled={busy || !renameValue.trim() || renameValue.trim() === selected.name} onClick={() => void rename()}><Pencil size={16} />Renomear</button>
         </div>
 
