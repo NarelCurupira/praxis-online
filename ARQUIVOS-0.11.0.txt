@@ -1,0 +1,17 @@
+PRÁXIS ONLINE 0.11.0 — ARQUIVOS ALTERADOS/ADICIONADOS
+
+- ATUALIZACAO-0.11.0.md
+- CHANGELOG.md
+- CRITERIOS_VERSAO_1.0.md
+- README.md
+- VALIDACAO-0.11.0.txt
+- package-lock.json
+- package.json
+- public/sw.js
+- src/App.tsx
+- src/components/AboutPage.tsx
+- src/contingencyRegression.test.ts
+- src/layoutRegression.test.ts
+- src/offlineStore.ts
+- src/v0107.css
+- src/version.ts

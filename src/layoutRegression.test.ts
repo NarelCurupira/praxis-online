@@ -128,7 +128,7 @@ test("cadastro e edição separam urgência da prioridade processual", () => {
 
 
 test("pull-to-refresh atualiza somente as movimentações", () => {
-  assert.match(app, /onRefresh:\s*\(\) => reload\("pull"\)/);
+  assert.match(app, /onRefresh:\s*\(\) => contingencyMode \? Promise\.resolve\(\) : reload\("pull"\)/);
   assert.doesNotMatch(app, /onRefresh:\s*reloadAll/);
 });
 

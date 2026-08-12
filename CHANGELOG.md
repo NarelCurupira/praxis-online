@@ -1,3 +1,14 @@
+## 0.11.0
+
+- Primeira fase da contingência: leitura offline com IndexedDB.
+- Snapshot operacional isolado por usuário e Procuradoria, com retenção de 72 horas.
+- Dashboard, Minha Fila e Processos disponíveis em somente leitura durante indisponibilidade.
+- Troca offline limitada às Procuradorias previamente sincronizadas no dispositivo.
+- Reconexão automática ao Supabase, preservado como fonte de verdade.
+- Cache local exclui documentos, observações e metadados processuais detalhados.
+- Logout elimina os dados locais do usuário.
+- Service Worker passa a reutilizar o shell principal da aplicação em navegação offline.
+
 ## 0.10.8.2
 
 - RLS multi-Procuradoria otimizado para resolver workspace e papel uma vez por consulta.
