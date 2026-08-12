@@ -1,3 +1,13 @@
+# Práxis 0.10.7.9 — Carga operacional e preparação multi-Procuradoria
+
+- Reduz a carga inicial às movimentações ativas e aos campos usados nas telas operacionais.
+- Busca registros arquivados somente ao abrir histórico, Eficiência ou áreas que dependem deles.
+- Busca observações, documentos e metadados analíticos detalhados somente em edição, Relatórios, Qualidade, Importação ou exportação.
+- Isola caches pelo par usuário + workspace, evitando reaproveitamento de dados após futura troca de Procuradoria.
+- Restringe a listagem da equipe ao `current_workspace_id`, inclusive com proteção adicional no frontend.
+- Adiciona RPCs preparatórias para listar Procuradorias acessíveis e trocar o workspace ativo com validação de vínculo.
+- Amplia a telemetria para identificar conjunto (`active`/`archived`) e formato (`core`/`detail`) de cada carga.
+
 # Práxis 0.10.7.8 — Carregamento coordenado e telemetria
 
 - Preserva a chamada de movimentações em andamento mesmo quando uma nova atualização forçada é solicitada.

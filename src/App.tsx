@@ -31,7 +31,7 @@ import { useIdleSession } from "./useIdleSession";
 import { configureWorkdaySchedule, usefulElapsedHours } from "./date";
 import { measureAsync } from "./performanceMonitoring";
 import { SplashScreen } from "./components/SplashScreen";
-import { listCalendarExclusionsFast, listClassSettingsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
+import { getMovementDetailsBatchFast, getMovementDetailsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 
 const LoadingScreen = SplashScreen;
@@ -77,10 +77,30 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [online, setOnline] = useState(() => navigator.onLine);
   const [processPreset, setProcessPreset] = useState<ProcessListPreset | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const [allDetailsLoaded, setAllDetailsLoaded] = useState(false);
+  const [pagePreparing, setPagePreparing] = useState(false);
+  const [pagePreparationError, setPagePreparationError] = useState("");
 
   async function reload(reason: MovementLoadReason = "refresh") {
-    const nextRecords = await measureAsync(`movements.reload.${reason}`, () => listMovementsFast({ force: true, reason }));
+    const detailPage = page === "reports" || page === "quality" || page === "import";
+    const nextRecords = await measureAsync(`movements.reload.${reason}`, async () => {
+      if (detailPage) {
+        return listDetailedMovementsFast({ includeArchived: true, reason });
+      }
+      const [active, archived] = await Promise.all([
+        listMovementsFast({ force: true, reason }),
+        archivedLoaded ? listArchivedMovementsFast({ force: true, reason: "archive" }) : Promise.resolve([]),
+      ]);
+      return [...active, ...archived];
+    });
     setRecords(nextRecords);
+    if (detailPage) {
+      setArchivedLoaded(true);
+      setAllDetailsLoaded(true);
+    } else {
+      setAllDetailsLoaded(false);
+    }
     setDataVersion((value) => value + 1);
   }
 
@@ -97,12 +117,73 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     ]));
     configureWorkdaySchedule(nextSettings);
     setRecords(nextRecords);
+    setArchivedLoaded(false);
+    setAllDetailsLoaded(false);
     setClasses(nextClasses);
     setExclusions(nextExclusions);
     setMembers(nextMembers);
     setSettings(nextSettings);
     setClosed(nextClosed);
+
+    if (page === "reports" || page === "quality" || page === "import") {
+      const detailed = await listDetailedMovementsFast({ includeArchived: true, reason: "detail" });
+      setRecords(detailed);
+      setArchivedLoaded(true);
+      setAllDetailsLoaded(true);
+    }
+
     setDataVersion((value) => value + 1);
+  }
+
+
+  function mergeRecords(current: ProcessMovement[], incoming: ProcessMovement[]): ProcessMovement[] {
+    const byId = new Map(current.map((record) => [record.movementId, record]));
+    incoming.forEach((record) => byId.set(record.movementId, record));
+    return [...byId.values()].sort((left, right) => {
+      const date = right.receivedAt.localeCompare(left.receivedAt);
+      return date || right.movementId - left.movementId;
+    });
+  }
+
+  async function ensureArchivedRecords(): Promise<ProcessMovement[]> {
+    if (archivedLoaded) return records.filter((record) => Boolean(record.archivedAt));
+    const archived = await measureAsync("movements.archive.lazy", () => listArchivedMovementsFast({ reason: "archive" }));
+    setRecords((current) => mergeRecords(current, archived));
+    setArchivedLoaded(true);
+    return archived;
+  }
+
+  async function ensureAllDetailedRecords(reason: MovementLoadReason = "detail"): Promise<ProcessMovement[]> {
+    if (allDetailsLoaded) return records;
+    const detailed = await measureAsync(`movements.details.${reason}`, () => listDetailedMovementsFast({ includeArchived: true, reason }));
+    setRecords(detailed);
+    setArchivedLoaded(true);
+    setAllDetailsLoaded(true);
+    setDataVersion((value) => value + 1);
+    return detailed;
+  }
+
+  async function prepareExportRecords(items: ProcessMovement[]): Promise<ProcessMovement[]> {
+    if (!items.length || items.every((record) => record.detailsLoaded)) return items;
+    const ids = new Set(items.map((record) => record.movementId));
+    if (items.length > 100) {
+      const detailed = await ensureAllDetailedRecords("export");
+      return detailed.filter((record) => ids.has(record.movementId));
+    }
+    const detailed = await measureAsync("movements.details.export.batch", () => getMovementDetailsBatchFast([...ids]));
+    setRecords((current) => mergeRecords(current, detailed));
+    const byId = new Map(detailed.map((record) => [record.movementId, record]));
+    return items.map((record) => byId.get(record.movementId) ?? record);
+  }
+
+  async function openEdit(record: ProcessMovement) {
+    if (record.detailsLoaded) {
+      setEditing(record);
+      return;
+    }
+    const detailed = await measureAsync("movements.details.edit", () => getMovementDetailsFast(record.movementId));
+    setRecords((current) => mergeRecords(current, [detailed]));
+    setEditing(detailed);
   }
 
   async function reloadReferenceData() {
@@ -160,6 +241,31 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (page !== "queue" && page !== "processes") setTableFocusMode(false);
   }, [page]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const prepare = async () => {
+      const needsDetails = page === "reports" || page === "quality" || page === "import";
+      const needsArchive = page === "efficiency";
+      if (!needsDetails && !needsArchive) {
+        setPagePreparing(false);
+        setPagePreparationError("");
+        return;
+      }
+      setPagePreparing(true);
+      setPagePreparationError("");
+      try {
+        if (needsDetails) await ensureAllDetailedRecords("detail");
+        else await ensureArchivedRecords();
+      } catch (error) {
+        if (!cancelled) setPagePreparationError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (!cancelled) setPagePreparing(false);
+      }
+    };
+    void prepare();
+    return () => { cancelled = true; };
+  }, [page]);
+
   function toggleSidebar() {
     setSidebarCollapsed((current) => {
       const next = !current;
@@ -176,7 +282,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
 
   async function save(data: ProcessFormData) {
     const created = await measureAsync("movements.create", () => createMovement(data));
-    setRecords((current) => [created, ...current.filter((item) => item.movementId !== created.movementId)]);
+    setRecords((current) => [{ ...created, detailsLoaded: true }, ...current.filter((item) => item.movementId !== created.movementId)]);
     setDataVersion((value) => value + 1);
     setModal(false);
     hapticFeedback("success");
@@ -196,6 +302,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       sentTimePrecise: Boolean(data.sentTimePrecise),
       elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
       assignedName: members.find((member) => member.userId === data.assignedTo)?.fullName || record.assignedName,
+      detailsLoaded: true,
     }));
     setDataVersion((value) => value + 1);
     setEditing(null);
@@ -297,16 +404,18 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       </header>
       {(mobileNavigation.pullDistance >= 72 || mobileNavigation.refreshing) && <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} aria-live="polite"><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : "Solte para atualizar"}</span></div>}
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}><Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
-        {page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}
-        {page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
-        {page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={setEditing} onExport={saveExport} /></div>}
-        {page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
-        {page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
-        {page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={setEditing} onBulkAssignment={bulk} />}
-        {page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={() => reloadAll("import")} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
-        {page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={() => reload("trash")} canManage={access.canManageTrash} />}
-        {page === "team" && access.canManageTeam && <TeamPage onChanged={reloadReferenceData} />}
-        {page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadReferenceData(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadReferenceData(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadReferenceData(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadReferenceData(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadReferenceData(); }} onSaveSettings={async (value) => {
+        {pagePreparing && <div className="page-loading" role="status"><span className="splash-spinner" /><span>Preparando dados desta área...</span></div>}
+        {!pagePreparing && pagePreparationError && <div className="info-box">Não foi possível preparar os dados desta área: {pagePreparationError}</div>}
+        {!pagePreparing && page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}
+        {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} /></div>}
+        {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={ensureArchivedRecords} /></div>}
+        {!pagePreparing && !pagePreparationError && page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
+        {!pagePreparing && !pagePreparationError && page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} accessScope={access.reportsScope} settings={settings} />}
+        {!pagePreparing && !pagePreparationError && page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={(record) => void openEdit(record)} onBulkAssignment={bulk} />}
+        {!pagePreparing && !pagePreparationError && page === "import" && access.canImport && <ImportPage isAdmin onImport={importRecords} onBackup={createBackup} onChanged={() => reloadAll("import")} records={records} classes={classes} exclusions={exclusions} onExport={saveExport} onClear={clearDatabase} onRestoreBackup={restoreBackup} />}
+        {!pagePreparing && page === "trash" && <TrashPage refreshKey={dataVersion} onChanged={() => reload("trash")} canManage={access.canManageTrash} />}
+        {!pagePreparing && page === "team" && access.canManageTeam && <TeamPage onChanged={reloadReferenceData} />}
+        {!pagePreparing && page === "settings" && (access.canManageSettings ? <SettingsPage classes={classes} exclusions={exclusions} members={members} settings={settings} closedPeriods={closed} onSaveClass={async (value) => { await saveClassSetting(value); await reloadReferenceData(); }} onDeleteClass={async (name) => { await deleteClassSetting(name); await reloadReferenceData(); }} onSaveExclusion={async (value) => { await saveCalendarExclusion(value); await reloadReferenceData(); }} onDeleteExclusion={async (date) => { await deleteCalendarExclusion(date); await reloadReferenceData(); }} onSaveMemberAccess={async (id, efficiency, reports) => { await saveMemberAccess(id, efficiency, reports); await reloadReferenceData(); }} onSaveSettings={async (value) => {
           await saveWorkspaceSettings(value);
           configureWorkdaySchedule(value);
           setSettings(value);
@@ -317,8 +426,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
           })));
           setDataVersion((current) => current + 1);
         }} onClosePeriod={async (year, month, reason) => { await closePeriod(year, month, reason); setClosed(await listClosedPeriods()); }} onReopenPeriod={async (id, reason) => { await reopenPeriod(id, reason); setClosed(await listClosedPeriods()); }} /> : <PersonalSettingsPage />)}
-        {page === "audit" && access.canViewAudit && <AdminAuditPage />}
-        {page === "about" && <AboutPage />}
+        {!pagePreparing && page === "audit" && access.canViewAudit && <AdminAuditPage />}
+        {!pagePreparing && page === "about" && <AboutPage />}
       </Suspense></div>
     </main>
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}

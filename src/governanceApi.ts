@@ -70,7 +70,17 @@ function mapGovernanceMember(item: Record<string, unknown>): TeamMember {
 }
 
 export async function listGovernanceMembers(): Promise<TeamMember[]> {
-  const { client, user, workspaceId } = await context();
+  const { client, workspaceId } = await context();
+
+  // A relação abaixo é a fonte de verdade do workspace ativo. Isso mantém a
+  // interface isolada mesmo durante a transição em que uma RPC antiga ainda
+  // possa devolver membros de mais de um workspace do mesmo usuário.
+  const { data: currentMemberships, error: membershipsError } = await client
+    .from("workspace_members")
+    .select("user_id, role, active, mfa_required, historico_disponivel_desde, efficiency_access, reports_access, display_name")
+    .eq("workspace_id", workspaceId);
+  fail(membershipsError);
+  const memberships = new Map((currentMemberships ?? []).map((item: Record<string, unknown>) => [String(item.user_id), item]));
 
   const current = await client.rpc("list_current_workspace_members_v091");
   let members: TeamMember[];
@@ -83,35 +93,26 @@ export async function listGovernanceMembers(): Promise<TeamMember[]> {
     members = (legacy.data ?? []).map((item: Record<string, unknown>) => mapGovernanceMember(item));
   }
 
-  // Um usuário pode possuir mais de um workspace ativo. A RPC histórica retorna
-  // membros de todos eles; por isso, o papel do usuário autenticado deve ser
-  // confirmado especificamente no current_workspace_id.
-  const { data: ownMembership, error: membershipError } = await client
-    .from("workspace_members")
-    .select("role, active, mfa_required, historico_disponivel_desde, efficiency_access, reports_access")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", user.id)
-    .eq("active", true)
-    .maybeSingle();
-  fail(membershipError);
-
-  if (ownMembership) {
-    members = members.map((member) => member.userId !== user.id ? member : {
-      ...member,
-      role: ownMembership.role as TeamMember["role"],
-      active: Boolean(ownMembership.active),
-      mfaRequired: Boolean(ownMembership.mfa_required),
-      historicalCoverageSince: ownMembership.historico_disponivel_desde
-        ? String(ownMembership.historico_disponivel_desde)
-        : null,
-      efficiencyAccess: ownMembership.efficiency_access as AccessScope,
-      reportsAccess: ownMembership.reports_access as AccessScope,
+  const isolated = members
+    .filter((member) => memberships.has(member.userId))
+    .map((member) => {
+      const membership = memberships.get(member.userId)!;
+      return {
+        ...member,
+        displayName: String(membership.display_name ?? "").trim() || member.displayName,
+        role: membership.role as TeamMember["role"],
+        active: Boolean(membership.active),
+        mfaRequired: Boolean(membership.mfa_required),
+        historicalCoverageSince: membership.historico_disponivel_desde
+          ? String(membership.historico_disponivel_desde)
+          : null,
+        efficiencyAccess: membership.efficiency_access as AccessScope,
+        reportsAccess: membership.reports_access as AccessScope,
+      };
     });
-  }
 
-  // Evita que associações duplicadas do mesmo usuário em workspaces distintos
-  // produzam múltiplas entradas e façam a primeira função prevalecer.
-  return [...new Map(members.map((member) => [member.userId, member])).values()];
+  return [...new Map(isolated.map((member) => [member.userId, member])).values()]
+    .sort((left, right) => left.fullName.localeCompare(right.fullName, "pt-BR"));
 }
 
 export async function saveMemberAccess(userId: string, efficiencyAccess: AccessScope, reportsAccess: AccessScope, displayName?: string | null): Promise<void> {
