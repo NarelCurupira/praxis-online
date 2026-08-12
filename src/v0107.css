@@ -766,3 +766,169 @@ html[data-theme="dark"] .deadline-urgent {
   .contingency-banner { margin:.15rem .65rem .7rem; padding:.65rem .75rem; }
   .contingency-banner span { font-size:.78rem; }
 }
+
+/* Práxis 0.11.0 — sinalização de urgência e prazo nas filas */
+.process-priority-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.process-priority-flag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .015em;
+  white-space: nowrap;
+}
+
+.process-priority-flag.urgency {
+  color: #991B1B;
+  background: #FEE2E2;
+  border-color: #FCA5A5;
+}
+
+.process-priority-flag.high {
+  color: #9A3412;
+  background: #FFEDD5;
+  border-color: #FDBA74;
+}
+
+.process-priority-flag.procedural {
+  color: #1E3A5F;
+  background: #E8F1FA;
+  border-color: #B9D3EA;
+}
+
+.deadline-visual {
+  display: inline-flex;
+  min-width: 86px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.deadline-visual strong {
+  font-weight: 800;
+}
+
+.deadline-visual .deadline-detail {
+  font-size: .72rem;
+  color: var(--text-secondary);
+}
+
+.deadline-tone-notice {
+  color: #8A5A00;
+  background: #FFFBEA;
+  border-color: #F1D58A;
+}
+
+.deadline-tone-warning {
+  color: #9A4F00;
+  background: #FFF7E6;
+  border-color: #F4C67A;
+}
+
+.deadline-tone-warning-strong {
+  color: #A33A00;
+  background: #FFF0DB;
+  border-color: #F4A261;
+}
+
+.deadline-tone-critical {
+  color: #B42318;
+  background: #FEECE9;
+  border-color: #F28B82;
+}
+
+.deadline-tone-today,
+.deadline-tone-overdue {
+  color: #991B1B;
+  background: #FEE2E2;
+  border-color: #EF8080;
+}
+
+.deadline-tone-overdue {
+  box-shadow: inset 3px 0 0 #B91C1C;
+}
+
+.deadline-tone-notice .deadline-detail,
+.deadline-tone-warning .deadline-detail,
+.deadline-tone-warning-strong .deadline-detail,
+.deadline-tone-critical .deadline-detail,
+.deadline-tone-today .deadline-detail,
+.deadline-tone-overdue .deadline-detail {
+  color: currentColor;
+  font-weight: 750;
+}
+
+html[data-theme="dark"] .process-priority-flag.urgency {
+  color: #FECACA;
+  background: rgba(153, 27, 27, .28);
+  border-color: rgba(248, 113, 113, .55);
+}
+
+html[data-theme="dark"] .process-priority-flag.high {
+  color: #FED7AA;
+  background: rgba(154, 52, 18, .28);
+  border-color: rgba(251, 146, 60, .5);
+}
+
+html[data-theme="dark"] .process-priority-flag.procedural {
+  color: #BFDBFE;
+  background: rgba(30, 64, 175, .18);
+  border-color: rgba(96, 165, 250, .4);
+}
+
+html[data-theme="dark"] .deadline-tone-notice {
+  color: #FDE68A;
+  background: rgba(120, 78, 10, .14);
+  border-color: rgba(234, 179, 8, .32);
+}
+
+html[data-theme="dark"] .deadline-tone-warning {
+  color: #FCD34D;
+  background: rgba(146, 64, 14, .18);
+  border-color: rgba(245, 158, 11, .42);
+}
+
+html[data-theme="dark"] .deadline-tone-warning-strong {
+  color: #FDBA74;
+  background: rgba(154, 52, 18, .22);
+  border-color: rgba(249, 115, 22, .5);
+}
+
+html[data-theme="dark"] .deadline-tone-critical,
+html[data-theme="dark"] .deadline-tone-today,
+html[data-theme="dark"] .deadline-tone-overdue {
+  color: #FCA5A5;
+  background: rgba(153, 27, 27, .24);
+  border-color: rgba(248, 113, 113, .5);
+}
+
+@media (max-width: 900px) {
+  .process-priority-flags {
+    gap: 4px;
+    margin-top: 5px;
+  }
+
+  .process-priority-flag {
+    padding: 2px 6px;
+    font-size: .64rem;
+  }
+
+  .deadline-visual {
+    min-width: 80px;
+    padding: 4px 6px;
+  }
+}
