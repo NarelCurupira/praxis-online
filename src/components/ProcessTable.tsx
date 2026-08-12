@@ -130,6 +130,22 @@ function highlightLabel(value: HighlightFilter): string {
   return value;
 }
 
+function deadlineTone(record: ProcessMovement, remaining: number): string {
+  if (record.workflowStatus === "Enviado" || !record.deadlineAt) return "";
+  if (remaining < 0) return "deadline-tone-overdue";
+  if (remaining === 0) return "deadline-tone-today";
+  if (remaining === 1) return "deadline-tone-critical";
+  if (remaining <= 4) return "deadline-tone-warning-strong";
+  if (remaining <= 9) return "deadline-tone-warning";
+  if (remaining <= 15) return "deadline-tone-notice";
+  return "";
+}
+
+function proceduralPriorityLabel(value: ProcessMovement["proceduralPriority"]): string {
+  if (value === "Idoso +80") return "+80";
+  return value && value !== "Nenhuma" ? value : "";
+}
+
 function excelRows(records: ProcessMovement[]) {
   return records.map((record) => ({
     "Nº MP": record.mpNumber,
@@ -508,13 +524,16 @@ export function ProcessTable({
               : remaining === 0
                 ? "vence hoje"
                 : `${remaining} ${remaining === 1 ? "dia" : "dias"}`;
+        const deadlineClass = deadlineTone(record, remaining);
+        const proceduralLabel = proceduralPriorityLabel(record.proceduralPriority);
+        const hasPriorityFlag = record.priority === "Urgente" || record.priority === "Alta" || Boolean(proceduralLabel);
         return <tr key={record.movementId} className={selected.has(record.movementId) ? "selected-row" : ""}>
           {canSelect && <td className="col-select"><input type="checkbox" aria-label={`Selecionar ${record.judicialNumber}`} checked={selected.has(record.movementId)} onChange={() => toggleSelected(record.movementId)} /></td>}
-          <td className="col-process"><div className="number-copy-line"><strong>{record.judicialNumber}</strong><CopyButton value={record.judicialNumber} label="Copiar número judicial" /></div><div className="number-copy-line secondary-number"><span>{record.mpNumber}</span><CopyButton value={record.mpNumber} label="Copiar número MP" /></div></td>
+          <td className="col-process"><div className="number-copy-line"><strong>{record.judicialNumber}</strong><CopyButton value={record.judicialNumber} label="Copiar número judicial" /></div><div className="number-copy-line secondary-number"><span>{record.mpNumber}</span><CopyButton value={record.mpNumber} label="Copiar número MP" /></div>{hasPriorityFlag && <div className="process-priority-flags" aria-label="Prioridades do processo">{record.priority === "Urgente" && <b className="process-priority-flag urgency">Urgente</b>}{record.priority === "Alta" && <b className="process-priority-flag high">Alta</b>}{proceduralLabel && <b className="process-priority-flag procedural" title={`Prioridade processual: ${record.proceduralPriority}`}>{proceduralLabel}</b>}</div>}</td>
           {showColumn("subject") && <td className="subject-cell col-subject"><strong>{record.className}</strong><span title={record.subject}>{record.subject}</span>{(record.sociallyRelevant || record.extremelyComplex) && <div className="classification-badges">{record.sociallyRelevant && <b className="classification-badge social">Relevância social</b>}{record.extremelyComplex && <b className="classification-badge complex">Alta complexidade</b>}</div>}</td>}
           {showColumn("assignee") && <td className="col-assignee">{permissions.canChangeAssignment ? <select className="assignee-select table-inline-select" aria-label={`Responsável por ${record.judicialNumber}`} title={assignedMember?.fullName || record.assignedName} value={record.assignedTo} onChange={(event) => onAssignment(record.movementId, event.target.value)}>{members.filter((member) => member.active || member.userId === record.assignedTo).map((member) => <option key={member.userId} value={member.userId}>{shortMemberName(member)}</option>)}</select> : <strong className="assignee-display" title={assignedMember?.fullName || record.assignedName}>{assigneeLabel}</strong>}</td>}
           {showColumn("receivedAt") && <td className="compact-date col-date" title={fullDateTitle(record.receivedAt, Boolean(record.receivedTimePrecise))}>{compactDate(record.receivedAt)}</td>}
-          {showColumn("deadlineAt") && <td className="col-deadline"><strong className={remaining < 5 && record.workflowStatus !== "Enviado" ? "deadline-urgent" : ""} title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className={remaining < 0 && record.workflowStatus !== "Enviado" ? "deadline-detail overdue" : "deadline-detail"}>{deadlineDetail}</span></td>}
+          {showColumn("deadlineAt") && <td className="col-deadline"><div className={`deadline-visual ${deadlineClass}`.trim()}><strong title={fullDateTitle(record.deadlineAt)}>{record.deadlineAt ? compactDate(record.deadlineAt) : "Sem prazo"}</strong><span className="deadline-detail">{deadlineDetail}</span></div></td>}
           {showColumn("action") && <td className="col-action"><select disabled={!permissions.canEditWorkflow} className="action-select table-inline-select table-pill-select" aria-label="Providência" title={actionLabel(record.actionType)} value={record.actionType} onChange={(event) => onAction(record.movementId, event.target.value)}><option value="">Definir...</option>{actionOptions.map((item) => <option key={item} value={item}>{actionLabel(item)}</option>)}</select></td>}
           {showColumn("status") && <td className="col-status"><select disabled={!permissions.canEditWorkflow} className={`status-select table-inline-select table-pill-select status-${record.workflowStatus.toLowerCase().replace(" ", "-")}`} value={record.workflowStatus} onChange={(event) => changeStatus(record, event.target.value as WorkflowStatus)}>{statuses.map((item) => <option key={item}>{item}</option>)}</select></td>}
           <td className="col-actions"><div className="row-actions">{(permissions.canEditFull || permissions.canEditNotes) && <button type="button" className="icon-button" title="Editar registro" onClick={() => void onEdit(record)}><Pencil size={16} /></button>}{permissions.canTransferProcess && onTransfer && <button type="button" className="icon-button" title="Transferir para outra Procuradoria" onClick={() => onTransfer(record)}><ArrowRightLeft size={16} /></button>}{permissions.canDelete && <button type="button" className="icon-button danger" title="Mover para a lixeira" onClick={() => confirm("Mover este registro para a lixeira?") && onDelete(record.movementId)}><Trash2 size={16} /></button>}</div></td>

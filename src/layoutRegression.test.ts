@@ -84,9 +84,20 @@ test("status enviado usa o azul-marinho da identidade na aba Processos", () => {
   assert.match(css, /\.processes-table-panel \.status-enviado\s*\{[\s\S]*?background:\s*var\(--praxis-navy\) !important;/);
 });
 
-test("prazo inferior a cinco dias recebe destaque próprio", () => {
-  assert.match(processTable, /remaining < 5 && record\.workflowStatus !== "Enviado" \? "deadline-urgent"/);
-  assert.match(css, /\.deadline-urgent\s*\{[\s\S]*?color:\s*#B44747 !important;/);
+test("prazos recebem escala visual progressiva até quinze dias", () => {
+  assert.match(processTable, /function deadlineTone\(record: ProcessMovement, remaining: number\): string/);
+  assert.match(processTable, /if \(remaining < 0\) return "deadline-tone-overdue"/);
+  assert.match(processTable, /if \(remaining === 0\) return "deadline-tone-today"/);
+  assert.match(processTable, /if \(remaining === 1\) return "deadline-tone-critical"/);
+  assert.match(processTable, /if \(remaining <= 4\) return "deadline-tone-warning-strong"/);
+  assert.match(processTable, /if \(remaining <= 9\) return "deadline-tone-warning"/);
+  assert.match(processTable, /if \(remaining <= 15\) return "deadline-tone-notice"/);
+  assert.match(css, /\.deadline-tone-notice\s*\{/);
+  assert.match(css, /\.deadline-tone-warning\s*\{/);
+  assert.match(css, /\.deadline-tone-warning-strong\s*\{/);
+  assert.match(css, /\.deadline-tone-critical\s*\{/);
+  assert.match(css, /\.deadline-tone-today,/);
+  assert.match(css, /\.deadline-tone-overdue\s*\{/);
 });
 
 test("filtros da aba Processos seguem Ano, Responsável, Status e Destacados", () => {
