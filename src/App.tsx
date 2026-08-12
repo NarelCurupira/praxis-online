@@ -19,6 +19,7 @@ import { ProcessModal } from "./components/ProcessModal";
 const PersonalSettingsPage = lazy(() => import("./components/PersonalSettingsPage").then((module) => ({ default: module.PersonalSettingsPage })));
 import { ProcessTable } from "./components/ProcessTable";
 import { ProcessTransferDialog } from "./components/ProcessTransferDialog";
+import { OfflineQueuePanel } from "./components/OfflineQueuePanel";
 const ReportsPage = lazy(() => import("./components/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 const SettingsPage = lazy(() => import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })));
@@ -36,7 +37,8 @@ import { SplashScreen } from "./components/SplashScreen";
 import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, hydrateQualityReasonsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, listReportMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
-import { clearOfflineUserData, listOfflineWorkspaces, loadOfflineSnapshot, markOfflineWorkspaceCurrent, offlineRetentionHours, saveOfflineSnapshot, type OfflineWorkspaceSnapshot } from "./offlineStore";
+import { allocateOfflineMovementId, clearOfflineUserData, discardOfflineOperationTree, enqueueOfflineOperation, enqueueOfflineOperations, listOfflineOperations, listOfflineWorkspaces, loadOfflineSnapshot, markOfflineWorkspaceCurrent, offlineRetentionHours, saveOfflineSnapshot, type OfflineOperation, type OfflineOperationInput, type OfflineWorkspaceSnapshot } from "./offlineStore";
+import { projectOfflineOperations, syncOfflineOperationsForWorkspace } from "./offlineSync";
 
 const LoadingScreen = SplashScreen;
 
@@ -93,12 +95,16 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [contingencyMode, setContingencyMode] = useState(false);
   const [offlineSavedAt, setOfflineSavedAt] = useState<string | null>(null);
   const [recoveringOnline, setRecoveringOnline] = useState(false);
+  const [recoveryRetry, setRecoveryRetry] = useState(0);
   const [startupError, setStartupError] = useState("");
+  const [offlineOperations, setOfflineOperations] = useState<OfflineOperation[]>([]);
+  const [offlineQueueOpen, setOfflineQueueOpen] = useState(false);
+  const [syncingOffline, setSyncingOffline] = useState(false);
 
-  function applyOfflineSnapshot(snapshot: OfflineWorkspaceSnapshot, cachedWorkspaces: AvailableWorkspace[]) {
+  function applyOfflineSnapshot(snapshot: OfflineWorkspaceSnapshot, cachedWorkspaces: AvailableWorkspace[], pending: OfflineOperation[]) {
     configureWorkdaySchedule(snapshot.settings);
     setSettings(snapshot.settings);
-    setRecords(snapshot.records);
+    setRecords(projectOfflineOperations(snapshot.records, pending.filter((operation) => operation.workspaceId === snapshot.workspaceId), snapshot.members));
     setClasses(snapshot.classes);
     setExclusions(snapshot.exclusions);
     setMembers(snapshot.members);
@@ -132,14 +138,57 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   async function enterContingency(workspaceId?: string): Promise<boolean> {
-    const [snapshot, cachedWorkspaces] = await Promise.all([
+    const [snapshot, cachedWorkspaces, pending] = await Promise.all([
       loadOfflineSnapshot(session.user.id, workspaceId),
       listOfflineWorkspaces(session.user.id),
+      listOfflineOperations(session.user.id),
     ]);
     if (!snapshot) return false;
-    applyOfflineSnapshot(snapshot, cachedWorkspaces);
+    setOfflineOperations(pending);
+    applyOfflineSnapshot(snapshot, cachedWorkspaces, pending);
     await markOfflineWorkspaceCurrent(session.user.id, snapshot.workspaceId);
     return true;
+  }
+
+  async function refreshOfflineOperations(): Promise<OfflineOperation[]> {
+    const pending = await listOfflineOperations(session.user.id);
+    setOfflineOperations(pending);
+    return pending;
+  }
+
+  function currentWorkspaceInfo() {
+    return workspaces.find((workspace) => workspace.current) ?? workspaces[0];
+  }
+
+  function offlineOperationBase(recordLabel = ""): Pick<OfflineOperationInput, "userId" | "workspaceId" | "workspaceName" | "processLabel"> {
+    const workspace = currentWorkspaceInfo();
+    if (!workspace) throw new Error("Não foi possível identificar a Procuradoria ativa para registrar a alteração local.");
+    return { userId: session.user.id, workspaceId: workspace.workspaceId, workspaceName: workspace.name, processLabel: recordLabel };
+  }
+
+  async function synchronizeCurrentOfflineQueue(options: { reloadAfter?: boolean } = {}): Promise<void> {
+    const workspace = currentWorkspaceInfo();
+    if (!workspace || !navigator.onLine || syncingOffline) return;
+    setSyncingOffline(true);
+    try {
+      await switchWorkspace(workspace.workspaceId);
+      clearFastMovementCache();
+      const result = await measureAsync("contingency.sync.current", () => syncOfflineOperationsForWorkspace(session.user.id, workspace.workspaceId));
+      await refreshOfflineOperations();
+      if (result.error) setWorkspaceError(`Sincronização parcial: ${result.error}`);
+      else if (result.synced) setWorkspaceError("");
+      if (options.reloadAfter && !contingencyMode) await reload("refresh");
+    } finally {
+      setSyncingOffline(false);
+    }
+  }
+
+  async function discardOfflineOperation(operationId: string): Promise<void> {
+    await discardOfflineOperationTree(session.user.id, operationId);
+    await refreshOfflineOperations();
+    const workspace = currentWorkspaceInfo();
+    if (contingencyMode) await enterContingency(workspace?.workspaceId);
+    else if (navigator.onLine) await reload("refresh");
   }
 
   async function refreshWorkspaces(): Promise<AvailableWorkspace[]> {
@@ -178,6 +227,14 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       await switchWorkspace(workspaceId);
       switched = true;
       clearFastMovementCache();
+      const queuedForTarget = await listOfflineOperations(session.user.id, workspaceId);
+      if (queuedForTarget.length) {
+        setSyncingOffline(true);
+        const syncResult = await measureAsync("contingency.sync.workspaceSwitch", () => syncOfflineOperationsForWorkspace(session.user.id, workspaceId));
+        setSyncingOffline(false);
+        await refreshOfflineOperations();
+        if (syncResult.error) setWorkspaceError(`Há alteração local pendente nesta Procuradoria: ${syncResult.error}`);
+      }
 
       // Fase 1: troca o contexto visual apenas após carregar os dados de referência.
       // A tela antiga continua utilizável até este ponto, evitando o splash global.
@@ -221,12 +278,13 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     } finally {
       setWorkspaceDataLoading(false);
       setSwitchingWorkspace(false);
+      setSyncingOffline(false);
     }
   }
 
   async function reload(reason: MovementLoadReason = "refresh") {
     if (contingencyMode || !navigator.onLine) {
-      setWorkspaceError("Modo contingência ativo: atualização e gravações ficam disponíveis quando a conexão com o servidor retornar.");
+      setWorkspaceError("Modo contingência ativo: a atualização do servidor aguarda reconexão; alterações operacionais serão registradas na fila local.");
       return;
     }
     const detailPage = page === "import";
@@ -357,6 +415,10 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   async function openEdit(record: ProcessMovement) {
+    if (contingencyMode && !record.detailsLoaded && record.movementId >= 0) {
+      setWorkspaceError("A edição completa deste processo não está disponível na cópia local segura. Alterações de status, providência e responsável continuam disponíveis; para editar os demais campos, abra o registro on-line antes da queda de conexão.");
+      return;
+    }
     if (record.detailsLoaded) {
       setEditing(record);
       return;
@@ -396,6 +458,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         if (cancelled) return;
         setWorkspaces(nextWorkspaces);
         cacheSnapshot(data, nextWorkspaces);
+        await refreshOfflineOperations();
         setContingencyMode(false);
       } catch (error) {
         try {
@@ -421,6 +484,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       setOnline(false);
       setContingencyMode(true);
       void listOfflineWorkspaces(session.user.id).then((cached) => { if (cached.length) setWorkspaces(cached); }).catch(() => undefined);
+      void refreshOfflineOperations().catch(() => undefined);
     };
     window.addEventListener("online", markOnline);
     window.addEventListener("offline", markOffline);
@@ -438,27 +502,42 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   useEffect(() => {
     if (!online || !contingencyMode || recoveringOnline) return;
     let cancelled = false;
+    let retryTimer: number | null = null;
     const recover = async () => {
       setRecoveringOnline(true);
       try {
         const selected = workspaces.find((workspace) => workspace.current);
-        if (selected?.workspaceId) await switchWorkspace(selected.workspaceId);
+        if (selected?.workspaceId) {
+          await switchWorkspace(selected.workspaceId);
+          clearFastMovementCache();
+          setSyncingOffline(true);
+          const syncResult = await measureAsync("contingency.sync.reconnect", () => syncOfflineOperationsForWorkspace(session.user.id, selected.workspaceId));
+          setSyncingOffline(false);
+          await refreshOfflineOperations();
+          if (syncResult.error) setWorkspaceError(`Algumas alterações locais ainda precisam de revisão: ${syncResult.error}`);
+        }
         const [data, nextWorkspaces] = await Promise.all([reloadAll("refresh"), listAvailableWorkspaces()]);
         if (cancelled) return;
         setWorkspaces(nextWorkspaces);
         cacheSnapshot(data, nextWorkspaces);
         setContingencyMode(false);
-        setWorkspaceError("");
+        const pendingAfterRecovery = await refreshOfflineOperations();
+        if (!pendingAfterRecovery.some((operation) => operation.lastError)) setWorkspaceError("");
         hapticFeedback("success");
       } catch {
-        // O navegador pode declarar rede disponível antes de o backend responder. Mantém a leitura local e tenta na próxima reconexão.
+        // O navegador pode declarar rede disponível antes de o backend responder.
+        // Enquanto a rede continuar ativa, tenta novamente sem bloquear a leitura local.
+        if (!cancelled && navigator.onLine) retryTimer = window.setTimeout(() => setRecoveryRetry((value) => value + 1), 15000);
       } finally {
-        if (!cancelled) setRecoveringOnline(false);
+        if (!cancelled) {
+          setRecoveringOnline(false);
+          setSyncingOffline(false);
+        }
       }
     };
     void recover();
-    return () => { cancelled = true; };
-  }, [online, contingencyMode]);
+    return () => { cancelled = true; if (retryTimer != null) window.clearTimeout(retryTimer); };
+  }, [online, contingencyMode, recoveryRetry]);
 
   useEffect(() => {
     const update = () => setShowBackToTop(window.scrollY > 560);
@@ -482,9 +561,9 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     return {
       ...baseAccess,
       efficiencyScope: "none" as const, reportsScope: "none" as const, visiblePages,
-      canCreateProcess: false, canEditWorkflow: false, canEditNotes: false, canEditFull: false,
-      canChangeAssignment: false, canChangeReceivedAt: false, canChangeSentAt: false, canDelete: false,
-      canExport: false, canTransferProcess: false, canManageTrash: false, canManageTeam: false,
+      // A segunda fase preserva somente as escritas operacionais que podem ser
+      // reenviadas pelas mesmas APIs/RLS. Administração e ações destrutivas continuam on-line.
+      canDelete: false, canExport: false, canTransferProcess: false, canManageTrash: false, canManageTeam: false,
       canManageSettings: false, canImport: false, canViewQuality: false, canViewAudit: false, canViewTeamDashboard: false,
     };
   }, [baseAccess, contingencyMode]);
@@ -538,76 +617,256 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     return Number.isNaN(date.getTime()) ? value : date.toISOString();
   }
 
+  function isTransientWriteFailure(error: unknown): boolean {
+    if (!navigator.onLine) return true;
+    const message = (error instanceof Error ? error.message : String(error)).toLocaleLowerCase("pt-BR");
+    return /failed to fetch|fetch failed|network|load failed|timeout|timed out|connection|gateway|\b502\b|\b503\b|\b504\b/.test(message);
+  }
+
+  function activateWriteContingency(error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
+    setContingencyMode(true);
+    setWorkspaceError(`Servidor temporariamente indisponível. A alteração foi preservada na fila local de contingência.${detail ? ` (${detail})` : ""}`);
+  }
+
   async function save(data: ProcessFormData) {
-    const created = await measureAsync("movements.create", () => createMovement(data));
-    setRecords((current) => [{ ...created, detailsLoaded: true }, ...current.filter((item) => item.movementId !== created.movementId)]);
-    setDataVersion((value) => value + 1);
-    setModal(false);
-    hapticFeedback("success");
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        const created = await measureAsync("movements.create", () => createMovement(data));
+        setRecords((current) => [{ ...created, detailsLoaded: true }, ...current.filter((item) => item.movementId !== created.movementId)]);
+        setDataVersion((value) => value + 1);
+        setModal(false);
+        hapticFeedback("success");
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const temporaryId = allocateOfflineMovementId();
+      const base = offlineOperationBase(data.judicialNumber);
+      const operation = await enqueueOfflineOperation({
+        ...base,
+        movementId: temporaryId,
+        tempMovementId: temporaryId,
+        payload: { kind: "create", data },
+      });
+      setRecords((current) => projectOfflineOperations(current, [operation], members));
+      await refreshOfflineOperations();
+      setDataVersion((value) => value + 1);
+      setModal(false);
+      hapticFeedback("success");
+    }
   }
 
   async function edit(id: number, data: ProcessEditData) {
-    await measureAsync("movements.update", () => updateMovementGoverned(id, data));
-    const receivedAt = asIso(data.receivedAt) ?? data.receivedAt;
-    const sentAt = asIso(data.sentAt);
-    const excludedDates = new Set<string>(exclusions.map((item) => item.date));
-    setRecords((current) => current.map((record) => record.movementId !== id ? record : {
-      ...record,
-      ...data,
-      receivedAt,
-      sentAt,
-      receivedTimePrecise: Boolean(data.receivedTimePrecise),
-      sentTimePrecise: Boolean(data.sentTimePrecise),
-      elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
-      assignedName: members.find((member) => member.userId === data.assignedTo)?.fullName || record.assignedName,
-      detailsLoaded: true,
-    }));
-    setDataVersion((value) => value + 1);
-    setEditing(null);
-    hapticFeedback("success");
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        await measureAsync("movements.update", () => updateMovementGoverned(id, data));
+        const receivedAt = asIso(data.receivedAt) ?? data.receivedAt;
+        const sentAt = asIso(data.sentAt);
+        const excludedDates = new Set<string>(exclusions.map((item) => item.date));
+        setRecords((current) => current.map((record) => record.movementId !== id ? record : {
+          ...record,
+          ...data,
+          receivedAt,
+          sentAt,
+          receivedTimePrecise: Boolean(data.receivedTimePrecise),
+          sentTimePrecise: Boolean(data.sentTimePrecise),
+          elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
+          assignedName: members.find((member) => member.userId === data.assignedTo)?.fullName || record.assignedName,
+          detailsLoaded: true,
+        }));
+        setDataVersion((value) => value + 1);
+        setEditing(null);
+        hapticFeedback("success");
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const record = records.find((item) => item.movementId === id);
+      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
+      const operation = await enqueueOfflineOperation({
+        ...base,
+        movementId: id,
+        tempMovementId: id < 0 ? id : null,
+        payload: { kind: "edit", data },
+      });
+      setRecords((current) => projectOfflineOperations(current, [operation], members));
+      await refreshOfflineOperations();
+      setDataVersion((value) => value + 1);
+      setEditing(null);
+      hapticFeedback("success");
+    }
   }
 
   async function status(id: number, value: WorkflowStatus, actionType?: string) {
-    const sentAt = value === "Enviado" ? new Date().toISOString() : null;
-    await measureAsync("movements.status", () => updateMovementStatus(id, value, actionType));
-    const excludedDates = new Set<string>(exclusions.map((item) => item.date));
-    setRecords((current) => current.map((record) => record.movementId !== id ? record : {
-      ...record,
-      workflowStatus: value,
-      actionType: actionType ?? record.actionType,
-      draftStatus: value === "Minutado" || value === "Enviado" ? "Minutado" : record.draftStatus,
-      sentAt,
-      sentTimePrecise: value === "Enviado",
-      elapsedHours: value === "Enviado" ? usefulElapsedHours(record.receivedAt, sentAt, excludedDates) : null,
-    }));
-    setDataVersion((value) => value + 1);
-    hapticFeedback("success");
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      const sentAt = value === "Enviado" ? new Date().toISOString() : null;
+      try {
+        await measureAsync("movements.status", () => updateMovementStatus(id, value, actionType, sentAt ?? undefined));
+        const excludedDates = new Set<string>(exclusions.map((item) => item.date));
+        setRecords((current) => current.map((record) => record.movementId !== id ? record : {
+          ...record,
+          workflowStatus: value,
+          actionType: actionType ?? record.actionType,
+          draftStatus: value === "Minutado" || value === "Enviado" ? "Minutado" : record.draftStatus,
+          sentAt,
+          sentTimePrecise: value === "Enviado",
+          elapsedHours: value === "Enviado" ? usefulElapsedHours(record.receivedAt, sentAt, excludedDates) : null,
+        }));
+        setDataVersion((version) => version + 1);
+        hapticFeedback("success");
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const record = records.find((item) => item.movementId === id);
+      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
+      const operation = await enqueueOfflineOperation({
+        ...base,
+        movementId: id,
+        tempMovementId: id < 0 ? id : null,
+        payload: { kind: "status", status: value, actionType },
+      });
+      setRecords((current) => projectOfflineOperations(current, [operation], members));
+      await refreshOfflineOperations();
+      setDataVersion((version) => version + 1);
+      hapticFeedback("success");
+    }
   }
 
   async function action(id: number, actionType: string) {
-    await measureAsync("movements.action", () => updateMovementAction(id, actionType));
-    setRecords((current) => current.map((record) => record.movementId === id ? { ...record, actionType } : record));
-    hapticFeedback("success");
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        await measureAsync("movements.action", () => updateMovementAction(id, actionType));
+        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, actionType } : record));
+        hapticFeedback("success");
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const record = records.find((item) => item.movementId === id);
+      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
+      const operation = await enqueueOfflineOperation({
+        ...base,
+        movementId: id,
+        tempMovementId: id < 0 ? id : null,
+        payload: { kind: "action", actionType },
+      });
+      setRecords((current) => projectOfflineOperations(current, [operation], members));
+      await refreshOfflineOperations();
+      hapticFeedback("success");
+    }
   }
 
   async function assignment(id: number, userId: string) {
-    await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId));
-    const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
-    setRecords((current) => current.map((record) => record.movementId === id ? { ...record, assignedTo: userId, assignedName } : record));
-    hapticFeedback("success");
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId));
+        const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
+        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, assignedTo: userId, assignedName } : record));
+        hapticFeedback("success");
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const record = records.find((item) => item.movementId === id);
+      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
+      const operation = await enqueueOfflineOperation({
+        ...base,
+        movementId: id,
+        tempMovementId: id < 0 ? id : null,
+        payload: { kind: "assignment", assignedTo: userId },
+      });
+      setRecords((current) => projectOfflineOperations(current, [operation], members));
+      await refreshOfflineOperations();
+      hapticFeedback("success");
+    }
   }
 
   async function bulk(ids: number[], userId: string) {
-    await measureAsync("movements.bulkAssignment", () => updateMovementAssignments(ids, userId));
-    const selected = new Set(ids);
-    const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
-    setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, assignedTo: userId, assignedName } : record));
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        await measureAsync("movements.bulkAssignment", () => updateMovementAssignments(ids, userId));
+        const selected = new Set(ids);
+        const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
+        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, assignedTo: userId, assignedName } : record));
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const operations = await enqueueOfflineOperations(ids.map((id) => {
+        const record = records.find((item) => item.movementId === id);
+        return {
+          ...offlineOperationBase(record?.judicialNumber || "Processo local"),
+          movementId: id,
+          tempMovementId: id < 0 ? id : null,
+          payload: { kind: "assignment", assignedTo: userId } as const,
+        };
+      }));
+      setRecords((current) => projectOfflineOperations(current, operations, members));
+      await refreshOfflineOperations();
+      setDataVersion((value) => value + 1);
+    }
   }
 
   async function bulkAction(ids: number[], actionType: string) {
-    await measureAsync("movements.bulkAction", () => updateMovementActions(ids, actionType));
-    const selected = new Set(ids);
-    setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, actionType } : record));
+    let queueLocally = contingencyMode || !navigator.onLine;
+    if (!queueLocally) {
+      try {
+        await measureAsync("movements.bulkAction", () => updateMovementActions(ids, actionType));
+        const selected = new Set(ids);
+        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, actionType } : record));
+        return;
+      } catch (error) {
+        if (!isTransientWriteFailure(error)) throw error;
+        queueLocally = true;
+        activateWriteContingency(error);
+      }
+    }
+    if (queueLocally) {
+      const operations = await enqueueOfflineOperations(ids.map((id) => {
+        const record = records.find((item) => item.movementId === id);
+        return {
+          ...offlineOperationBase(record?.judicialNumber || "Processo local"),
+          movementId: id,
+          tempMovementId: id < 0 ? id : null,
+          payload: { kind: "action", actionType } as const,
+        };
+      }));
+      setRecords((current) => projectOfflineOperations(current, operations, members));
+      await refreshOfflineOperations();
+      setDataVersion((value) => value + 1);
+    }
   }
 
   async function bulkArchive(ids: number[]) {
@@ -651,6 +910,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   if (!settings) return <div className="offline-startup-error"><WifiOff size={34} /><h1>Práxis indisponível</h1><p>{startupError || "Não há dados de contingência disponíveis neste dispositivo."}</p><small>Conecte-se ao servidor ao menos uma vez para preparar a contingência desta Procuradoria.</small></div>;
 
   const currentWorkspace = workspaces.find((workspace) => workspace.current) ?? workspaces[0];
+  const currentWorkspaceOfflineOperations = offlineOperations.filter((operation) => operation.workspaceId === currentWorkspace?.workspaceId);
+  const failedOfflineOperations = offlineOperations.filter((operation) => operation.lastError);
   const transferTargets = workspaces.filter((workspace) => !workspace.current && workspace.role === "admin");
 
   const appClassName = [
@@ -677,11 +938,12 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
           <button type="button" className={fontSize === "large" ? "active" : ""} aria-label="Letra grande" title="Letra grande" onClick={() => onFontSizeChange("large")}>A+</button>
         </div>
         <button className="icon-button" title={theme === "dark" ? "Usar modo claro" : "Usar modo noturno"} onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
-        <button className="icon-button" onClick={() => { void (async () => { try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } await clearOfflineUserData(session.user.id).catch(() => undefined); await supabase?.auth.signOut({ scope: "local" }); })(); }}><LogOut /></button>
+        <button className="icon-button" onClick={() => { void (async () => { if (offlineOperations.length && !window.confirm(`Há ${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} ainda não sincronizada${offlineOperations.length === 1 ? "" : "s"}. Sair agora apagará essa fila deste dispositivo. Deseja continuar?`)) return; try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } await clearOfflineUserData(session.user.id).catch(() => undefined); await supabase?.auth.signOut({ scope: "local" }); })(); }} title="Sair"><LogOut /></button>
         {access.canCreateProcess && <button className="button primary new-process-button" aria-label="Novo processo" onClick={() => { hapticFeedback(); setModal(true); }}><Plus /><span>Novo processo</span></button>}
       </header>
-      {contingencyMode && <div className="contingency-banner" role="status"><WifiOff size={19} /><div><strong>Modo contingência · somente leitura</strong><span>Dados locais sincronizados {offlineSavedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(offlineSavedAt)) : "anteriormente"}. Retenção: {offlineRetentionHours()} horas.{recoveringOnline ? " Reconectando ao servidor…" : ""}</span></div></div>}
-      {workspaceError && <div className="info-box workspace-switch-error" role="alert">Não foi possível trocar de Procuradoria: {workspaceError}</div>}
+      {contingencyMode && <div className="contingency-banner contingency-write-banner" role="status"><WifiOff size={19} /><div><strong>Modo contingência · gravação local</strong><span>Base local sincronizada {offlineSavedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(offlineSavedAt)) : "anteriormente"}. {offlineOperations.length ? `${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} aguardando sincronização.` : "Nenhuma alteração pendente."} Retenção: {offlineRetentionHours()} horas.{recoveringOnline || syncingOffline ? " Sincronizando com o servidor…" : ""}</span></div>{offlineOperations.length > 0 && <button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila ({offlineOperations.length})</button>}</div>}
+      {!contingencyMode && offlineOperations.length > 0 && <div className={`sync-queue-banner ${failedOfflineOperations.length ? "has-error" : ""}`} role="status"><div><strong>{failedOfflineOperations.length ? "Sincronização requer atenção" : "Alterações locais pendentes"}</strong><span>{currentWorkspaceOfflineOperations.length} nesta Procuradoria · {offlineOperations.length} no dispositivo.</span></div><div className="sync-queue-actions"><button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila</button><button type="button" className="button primary compact" disabled={syncingOffline || !currentWorkspaceOfflineOperations.length} onClick={() => void synchronizeCurrentOfflineQueue({ reloadAfter: true })}>{syncingOffline ? "Sincronizando..." : "Sincronizar agora"}</button></div></div>}
+      {workspaceError && <div className="info-box workspace-switch-error" role="alert">{workspaceError}</div>}
       {(mobileNavigation.pullDistance >= 72 || mobileNavigation.refreshing) && <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} aria-live="polite"><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : "Solte para atualizar"}</span></div>}
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>{workspaceDataLoading && <div className="workspace-data-loading" role="status"><span className="splash-spinner" /><span>Carregando processos da Procuradoria em segundo plano...</span></div>}<Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
         {pagePreparing && <div className="page-loading" role="status"><span className="splash-spinner" /><span>Preparando dados desta área...</span></div>}
@@ -710,7 +972,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {!pagePreparing && page === "about" && <AboutPage />}
       </Suspense></div>
     </main>
-    {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} onClose={() => setModal(false)} onSave={save} />}
+    {offlineQueueOpen && <OfflineQueuePanel operations={offlineOperations} currentWorkspaceId={currentWorkspace?.workspaceId} syncing={syncingOffline} onClose={() => setOfflineQueueOpen(false)} onRetry={() => synchronizeCurrentOfflineQueue({ reloadAfter: !contingencyMode })} onDiscard={discardOfflineOperation} />}
+    {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} offlineMode={contingencyMode} onClose={() => setModal(false)} onSave={save} />}
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
     {transferRecord && currentWorkspace && <ProcessTransferDialog record={transferRecord} currentWorkspaceId={currentWorkspace.workspaceId} workspaces={workspaces} onClose={() => setTransferRecord(null)} onTransfer={transfer} />}
     {showBackToTop && <button type="button" className="back-to-top" aria-label="Voltar ao topo" onClick={() => { hapticFeedback(); window.scrollTo({ top: 0, behavior: "smooth" }); }}><ArrowUp size={20} /><span>Voltar ao topo</span></button>}

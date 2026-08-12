@@ -125,6 +125,51 @@ async function findOrCreateCase(data: ProcessFormData | ImportRecord): Promise<{
   return { id: Number(created!.id), created: true };
 }
 
+
+export interface OfflineMovementSyncState {
+  workflowStatus: WorkflowStatus;
+  actionType: string;
+  assignedTo: string;
+}
+
+export async function findMovementForOfflineCreate(data: ProcessFormData): Promise<ProcessMovement | null> {
+  const { client, workspaceId } = await context();
+  const receivedAt = requiredTimestamp(data.receivedAt, "A entrada");
+  const { data: matchingCase, error: caseError } = await client.from("cases")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("judicial_number", data.judicialNumber)
+    .maybeSingle();
+  fail(caseError);
+  if (!matchingCase) return null;
+  const { data: rows, error } = await client.from("movements")
+    .select(SELECT_MOVEMENT)
+    .eq("workspace_id", workspaceId)
+    .eq("case_id", Number(matchingCase.id))
+    .eq("received_at", receivedAt)
+    .is("deleted_at", null)
+    .order("id", { ascending: false })
+    .limit(1);
+  fail(error);
+  const row = rows?.[0] as Record<string, any> | undefined;
+  return row ? movementFromRow(row) : null;
+}
+
+export async function getMovementOfflineSyncState(movementId: number): Promise<OfflineMovementSyncState> {
+  const { client, workspaceId } = await context();
+  const { data, error } = await client.from("movements")
+    .select("workflow_status, action_type, assigned_to")
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .single();
+  fail(error);
+  return {
+    workflowStatus: data!.workflow_status as WorkflowStatus,
+    actionType: data!.action_type ?? "",
+    assignedTo: data!.assigned_to ?? "",
+  };
+}
+
 export async function createMovement(data: ProcessFormData): Promise<ProcessMovement> {
   const { client, user, workspaceId } = await context();
   const found = await findOrCreateCase(data);
@@ -140,11 +185,11 @@ export async function createMovement(data: ProcessFormData): Promise<ProcessMove
   return movementFromRow(row!);
 }
 
-export async function updateMovementStatus(movementId: number, status: WorkflowStatus, actionType?: string): Promise<void> {
+export async function updateMovementStatus(movementId: number, status: WorkflowStatus, actionType?: string, occurredAt?: string): Promise<void> {
   const { client, user, workspaceId } = await context();
   const { data: old, error: oldError } = await client.from("movements").select("workflow_status, action_type, received_at").eq("workspace_id", workspaceId).eq("id", movementId).single();
   fail(oldError);
-  const sentAt = status === "Enviado" ? new Date().toISOString() : null;
+  const sentAt = status === "Enviado" ? (occurredAt ?? new Date().toISOString()) : null;
   const elapsed = usefulElapsedHours(old!.received_at, sentAt);
   const values: Record<string, any> = { workflow_status: status, updated_by: user.id, updated_at: new Date().toISOString(), row_version: undefined };
   delete values.row_version;
