@@ -49,7 +49,7 @@ Deno.serve(async (request) => {
 
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("E-mail inválido");
       if (!fullName) throw new Error("Informe o nome do usuário");
-      if (!["procurador", "assessor", "consulta"].includes(role)) throw new Error("Perfil inválido");
+      if (!["procurador", "assessor", "estagiario", "consulta"].includes(role)) throw new Error("Perfil inválido");
       if (historicalCoverageSince && !/^\d{4}-\d{2}-\d{2}$/.test(historicalCoverageSince)) {
         throw new Error("Data de cobertura histórica inválida");
       }

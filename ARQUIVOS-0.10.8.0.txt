@@ -1,0 +1,33 @@
+Práxis Online 0.10.8.0 — arquivos alterados/adicionados em relação à 0.10.7.9 corrigida
+
+Substitua/adicione no GitHub preservando exatamente a estrutura das pastas:
+
+- ARQUIVOS-0.10.8.0.txt
+- ATUALIZACAO-0.10.8.0.md
+- CHANGELOG.md
+- EXECUTAR-NO-SUPABASE-0.10.8.0.sql
+- README.md
+- VALIDACAO-0.10.8.0.txt
+- package-lock.json
+- package.json
+- public/sw.js
+- src/App.tsx
+- src/access.ts
+- src/adminUserManagement.test.ts
+- src/components/AboutPage.tsx
+- src/components/ProcessTable.tsx
+- src/components/ProcessTransferDialog.tsx
+- src/components/ProcuradoriasPanel.tsx
+- src/components/SettingsPage.tsx
+- src/components/WorkspaceSwitcher.tsx
+- src/layoutRegression.test.ts
+- src/types.ts
+- src/v0107.css
+- src/version.ts
+- src/workspaceApi.ts
+- supabase/functions/admin-manage-user/index.ts
+- supabase/migrations/20260811_praxis_v01080_multi_procuradorias.sql
+- supabase/schema.sql
+
+Banco: execute `EXECUTAR-NO-SUPABASE-0.10.8.0.sql` antes de publicar o frontend.
+Edge Function: se o deploy não for automático, redeploy `supabase/functions/admin-manage-user/index.ts`.

@@ -20,6 +20,7 @@ import type {
 } from "../types";
 import { HelpTip } from "./HelpTip";
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
+import { ProcuradoriasPanel } from "./ProcuradoriasPanel";
 import { buildConfigurationExport, downloadConfigurationExport } from "../configurationExport";
 
 interface Props {
@@ -40,6 +41,8 @@ interface Props {
   onSaveSettings: (settings: WorkspaceSettings) => Promise<void>;
   onClosePeriod: (year: number, month: number, reason: string) => Promise<void>;
   onReopenPeriod: (id: number, reason: string) => Promise<void>;
+  currentWorkspaceId: string;
+  onWorkspacesChanged?: () => Promise<void>;
 }
 
 interface CalendarRange {
@@ -185,6 +188,8 @@ export function SettingsPage(props: Props) {
       </div>
 
       <DeviceAccessPanel />
+
+      <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />
 
       <section className="panel governance-section configuration-export-panel">
         <div className="panel-title">

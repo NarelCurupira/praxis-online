@@ -630,3 +630,89 @@ html[data-theme="dark"] .deadline-urgent {
   color: var(--text-secondary);
   line-height: 1.45;
 }
+
+/* 0.10.8.0 — múltiplas Procuradorias */
+.workspace-switcher,
+.workspace-indicator {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  border-radius: 12px;
+  min-height: 38px;
+  padding: 0 .7rem;
+  color: var(--text-primary);
+}
+.workspace-switcher { position: relative; }
+.workspace-switcher-label { font-size: .72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.workspace-switcher select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  max-width: min(31vw, 360px);
+  padding: 0 1.2rem 0 0;
+  outline: none;
+}
+.workspace-switcher-chevron { position: absolute; right: .55rem; pointer-events: none; color: var(--text-secondary); }
+.workspace-indicator span { max-width: min(31vw, 360px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+
+.procuradoria-create-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, auto) auto; gap: 1rem; align-items: end; }
+.procuradoria-create-grid label { display: grid; gap: .4rem; }
+.procuradoria-copy-option { align-self: center; margin-bottom: .45rem; }
+.muted-note { color: var(--text-secondary); font-size: .88rem; margin: .75rem 0 0; }
+.procuradorias-layout { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(520px, 1.8fr); gap: 1rem; margin-top: 1.25rem; }
+.procuradoria-list { display: grid; gap: .55rem; align-content: start; }
+.procuradoria-card { width: 100%; display: flex; align-items: center; gap: .65rem; text-align: left; border: 1px solid var(--border); background: var(--surface-subtle); color: var(--text-primary); border-radius: 12px; padding: .8rem; cursor: pointer; }
+.procuradoria-card.active { border-color: var(--praxis-primary); box-shadow: inset 3px 0 0 var(--praxis-primary); }
+.procuradoria-card span { display: grid; min-width: 0; gap: .15rem; }
+.procuradoria-card strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.procuradoria-card small { color: var(--text-secondary); }
+.procuradoria-editor { min-width: 0; border: 1px solid var(--border); border-radius: 14px; padding: 1rem; background: var(--surface-subtle); }
+.procuradoria-rename-row { display: grid; grid-template-columns: 1fr auto; gap: .75rem; align-items: end; }
+.procuradoria-rename-row label { display: grid; gap: .35rem; }
+.panel-title.compact { margin: 1.15rem 0 .65rem; }
+.panel-title.compact h3 { margin: 0; }
+.workspace-member-table { display: grid; gap: .35rem; overflow-x: auto; }
+.workspace-member-head,
+.workspace-member-row { min-width: 760px; display: grid; grid-template-columns: 68px minmax(180px, 1.3fr) minmax(135px, .8fr) minmax(110px, .7fr) minmax(110px, .7fr) 42px; gap: .55rem; align-items: center; }
+.workspace-member-head { padding: .35rem .5rem; color: var(--text-secondary); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
+.workspace-member-row { padding: .55rem .5rem; border-top: 1px solid var(--border); }
+.workspace-member-row select { min-width: 0; }
+.workspace-member-enabled { display: flex; align-items: center; justify-content: center; gap: .2rem; }
+.workspace-member-identity { min-width: 0; display: grid; }
+.workspace-member-identity strong,
+.workspace-member-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-member-identity small { color: var(--text-secondary); }
+.procuradoria-message { margin-top: 1rem; }
+.workspace-switch-error { margin: .75rem 1.25rem 0; }
+.inline-busy { display: flex; align-items: center; gap: .45rem; color: var(--text-secondary); margin-top: .75rem; }
+.spin { animation: praxis-spin .9s linear infinite; }
+@keyframes praxis-spin { to { transform: rotate(360deg); } }
+
+.transfer-process-dialog { width: min(680px, calc(100vw - 2rem)); }
+.transfer-process-summary { display: flex; align-items: center; gap: .75rem; border: 1px solid var(--border); background: var(--surface-subtle); border-radius: 12px; padding: .8rem; margin-bottom: 1rem; }
+.transfer-process-summary div { display: grid; }
+.transfer-process-summary span { color: var(--text-secondary); font-size: .9rem; }
+.transfer-process-fields { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+.transfer-process-fields label { display: grid; gap: .4rem; }
+.transfer-process-fields .full { grid-column: 1 / -1; }
+.transfer-process-fields small { color: var(--text-secondary); }
+
+@media (max-width: 980px) {
+  .workspace-switcher-label { display: none; }
+  .workspace-switcher select, .workspace-indicator span { max-width: 34vw; }
+  .procuradoria-create-grid, .procuradorias-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .workspace-switcher { max-width: 48vw; }
+  .workspace-switcher select { max-width: 40vw; font-size: .82rem; }
+  .workspace-indicator span { max-width: 38vw; font-size: .82rem; }
+  .current-user { display: none; }
+  .transfer-process-fields { grid-template-columns: 1fr; }
+  .transfer-process-fields .full { grid-column: auto; }
+}

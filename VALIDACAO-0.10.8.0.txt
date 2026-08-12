@@ -1,0 +1,43 @@
+PRÁXIS ONLINE 0.10.8.0 — VALIDAÇÃO
+
+Escopo
+- Múltiplas Procuradorias (1 workspace = 1 Procuradoria).
+- Seletor global da Procuradoria ativa.
+- Cadastro/renomeação de Procuradorias.
+- Vínculos muitos-para-muitos de usuários por unidade.
+- Transferência administrativa de processos.
+- Isolamento RLS pelo current_workspace_id.
+- Preservação das otimizações da 0.10.7.9.
+
+Validações concluídas
+[OK] Consistência de versão: scripts/check-version-consistency.mjs -> 0.10.8.0.
+[OK] package.json e package-lock.json -> 0.10.8.0.
+[OK] Service Worker usa cache próprio da 0.10.8.0.
+[OK] 28/28 testes de regressão de layout/fluxo aprovados.
+[OK] 4/4 testes da gestão administrativa de usuários aprovados, incluindo perfil Estagiário.
+[OK] Transpilação sintática TypeScript/TSX dos arquivos alterados da 0.10.8.0 sem diagnósticos.
+[OK] Checagem semântica focal dos arquivos alterados, com stubs das dependências externas, sem diagnósticos nos arquivos da 0.10.8.0.
+[OK] SQL raiz e migração versionada são idênticos.
+[OK] Tokens CSS adicionados pela 0.10.8.0 existem nos temas atuais.
+[OK] RLS de cases, movements, classes, calendário, histórico, configurações, períodos e auditoria exige a Procuradoria ativa.
+[OK] Edição de movimentações por RLS exclui o perfil somente consulta.
+[OK] Transferência exige administrador na origem e no destino, responsável operacional ativo e justificativa.
+[OK] Desativação de vínculo corrige o current_workspace_id do usuário quando necessário.
+[OK] Migração reaproveita o Nome da unidade existente como nome inicial da Procuradoria.
+
+Limitação do ambiente de validação
+- O conjunto completo de dependências npm não está instalado no ambiente desta sessão e o `npm ci` não pôde ser concluído.
+- Por isso, `npm run check`, `npm test` completo e `npm run build` devem ser confirmados pelo workflow `quality.yml` do GitHub antes da publicação.
+- A checagem focal acima foi usada para detectar erros de tipagem nos arquivos modificados, mas não substitui o workflow completo.
+
+Banco
+- Execute `EXECUTAR-NO-SUPABASE-0.10.8.0.sql` após a migração 0.10.7.9.
+- O SQL é transacional e recria de forma idempotente as políticas/RPCs da 0.10.8.0.
+- Confirme o resultado da consulta de validação ao final do script antes de publicar o frontend.
+
+Edge Function
+- `supabase/functions/admin-manage-user/index.ts` foi alterado para aceitar `estagiario`.
+- Se as Edge Functions não forem implantadas automaticamente pelo seu fluxo, faça o redeploy de `admin-manage-user`.
+
+Resultado
+- Pacote preparado para validação no GitHub Actions e posterior implantação.

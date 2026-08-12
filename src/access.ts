@@ -58,6 +58,7 @@ export function resolveAccess(member: TeamMember | undefined): AccessCapabilitie
     canChangeSentAt: isAdmin,
     canDelete: writer,
     canExport: !isIntern && role !== "consulta",
+    canTransferProcess: isAdmin,
     canManageTrash: isAdmin,
     canManageTeam: isAdmin,
     canManageSettings: isAdmin,
