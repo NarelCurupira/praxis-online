@@ -1,0 +1,159 @@
+/* 0.11.1-RC — correção da barra de ações em lote */
+.bulk-action-bar {
+  left: 50% !important;
+  right: auto !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  transform: translateX(-50%) !important;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: calc(100vw - 32px) !important;
+  min-width: min(620px, calc(100vw - 32px));
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: min(42vh, 260px);
+  z-index: 80 !important;
+}
+
+.bulk-action-bar .bulk-selection-count {
+  flex: 0 0 auto;
+}
+
+.bulk-action-bar .bulk-action-select {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.bulk-action-bar .bulk-action-select select {
+  max-width: 190px;
+  min-width: 132px;
+}
+
+.bulk-action-bar > button:not(.bulk-close) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.bulk-action-bar .bulk-close {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .bulk-action-bar {
+    width: calc(100vw - 20px);
+    min-width: 0;
+    max-width: calc(100vw - 20px) !important;
+    justify-content: flex-start;
+    padding: 10px !important;
+  }
+
+  .bulk-action-bar .bulk-selection-count {
+    width: 100%;
+  }
+
+  .bulk-action-bar .bulk-action-select {
+    flex: 1 1 220px;
+  }
+
+  .bulk-action-bar .bulk-action-select select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* 0.11.1-RC — ciclo de vida das Procuradorias */
+.procuradoria-card {
+  position: relative;
+}
+
+.procuradoria-card .workspace-state-badge {
+  margin-left: auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: .65rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.procuradoria-card .workspace-state-badge.active {
+  color: #14804a;
+  background: color-mix(in srgb, #14804a 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, #14804a 30%, var(--border));
+}
+
+.procuradoria-card.inactive {
+  opacity: .72;
+  border-style: dashed;
+}
+
+.procuradoria-card .workspace-state-badge.inactive {
+  color: var(--text-secondary);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+}
+
+.workspace-lifecycle-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 4px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-subtle);
+}
+
+.workspace-lifecycle-card > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-lifecycle-card strong {
+  color: var(--text-primary);
+  font-size: .86rem;
+}
+
+.workspace-lifecycle-card span {
+  color: var(--text-secondary);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+
+.workspace-lifecycle-card .button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.workspace-lifecycle-card.inactive {
+  border-color: color-mix(in srgb, var(--warning, #b7791f) 35%, var(--border));
+  background: color-mix(in srgb, var(--warning, #b7791f) 6%, var(--surface));
+}
+
+.workspace-deactivate-button:not(:disabled) {
+  color: var(--danger, #c73e3e) !important;
+  border-color: color-mix(in srgb, var(--danger, #c73e3e) 32%, var(--border)) !important;
+}
+
+.procuradoria-editor.inactive .workspace-member-table,
+.procuradoria-editor.inactive .workspace-member-actions {
+  opacity: .82;
+}
+
+@media (max-width: 760px) {
+  .workspace-lifecycle-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workspace-lifecycle-card .button {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}

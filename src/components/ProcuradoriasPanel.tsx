@@ -1,4 +1,4 @@
-import { Building2, Check, Copy, Pencil, Plus, RefreshCw, Save, Users } from "lucide-react";
+import { Building2, Check, Copy, Pencil, Plus, Power, RefreshCw, RotateCcw, Save, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { AccessScope, PraxisRole } from "../types";
 import {
@@ -6,6 +6,7 @@ import {
   listAdminWorkspaces,
   listWorkspaceDirectory,
   renameWorkspace,
+  setWorkspaceActive,
   setWorkspaceMembersBatch,
   type AdminWorkspace,
   type WorkspaceDirectoryMember,
@@ -59,8 +60,14 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
         : next.find((item) => item.current)?.workspaceId ?? next[0]?.workspaceId ?? "";
     setSelectedId(resolved);
     setRenameValue(next.find((item) => item.workspaceId === resolved)?.name ?? "");
-    if (resolved) { const members = await listWorkspaceDirectory(resolved); setDirectory(members); setSavedDirectory(members); }
-    else { setDirectory([]); setSavedDirectory([]); }
+    if (resolved) {
+      const members = await listWorkspaceDirectory(resolved);
+      setDirectory(members);
+      setSavedDirectory(members);
+    } else {
+      setDirectory([]);
+      setSavedDirectory([]);
+    }
   }
 
   useEffect(() => { void loadWorkspaces(currentWorkspaceId); }, [currentWorkspaceId]);
@@ -68,7 +75,9 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
   useEffect(() => {
     if (!selectedId) return;
     setRenameValue(workspaces.find((item) => item.workspaceId === selectedId)?.name ?? "");
-    void listWorkspaceDirectory(selectedId).then((members) => { setDirectory(members); setSavedDirectory(members); }).catch((error) => setMessage(String(error)));
+    void listWorkspaceDirectory(selectedId)
+      .then((members) => { setDirectory(members); setSavedDirectory(members); })
+      .catch((error) => setMessage(String(error)));
   }, [selectedId]);
 
   async function run(operation: () => Promise<void>, success: string) {
@@ -104,6 +113,22 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
     }, "Nome da Procuradoria atualizado.");
   }
 
+  async function toggleWorkspaceActive() {
+    if (!selected) return;
+    if (selected.active && selected.current) {
+      setMessage("Troque para outra Procuradoria antes de desativar a unidade atualmente selecionada.");
+      return;
+    }
+    if (selected.active && !confirm(`Desativar "${selected.name}"? Os dados serão preservados e a Procuradoria poderá ser reativada depois.`)) return;
+    await run(async () => {
+      await setWorkspaceActive(selected.workspaceId, !selected.active);
+      await loadWorkspaces(selected.workspaceId);
+      await onChanged?.();
+    }, selected.active
+      ? "Procuradoria desativada. Todos os dados e vínculos foram preservados."
+      : "Procuradoria reativada e novamente disponível para acesso.");
+  }
+
   function patchMember(userId: string, patch: Partial<MemberDraft>) {
     setDirectory((current) => current.map((member) => member.userId === userId ? { ...member, ...patch } : member));
   }
@@ -131,7 +156,7 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
 
   return <section className="panel governance-section procuradorias-panel">
     <div className="panel-title">
-      <div><h2>Procuradorias de Justiça</h2><p>Cadastre unidades e defina quais usuários podem atuar em cada Procuradoria.</p></div>
+      <div><h2>Procuradorias de Justiça</h2><p>Cadastre unidades, defina integrantes e suspenda temporariamente Procuradorias sem excluir seus dados.</p></div>
       <Building2 />
     </div>
 
@@ -144,15 +169,37 @@ export function ProcuradoriasPanel({ currentWorkspaceId, onChanged }: Props) {
 
     <div className="procuradorias-layout">
       <div className="procuradoria-list" role="list" aria-label="Procuradorias administradas">
-        {workspaces.map((workspace) => <button type="button" key={workspace.workspaceId} className={workspace.workspaceId === selectedId ? "procuradoria-card active" : "procuradoria-card"} onClick={() => setSelectedId(workspace.workspaceId)}>
-          <Building2 size={17} /><span><strong>{workspace.name}</strong><small>{workspace.memberCount} integrante(s){workspace.current ? " · atual" : ""}</small></span>
+        {workspaces.map((workspace) => <button type="button" key={workspace.workspaceId} className={`${workspace.workspaceId === selectedId ? "procuradoria-card active" : "procuradoria-card"} ${workspace.active ? "" : "inactive"}`.trim()} onClick={() => setSelectedId(workspace.workspaceId)}>
+          <Building2 size={17} /><span><strong>{workspace.name}</strong><small>{workspace.memberCount} integrante(s){workspace.current ? " · atual" : ""}{!workspace.active ? " · inativa" : ""}</small></span>
+          <b className={`workspace-state-badge ${workspace.active ? "active" : "inactive"}`}>{workspace.active ? "Ativa" : "Inativa"}</b>
         </button>)}
       </div>
 
-      {selected && <div className="procuradoria-editor">
+      {selected && <div className={`procuradoria-editor ${selected.active ? "" : "inactive"}`.trim()}>
         <div className="procuradoria-rename-row">
           <label>Nome da Procuradoria<input className="procuradoria-name-input" value={renameValue} onChange={(event) => setRenameValue(event.target.value)} /></label>
           <button type="button" className="button secondary" disabled={busy || !renameValue.trim() || renameValue.trim() === selected.name} onClick={() => void rename()}><Pencil size={16} />Renomear</button>
+        </div>
+
+        <div className={`workspace-lifecycle-card ${selected.active ? "active" : "inactive"}`}>
+          <div>
+            <strong>{selected.active ? "Procuradoria ativa" : "Procuradoria desativada"}</strong>
+            <span>{selected.active
+              ? selected.current
+                ? "Esta é a Procuradoria atualmente selecionada. Troque de unidade antes de desativá-la."
+                : "A desativação retira a unidade do seletor e bloqueia novas operações, preservando integralmente seus dados."
+              : "Processos, movimentações, integrantes, configurações e histórico permanecem preservados. Reative para voltar a operar."}</span>
+          </div>
+          <button
+            type="button"
+            className={`button ${selected.active ? "secondary workspace-deactivate-button" : "primary"}`}
+            disabled={busy || (selected.active && selected.current)}
+            title={selected.active && selected.current ? "Troque para outra Procuradoria antes de desativar esta unidade." : undefined}
+            onClick={() => void toggleWorkspaceActive()}
+          >
+            {selected.active ? <Power size={17} /> : <RotateCcw size={17} />}
+            {selected.active ? "Desativar" : "Reativar"}
+          </button>
         </div>
 
         <div className="panel-title compact"><div><h3>Integrantes habilitados</h3><p>O mesmo usuário pode possuir vínculos e perfis diferentes em unidades distintas.</p></div><Users size={19} /></div>
