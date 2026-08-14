@@ -12,6 +12,7 @@ export interface AdminWorkspace {
   workspaceId: string;
   name: string;
   current: boolean;
+  active: boolean;
   memberCount: number;
 }
 
@@ -63,6 +64,7 @@ export async function listAdminWorkspaces(): Promise<AdminWorkspace[]> {
     workspaceId: String(item.workspace_id),
     name: String(item.workspace_name ?? "Procuradoria"),
     current: Boolean(item.is_current),
+    active: item.active !== false,
     memberCount: Number(item.member_count ?? 0),
   }));
 }
@@ -84,6 +86,16 @@ export async function renameWorkspace(workspaceId: string, name: string): Promis
     workspace_name_value: name.trim(),
   });
   fail(error);
+}
+
+export async function setWorkspaceActive(workspaceId: string, active: boolean): Promise<void> {
+  const { client } = await workspaceContext();
+  const { error } = await client.rpc("set_workspace_active_v0111", {
+    target_workspace: workspaceId,
+    new_active: active,
+  });
+  fail(error);
+  clearWorkspaceContext();
 }
 
 export async function listWorkspaceDirectory(workspaceId: string): Promise<WorkspaceDirectoryMember[]> {
