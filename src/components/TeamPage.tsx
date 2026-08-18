@@ -125,7 +125,7 @@ export function TeamPage({ onChanged }: Props) {
         email: editEmail,
         role: editRole,
         active: editActive,
-        mfaRequired: editRole === "admin" || editMfa,
+        mfaRequired: editMfa,
         historicalCoverageSince: editCoverage || null,
       });
       await saveMemberAccess(editing.userId, scopes.efficiency, scopes.reports, editDisplayName.trim());
