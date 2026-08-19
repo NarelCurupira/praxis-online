@@ -173,10 +173,25 @@ function offlineSafeRecords(records: ProcessMovement[]): ProcessMovement[] {
   }));
 }
 
+/**
+ * MFA é uma política de segurança da conta/servidor e nunca deve ser
+ * reconstituída a partir de um snapshot persistente. Mantemos os demais
+ * dados operacionais do membro para a contingência, mas neutralizamos
+ * mfaRequired tanto ao gravar quanto ao ler snapshots antigos.
+ */
+function offlineSafeMembers(members: TeamMember[]): TeamMember[] {
+  return members.map((member) => ({ ...member, mfaRequired: false }));
+}
+
+function offlineSafeSnapshot(snapshot: OfflineWorkspaceSnapshot): OfflineWorkspaceSnapshot {
+  return { ...snapshot, members: offlineSafeMembers(snapshot.members) };
+}
+
 export async function saveOfflineSnapshot(input: Omit<OfflineWorkspaceSnapshot, "key" | "savedAt">): Promise<OfflineWorkspaceSnapshot> {
   const snapshot: OfflineWorkspaceSnapshot = {
     ...input,
     records: offlineSafeRecords(input.records),
+    members: offlineSafeMembers(input.members),
     key: snapshotKey(input.userId, input.workspaceId),
     savedAt: new Date().toISOString(),
   };
@@ -202,7 +217,7 @@ export async function loadOfflineSnapshot(userId: string, workspaceId?: string):
     const store = tx.objectStore(SNAPSHOTS);
     if (targetWorkspace) {
       const snapshot = await requestResult(store.get(snapshotKey(userId, targetWorkspace)) as IDBRequest<OfflineWorkspaceSnapshot | undefined>);
-      if (snapshot && fresh(snapshot)) return snapshot;
+      if (snapshot && fresh(snapshot)) return offlineSafeSnapshot(snapshot);
       if (snapshot) void deleteSnapshotKeys([snapshot.key]);
       if (workspaceId) return null;
     }
@@ -210,7 +225,7 @@ export async function loadOfflineSnapshot(userId: string, workspaceId?: string):
     const valid = snapshots.filter(fresh).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
     const fallback = valid[0] ?? null;
     if (fallback) void saveMeta(currentKey(userId), fallback.workspaceId);
-    return fallback;
+    return fallback ? offlineSafeSnapshot(fallback) : null;
   } finally {
     db.close();
   }
