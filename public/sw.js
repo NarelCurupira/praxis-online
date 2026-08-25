@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.11.1-RC-contingencia-escrita-1";
+const CACHE_NAME = "praxis-shell-0.11.2-RC-conflitos-1";
 const SHELL = [
   "/",
   "/index.html",
