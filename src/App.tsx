@@ -37,8 +37,8 @@ import { SplashScreen } from "./components/SplashScreen";
 import { clearFastMovementCache, getMovementDetailsBatchFast, getMovementDetailsFast, hydrateQualityReasonsFast, listArchivedMovementsFast, listCalendarExclusionsFast, listClassSettingsFast, listDetailedMovementsFast, listMovementsFast, listReportMovementsFast, type MovementLoadReason } from "./fastApi";
 import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
-import { allocateOfflineMovementId, clearOfflineUserData, discardOfflineOperationTree, enqueueOfflineOperation, enqueueOfflineOperations, listOfflineOperations, listOfflineWorkspaces, loadOfflineSnapshot, markOfflineWorkspaceCurrent, offlineRetentionHours, saveOfflineSnapshot, type OfflineOperation, type OfflineOperationInput, type OfflineWorkspaceSnapshot } from "./offlineStore";
-import { projectOfflineOperations, syncOfflineOperationsForWorkspace } from "./offlineSync";
+import { allocateOfflineMovementId, clearOfflineUserData, discardOfflineOperationTree, enqueueOfflineOperation, enqueueOfflineOperations, listOfflineOperations, listOfflineWorkspaces, loadOfflineSnapshot, markOfflineWorkspaceCurrent, offlineRetentionHours, resolveOfflineOperationConflict, saveOfflineSnapshot, type OfflineOperation, type OfflineOperationInput, type OfflineOperationPayload, type OfflineWorkspaceSnapshot } from "./offlineStore";
+import { createOfflineBaseline, projectOfflineOperations, syncOfflineOperationsForWorkspace } from "./offlineSync";
 
 const LoadingScreen = SplashScreen;
 
@@ -166,6 +166,17 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     return { userId: session.user.id, workspaceId: workspace.workspaceId, workspaceName: workspace.name, processLabel: recordLabel };
   }
 
+  function offlineMutationInput(record: ProcessMovement | undefined, payload: OfflineOperationPayload): OfflineOperationInput {
+    if (!record) throw new Error("Não foi possível localizar o processo para registrar a alteração em contingência.");
+    return {
+      ...offlineOperationBase(record.judicialNumber || "Processo local"),
+      movementId: record.movementId,
+      tempMovementId: record.movementId < 0 ? record.movementId : null,
+      payload,
+      baseline: createOfflineBaseline(record, payload),
+    };
+  }
+
   async function synchronizeCurrentOfflineQueue(options: { reloadAfter?: boolean } = {}): Promise<void> {
     const workspace = currentWorkspaceInfo();
     if (!workspace || !navigator.onLine || syncingOffline) return;
@@ -189,6 +200,12 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     const workspace = currentWorkspaceInfo();
     if (contingencyMode) await enterContingency(workspace?.workspaceId);
     else if (navigator.onLine) await reload("refresh");
+  }
+
+  async function applyOfflineConflictLocal(operationId: string): Promise<void> {
+    await resolveOfflineOperationConflict(session.user.id, operationId, "local_wins");
+    await refreshOfflineOperations();
+    await synchronizeCurrentOfflineQueue({ reloadAfter: !contingencyMode });
   }
 
   async function refreshWorkspaces(): Promise<AvailableWorkspace[]> {
@@ -653,6 +670,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         movementId: temporaryId,
         tempMovementId: temporaryId,
         payload: { kind: "create", data },
+        baseline: null,
       });
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
@@ -693,13 +711,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }
     if (queueLocally) {
       const record = records.find((item) => item.movementId === id);
-      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
-      const operation = await enqueueOfflineOperation({
-        ...base,
-        movementId: id,
-        tempMovementId: id < 0 ? id : null,
-        payload: { kind: "edit", data },
-      });
+      const operation = await enqueueOfflineOperation(offlineMutationInput(record, { kind: "edit", data }));
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
       setDataVersion((value) => value + 1);
@@ -735,13 +747,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }
     if (queueLocally) {
       const record = records.find((item) => item.movementId === id);
-      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
-      const operation = await enqueueOfflineOperation({
-        ...base,
-        movementId: id,
-        tempMovementId: id < 0 ? id : null,
-        payload: { kind: "status", status: value, actionType },
-      });
+      const operation = await enqueueOfflineOperation(offlineMutationInput(record, { kind: "status", status: value, actionType }));
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
       setDataVersion((version) => version + 1);
@@ -765,13 +771,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }
     if (queueLocally) {
       const record = records.find((item) => item.movementId === id);
-      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
-      const operation = await enqueueOfflineOperation({
-        ...base,
-        movementId: id,
-        tempMovementId: id < 0 ? id : null,
-        payload: { kind: "action", actionType },
-      });
+      const operation = await enqueueOfflineOperation(offlineMutationInput(record, { kind: "action", actionType }));
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
       hapticFeedback("success");
@@ -795,13 +795,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }
     if (queueLocally) {
       const record = records.find((item) => item.movementId === id);
-      const base = offlineOperationBase(record?.judicialNumber || "Processo local");
-      const operation = await enqueueOfflineOperation({
-        ...base,
-        movementId: id,
-        tempMovementId: id < 0 ? id : null,
-        payload: { kind: "assignment", assignedTo: userId },
-      });
+      const operation = await enqueueOfflineOperation(offlineMutationInput(record, { kind: "assignment", assignedTo: userId }));
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
       hapticFeedback("success");
@@ -826,12 +820,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (queueLocally) {
       const operations = await enqueueOfflineOperations(ids.map((id) => {
         const record = records.find((item) => item.movementId === id);
-        return {
-          ...offlineOperationBase(record?.judicialNumber || "Processo local"),
-          movementId: id,
-          tempMovementId: id < 0 ? id : null,
-          payload: { kind: "assignment", assignedTo: userId } as const,
-        };
+        return offlineMutationInput(record, { kind: "assignment", assignedTo: userId });
       }));
       setRecords((current) => projectOfflineOperations(current, operations, members));
       await refreshOfflineOperations();
@@ -856,12 +845,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (queueLocally) {
       const operations = await enqueueOfflineOperations(ids.map((id) => {
         const record = records.find((item) => item.movementId === id);
-        return {
-          ...offlineOperationBase(record?.judicialNumber || "Processo local"),
-          movementId: id,
-          tempMovementId: id < 0 ? id : null,
-          payload: { kind: "action", actionType } as const,
-        };
+        return offlineMutationInput(record, { kind: "action", actionType });
       }));
       setRecords((current) => projectOfflineOperations(current, operations, members));
       await refreshOfflineOperations();
@@ -912,6 +896,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const currentWorkspace = workspaces.find((workspace) => workspace.current) ?? workspaces[0];
   const currentWorkspaceOfflineOperations = offlineOperations.filter((operation) => operation.workspaceId === currentWorkspace?.workspaceId);
   const failedOfflineOperations = offlineOperations.filter((operation) => operation.lastError);
+  const conflictedOfflineOperations = offlineOperations.filter((operation) => operation.conflict);
   const transferTargets = workspaces.filter((workspace) => !workspace.current && workspace.role === "admin");
 
   const appClassName = [
@@ -942,7 +927,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {access.canCreateProcess && <button className="button primary new-process-button" aria-label="Novo processo" onClick={() => { hapticFeedback(); setModal(true); }}><Plus /><span>Novo processo</span></button>}
       </header>
       {contingencyMode && <div className="contingency-banner contingency-write-banner" role="status"><WifiOff size={19} /><div><strong>Modo contingência · gravação local</strong><span>Base local sincronizada {offlineSavedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(offlineSavedAt)) : "anteriormente"}. {offlineOperations.length ? `${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} aguardando sincronização.` : "Nenhuma alteração pendente."} Retenção: {offlineRetentionHours()} horas.{recoveringOnline || syncingOffline ? " Sincronizando com o servidor…" : ""}</span></div>{offlineOperations.length > 0 && <button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila ({offlineOperations.length})</button>}</div>}
-      {!contingencyMode && offlineOperations.length > 0 && <div className={`sync-queue-banner ${failedOfflineOperations.length ? "has-error" : ""}`} role="status"><div><strong>{failedOfflineOperations.length ? "Sincronização requer atenção" : "Alterações locais pendentes"}</strong><span>{currentWorkspaceOfflineOperations.length} nesta Procuradoria · {offlineOperations.length} no dispositivo.</span></div><div className="sync-queue-actions"><button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila</button><button type="button" className="button primary compact" disabled={syncingOffline || !currentWorkspaceOfflineOperations.length} onClick={() => void synchronizeCurrentOfflineQueue({ reloadAfter: true })}>{syncingOffline ? "Sincronizando..." : "Sincronizar agora"}</button></div></div>}
+      {!contingencyMode && offlineOperations.length > 0 && <div className={`sync-queue-banner ${failedOfflineOperations.length || conflictedOfflineOperations.length ? "has-error" : ""}`} role="status"><div><strong>{conflictedOfflineOperations.length ? "Conflito de sincronização requer decisão" : failedOfflineOperations.length ? "Sincronização requer atenção" : "Alterações locais pendentes"}</strong><span>{currentWorkspaceOfflineOperations.length} nesta Procuradoria · {offlineOperations.length} no dispositivo{conflictedOfflineOperations.length ? ` · ${conflictedOfflineOperations.length} conflito${conflictedOfflineOperations.length === 1 ? "" : "s"}` : ""}.</span></div><div className="sync-queue-actions"><button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila</button><button type="button" className="button primary compact" disabled={syncingOffline || !currentWorkspaceOfflineOperations.length || conflictedOfflineOperations.some((operation) => operation.workspaceId === currentWorkspace?.workspaceId)} onClick={() => void synchronizeCurrentOfflineQueue({ reloadAfter: true })}>{syncingOffline ? "Sincronizando..." : "Sincronizar agora"}</button></div></div>}
       {workspaceError && <div className="info-box workspace-switch-error" role="alert">{workspaceError}</div>}
       {(mobileNavigation.pullDistance >= 72 || mobileNavigation.refreshing) && <div className={`pull-refresh-indicator ${mobileNavigation.refreshing ? "refreshing" : ""}`} aria-live="polite"><RefreshCw size={19} /><span>{mobileNavigation.refreshing ? "Atualizando…" : "Solte para atualizar"}</span></div>}
       <div className={page === "queue" || page === "processes" ? "content content-wide" : "content"}>{workspaceDataLoading && <div className="workspace-data-loading" role="status"><span className="splash-spinner" /><span>Carregando processos da Procuradoria em segundo plano...</span></div>}<Suspense fallback={<div className="page-loading" role="status"><span className="splash-spinner" /><span>Carregando página...</span></div>}>
@@ -972,7 +957,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {!pagePreparing && page === "about" && <AboutPage />}
       </Suspense></div>
     </main>
-    {offlineQueueOpen && <OfflineQueuePanel operations={offlineOperations} currentWorkspaceId={currentWorkspace?.workspaceId} syncing={syncingOffline} onClose={() => setOfflineQueueOpen(false)} onRetry={() => synchronizeCurrentOfflineQueue({ reloadAfter: !contingencyMode })} onDiscard={discardOfflineOperation} />}
+    {offlineQueueOpen && <OfflineQueuePanel operations={offlineOperations} currentWorkspaceId={currentWorkspace?.workspaceId} syncing={syncingOffline} onClose={() => setOfflineQueueOpen(false)} onRetry={() => synchronizeCurrentOfflineQueue({ reloadAfter: !contingencyMode })} onDiscard={discardOfflineOperation} onApplyLocal={applyOfflineConflictLocal} />}
     {modal && <ProcessModal classes={classes} exclusions={exclusions} members={members} currentUserId={session.user.id} isAdmin={access.canChangeAssignment} offlineMode={contingencyMode} onClose={() => setModal(false)} onSave={save} />}
     {editing && (access.canEditFull || access.canEditNotes) && <EditProcessModal record={editing} classes={classes} members={members} permissions={access} onClose={() => setEditing(null)} onSave={edit} />}
     {transferRecord && currentWorkspace && <ProcessTransferDialog record={transferRecord} currentWorkspaceId={currentWorkspace.workspaceId} workspaces={workspaces} onClose={() => setTransferRecord(null)} onTransfer={transfer} />}

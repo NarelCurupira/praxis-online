@@ -1,9 +1,22 @@
 # Práxis Online
 
-Versão atual: **0.11.1-RC**, conectada ao PostgreSQL do Supabase e com contingência local de leitura e gravação operacional.
+Versão atual: **0.11.2-RC**, conectada ao PostgreSQL do Supabase e com contingência local de leitura, gravação operacional e resolução de conflitos concorrentes.
 
 Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local com leitura e fila de gravações operacionais.
 
+
+## Contingência 0.11.2-RC
+
+- Mantém a fila local da 0.11.1-RC e acrescenta uma base de comparação por alteração pendente.
+- Na reconexão, o Práxis faz comparação em três vias entre o valor visto quando a alteração foi criada, o valor atual do servidor e o valor desejado localmente.
+- Alterações independentes ou que já convergiram para o mesmo valor são sincronizadas automaticamente, sem criar conflito artificial.
+- Quando o mesmo campo foi modificado de forma diferente no servidor, a fila é pausada naquele ponto e mostra os valores **Antes**, **Servidor** e **Local**.
+- O usuário pode escolher **Manter servidor** (descarta apenas aquela alteração local) ou **Aplicar alteração local** (reenvia a alteração pelas APIs normais, mantendo RLS, permissões e validações).
+- Arquivamento, exclusão ou desaparecimento concorrente do registro não podem ser sobrescritos pela contingência.
+- A fila continua isolada por usuário + Procuradoria, e operações posteriores permanecem ordenadas para evitar inversão de dependências.
+- A política de MFA permanece fora do snapshot confiável: snapshots antigos são neutralizados na leitura e novos snapshots não persistem `mfaRequired=true`.
+- Não há nova migração SQL nesta versão.
+- Push e notificações ficam reservados para a 0.11.3-RC.
 
 ## Contingência 0.11.1-RC
 
@@ -14,7 +27,7 @@ Aplicação web/PWA privada para organização e controle auxiliar de processos,
 - A fila mostra operações pendentes e falhas e permite nova tentativa ou descarte explícito.
 - Cadastro offline recebe identificador temporário negativo até ser confirmado pelo servidor; uma verificação de idempotência reduz o risco de duplicidade se a confirmação da primeira tentativa se perder.
 - A data/hora de envio registrada offline é preservada quando o status Enviado é sincronizado.
-- Detecção e resolução de alterações concorrentes entre usuários permanecem fora desta RC e serão incorporadas na versão 1.0.
+- Detecção e resolução de alterações concorrentes entre usuários foram incorporadas na 0.11.2-RC.
 - Logout com alterações pendentes exige confirmação, pois a fila local é apagada junto com os demais dados do usuário.
 
 ## Contingência 0.11.0

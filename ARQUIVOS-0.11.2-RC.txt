@@ -1,0 +1,21 @@
+Práxis Online 0.11.2-RC — arquivos alterados/novos
+
+package.json
+package-lock.json
+public/sw.js
+src/App.tsx
+src/api.ts
+src/offlineStore.ts
+src/offlineSync.ts
+src/components/OfflineQueuePanel.tsx
+src/components/AboutPage.tsx
+src/contingencyRegression.test.ts
+src/v0110-layout-fixes.css
+src/version.ts
+README.md
+CHANGELOG.md
+ATUALIZACAO-0.11.2-RC.md
+VALIDACAO-0.11.2-RC.txt
+ARQUIVOS-0.11.2-RC.txt
+
+Sem SQL nesta versão.

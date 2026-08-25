@@ -16,21 +16,23 @@ test("contingência mantém snapshot isolado por usuário e Procuradoria", () =>
   assert.match(offlineStore, /3 \* 24 \* 60 \* 60 \* 1000/);
 });
 
-test("IndexedDB v2 possui fila de sincronização isolada", () => {
+test("IndexedDB mantém fila de sincronização isolada", () => {
   assert.match(offlineStore, /const DB_VERSION = 2/);
   assert.match(offlineStore, /const SYNC_QUEUE = "sync_queue"/);
   assert.match(offlineStore, /store\.createIndex\("userId"/);
   assert.match(offlineStore, /store\.createIndex\("workspaceId"/);
 });
 
-test("snapshot continua removendo campos detalhados e documentos", () => {
+test("snapshot continua removendo campos detalhados e neutraliza MFA persistente", () => {
   assert.match(offlineStore, /notes: ""/);
   assert.match(offlineStore, /documentPath: ""/);
   assert.match(offlineStore, /relevanceReason: ""/);
   assert.match(offlineStore, /complexityReason: ""/);
+  assert.match(offlineStore, /mfaRequired: false/);
+  assert.match(offlineStore, /offlineSafeSnapshot/);
 });
 
-test("0.11.1-RC permite gravação operacional local mas mantém ações sensíveis bloqueadas", () => {
+test("0.11.2-RC permite gravação operacional local mas mantém ações sensíveis bloqueadas", () => {
   assert.match(app, /Modo contingência · gravação local/);
   assert.match(app, /new Set<Page>\(\["dashboard", "queue", "processes"\]\)/);
   assert.doesNotMatch(app, /canCreateProcess: false/);
@@ -49,34 +51,72 @@ test("operações locais suportam cadastro, edição, status, providência e res
   assert.match(processTable, /local-pending/);
 });
 
+test("cada alteração existente guarda base para detecção de concorrência", () => {
+  assert.match(offlineStore, /OfflineOperationBaseline/);
+  assert.match(offlineStore, /baseline: OfflineOperationBaseline \| null/);
+  assert.match(app, /createOfflineBaseline\(record, payload\)/);
+  assert.match(app, /offlineMutationInput/);
+});
+
+test("detecção usa three-way merge por campo e ignora convergência", () => {
+  assert.match(offlineSync, /Three-way merge/);
+  assert.match(offlineSync, /current !== before && current !== desired/);
+  assert.match(offlineSync, /detectOfflineConflict/);
+  assert.match(offlineSync, /fieldsForPayload/);
+});
+
+test("operações herdadas da 0.11.1-RC sem baseline exigem decisão, salvo dependentes de cadastro local", () => {
+  assert.match(offlineSync, /kind: "baseline_unavailable"/);
+  assert.match(offlineSync, /originatedFromLocalCreate/);
+  assert.match(offlineSync, /!operation\.baseline && originatedFromLocalCreate/);
+});
+
+test("arquivamento, exclusão ou desaparecimento do servidor não podem ser sobrescritos localmente", () => {
+  assert.match(offlineSync, /kind: "record_unavailable"/);
+  assert.match(offlineSync, /kind: "lifecycle_change"/);
+  assert.match(offlineSync, /canApplyLocal: false/);
+});
+
+test("conflito pausa a fila e fica persistido para decisão explícita", () => {
+  assert.match(offlineStore, /markOfflineOperationConflict/);
+  assert.match(offlineSync, /await markOfflineOperationConflict\(operation\.id, conflict\)/);
+  assert.match(offlineSync, /Há um conflito pendente de resolução/);
+  assert.match(offlineSync, /break;/);
+});
+
+test("fila oferece manter servidor ou aplicar alteração local", () => {
+  assert.match(queuePanel, /Manter servidor/);
+  assert.match(queuePanel, /Aplicar alteração local/);
+  assert.match(queuePanel, /Resolva o conflito para continuar/);
+  assert.match(queuePanel, /0\.11\.2-RC/);
+  assert.match(app, /resolveOfflineOperationConflict\(session\.user\.id, operationId, "local_wins"\)/);
+});
+
+test("resolução local volta pela mesma API protegida e não contorna RLS", () => {
+  assert.match(offlineSync, /getMovementForOfflineSync/);
+  assert.match(offlineSync, /updateMovementGoverned/);
+  assert.match(offlineSync, /updateMovementStatus/);
+  assert.match(offlineSync, /updateMovementAction/);
+  assert.match(offlineSync, /updateMovementAssignment/);
+  assert.match(api, /export async function getMovementForOfflineSync/);
+});
+
+test("sincronização permanece idempotente quando servidor já contém o alvo local", () => {
+  assert.match(offlineSync, /operationAlreadyApplied/);
+  assert.match(offlineSync, /findMovementForOfflineCreate/);
+  assert.match(offlineSync, /existing \?\? await createMovement/);
+});
+
 test("falha transitória de escrita muda para fila local sem contornar erro de validação", () => {
   assert.match(app, /function isTransientWriteFailure/);
   assert.match(app, /if \(!isTransientWriteFailure\(error\)\) throw error/);
   assert.match(app, /activateWriteContingency\(error\)/);
 });
 
-test("sincronização reutiliza as mesmas APIs protegidas pelo servidor", () => {
-  assert.match(offlineSync, /findMovementForOfflineCreate/);
-  assert.match(offlineSync, /createMovement\(operation\.payload\.data\)/);
-  assert.match(offlineSync, /updateMovementGoverned/);
-  assert.match(offlineSync, /updateMovementStatus/);
-  assert.match(offlineSync, /updateMovementAction/);
-  assert.match(offlineSync, /updateMovementAssignment/);
-  assert.match(offlineSync, /getMovementOfflineSyncState/);
-  assert.match(offlineSync, /break; \/\/ Preserva a ordem/);
-});
-
 test("horário local de envio em contingência é preservado na sincronização", () => {
   assert.match(offlineSync, /updateMovementStatus\(movementId, operation\.payload\.status, operation\.payload\.actionType, operation\.createdAt\)/);
   assert.match(api, /occurredAt\?: string/);
   assert.match(api, /occurredAt \?\? new Date\(\)\.toISOString\(\)/);
-});
-
-test("fila mostra falhas, permite nova tentativa e explicita limite da RC", () => {
-  assert.match(queuePanel, /Fila de sincronização/);
-  assert.match(queuePanel, /Sincronizar esta Procuradoria/);
-  assert.match(queuePanel, /Detecção e resolução de alterações concorrentes serão incorporadas na versão 1\.0/);
-  assert.match(queuePanel, /window\.confirm/);
 });
 
 test("logout alerta antes de apagar fila e depois limpa dados locais", () => {

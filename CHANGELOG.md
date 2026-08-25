@@ -1,3 +1,15 @@
+## 0.11.2-RC — Contingência com detecção e resolução de conflitos
+
+- Cada operação offline em registro existente passa a guardar uma base de comparação dos campos que poderá modificar.
+- Reconexão aplica **three-way merge por campo**: mudanças independentes continuam automaticamente; só há conflito quando o servidor mudou desde a base e terminou em valor diferente do alvo local.
+- Conflitos persistem na fila e mostram valores anterior, servidor e local.
+- Resolução explícita permite **Manter servidor** ou **Aplicar alteração local**.
+- Exclusão, arquivamento ou desaparecimento concorrente bloqueiam sobrescrita local.
+- Idempotência foi ampliada para reconhecer operações cujo alvo já está refletido no servidor.
+- A resolução continua usando as mesmas APIs, RLS, permissões e validações do Supabase.
+- Snapshots de contingência não podem restaurar exigência de MFA persistida localmente.
+- Sem migração SQL. Push fica reservado para a 0.11.3-RC.
+
 ## 0.11.1-RC
 
 - Segunda fase da contingência: gravação operacional local com fila IndexedDB por usuário e Procuradoria.
@@ -8,7 +20,7 @@
 - Preservação da data/hora de envio realizada durante a contingência.
 - Ações destrutivas, transferências, exportações e administração continuam bloqueadas offline.
 - Logout alerta antes de apagar alterações ainda não sincronizadas.
-- Conflitos concorrentes permanecem explicitamente reservados para a versão 1.0.
+- Conflitos concorrentes foram incorporados na 0.11.2-RC.
 
 ## 0.11.0
 

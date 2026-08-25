@@ -25,6 +25,29 @@ export interface OfflineWorkspaceSnapshot {
 
 export type OfflineOperationKind = "create" | "edit" | "status" | "action" | "assignment";
 
+export type OfflineBaselineValue = string | null;
+export interface OfflineOperationBaseline {
+  values: Record<string, OfflineBaselineValue>;
+}
+
+export interface OfflineConflictField {
+  field: string;
+  label: string;
+  baseline: string;
+  server: string;
+  local: string;
+}
+
+export interface OfflineConflict {
+  detectedAt: string;
+  kind: "concurrent_change" | "record_unavailable" | "lifecycle_change" | "baseline_unavailable";
+  message: string;
+  fields: OfflineConflictField[];
+  canApplyLocal: boolean;
+}
+
+export type OfflineConflictResolution = "" | "local_wins";
+
 export type OfflineOperationPayload =
   | { kind: "create"; data: ProcessFormData }
   | { kind: "edit"; data: ProcessEditData }
@@ -41,12 +64,17 @@ export interface OfflineOperation {
   tempMovementId: number | null;
   processLabel: string;
   payload: OfflineOperationPayload;
+  baseline: OfflineOperationBaseline | null;
+  conflict: OfflineConflict | null;
+  conflictResolution: OfflineConflictResolution;
   createdAt: string;
   attempts: number;
   lastError: string;
 }
 
-export type OfflineOperationInput = Omit<OfflineOperation, "id" | "createdAt" | "attempts" | "lastError">;
+export type OfflineOperationInput = Omit<OfflineOperation, "id" | "createdAt" | "attempts" | "lastError" | "conflict" | "conflictResolution" | "baseline"> & {
+  baseline?: OfflineOperationBaseline | null;
+};
 
 interface OfflineMeta {
   key: string;
@@ -262,6 +290,9 @@ export async function markOfflineWorkspaceCurrent(userId: string, workspaceId: s
 export async function enqueueOfflineOperation(input: OfflineOperationInput): Promise<OfflineOperation> {
   const operation: OfflineOperation = {
     ...input,
+    baseline: input.baseline ?? null,
+    conflict: null,
+    conflictResolution: "",
     id: operationId(),
     createdAt: new Date().toISOString(),
     attempts: 0,
@@ -284,7 +315,8 @@ export async function enqueueOfflineOperations(inputs: OfflineOperationInput[]):
   if (!supported()) throw new Error("IndexedDB indisponível: não é seguro registrar alterações em contingência.");
   const baseTime = Date.now();
   const operations = inputs.map((input, index) => ({
-    ...input, id: operationId(), createdAt: new Date(baseTime + index).toISOString(), attempts: 0, lastError: "",
+    ...input, baseline: input.baseline ?? null, conflict: null, conflictResolution: "",
+    id: operationId(), createdAt: new Date(baseTime + index).toISOString(), attempts: 0, lastError: "",
   } satisfies OfflineOperation));
   const db = await openDb();
   try {
@@ -306,6 +338,12 @@ export async function listOfflineOperations(userId: string, workspaceId?: string
     const all = await requestResult(tx.objectStore(SYNC_QUEUE).index("userId").getAll(userId) as IDBRequest<OfflineOperation[]>);
     return all
       .filter((operation) => !workspaceId || operation.workspaceId === workspaceId)
+      .map((operation) => ({
+        ...operation,
+        baseline: operation.baseline ?? null,
+        conflict: operation.conflict ?? null,
+        conflictResolution: operation.conflictResolution ?? "",
+      }))
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   } finally {
     db.close();
@@ -319,8 +357,36 @@ export async function markOfflineOperationError(id: string, message: string): Pr
     const tx = db.transaction(SYNC_QUEUE, "readwrite");
     const store = tx.objectStore(SYNC_QUEUE);
     const operation = await requestResult(store.get(id) as IDBRequest<OfflineOperation | undefined>);
-    if (operation) store.put({ ...operation, attempts: operation.attempts + 1, lastError: message });
+    if (operation) store.put({ ...operation, attempts: operation.attempts + 1, lastError: message, conflictResolution: "" });
     await transactionDone(tx, "Não foi possível atualizar a fila de sincronização.");
+  } finally {
+    db.close();
+  }
+}
+
+export async function markOfflineOperationConflict(id: string, conflict: OfflineConflict): Promise<void> {
+  if (!supported()) return;
+  const db = await openDb();
+  try {
+    const tx = db.transaction(SYNC_QUEUE, "readwrite");
+    const store = tx.objectStore(SYNC_QUEUE);
+    const operation = await requestResult(store.get(id) as IDBRequest<OfflineOperation | undefined>);
+    if (operation) store.put({ ...operation, conflict, conflictResolution: "", lastError: "" });
+    await transactionDone(tx, "Não foi possível registrar o conflito de sincronização.");
+  } finally {
+    db.close();
+  }
+}
+
+export async function resolveOfflineOperationConflict(userId: string, id: string, resolution: OfflineConflictResolution): Promise<void> {
+  if (!supported()) return;
+  const db = await openDb();
+  try {
+    const tx = db.transaction(SYNC_QUEUE, "readwrite");
+    const store = tx.objectStore(SYNC_QUEUE);
+    const operation = await requestResult(store.get(id) as IDBRequest<OfflineOperation | undefined>);
+    if (operation?.userId === userId) store.put({ ...operation, conflict: null, conflictResolution: resolution, lastError: "" });
+    await transactionDone(tx, "Não foi possível registrar a resolução do conflito.");
   } finally {
     db.close();
   }

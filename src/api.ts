@@ -155,6 +155,17 @@ export async function findMovementForOfflineCreate(data: ProcessFormData): Promi
   return row ? movementFromRow(row) : null;
 }
 
+export async function getMovementForOfflineSync(movementId: number): Promise<ProcessMovement | null> {
+  const { client, workspaceId } = await context();
+  const { data, error } = await client.from("movements")
+    .select(SELECT_MOVEMENT)
+    .eq("workspace_id", workspaceId)
+    .eq("id", movementId)
+    .maybeSingle();
+  fail(error);
+  return data ? movementFromRow(data as Record<string, any>) : null;
+}
+
 export async function getMovementOfflineSyncState(movementId: number): Promise<OfflineMovementSyncState> {
   const { client, workspaceId } = await context();
   const { data, error } = await client.from("movements")
