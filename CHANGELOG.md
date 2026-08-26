@@ -1,3 +1,10 @@
+## 0.11.3-RC — Push e Central de Informações
+- Central persistente por usuário e Procuradoria, com Realtime e leitura/não leitura.
+- Web Push para PWA instalado, usando VAPID e Edge Function dedicada.
+- Push por padrão em atribuições e transferências; status e prazo configuráveis.
+- Arquitetura separada da contingência e da resolução de conflitos.
+- Notificação nunca altera registros locais nem a sync_queue.
+
 ## 0.11.2-RC — Contingência com detecção e resolução de conflitos
 
 - Cada operação offline em registro existente passa a guardar uma base de comparação dos campos que poderá modificar.

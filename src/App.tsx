@@ -1,5 +1,5 @@
 "use client";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Sun, WifiOff } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { archiveMovements, clearDatabase, createBackup, createMovement, deleteCalendarExclusion, deleteClassSetting, deleteMovement, deleteMovements, importRecords, restoreBackup, saveCalendarExclusion, saveClassSetting, saveExport, savePdf, updateMovementAction, updateMovementActions, updateMovementAssignment, updateMovementAssignments, updateMovementStatus } from "./api";
@@ -20,6 +20,7 @@ const PersonalSettingsPage = lazy(() => import("./components/PersonalSettingsPag
 import { ProcessTable } from "./components/ProcessTable";
 import { ProcessTransferDialog } from "./components/ProcessTransferDialog";
 import { OfflineQueuePanel } from "./components/OfflineQueuePanel";
+import { InformationCenter } from "./components/InformationCenter";
 const ReportsPage = lazy(() => import("./components/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 import { ResetPasswordPage } from "./components/ResetPasswordPage";
 const SettingsPage = lazy(() => import("./components/SettingsPage").then((module) => ({ default: module.SettingsPage })));
@@ -39,6 +40,7 @@ import { hapticFeedback, useMobileNavigation } from "./mobileInteractions";
 import { listAvailableWorkspaces, switchWorkspace, transferMovement, type AvailableWorkspace } from "./workspaceApi";
 import { allocateOfflineMovementId, clearOfflineUserData, discardOfflineOperationTree, enqueueOfflineOperation, enqueueOfflineOperations, listOfflineOperations, listOfflineWorkspaces, loadOfflineSnapshot, markOfflineWorkspaceCurrent, offlineRetentionHours, resolveOfflineOperationConflict, saveOfflineSnapshot, type OfflineOperation, type OfflineOperationInput, type OfflineOperationPayload, type OfflineWorkspaceSnapshot } from "./offlineStore";
 import { createOfflineBaseline, projectOfflineOperations, syncOfflineOperationsForWorkspace } from "./offlineSync";
+import { getNotification, markNotificationRead, type PraxisNotification } from "./notificationApi";
 
 const LoadingScreen = SplashScreen;
 
@@ -100,6 +102,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [offlineOperations, setOfflineOperations] = useState<OfflineOperation[]>([]);
   const [offlineQueueOpen, setOfflineQueueOpen] = useState(false);
   const [syncingOffline, setSyncingOffline] = useState(false);
+  const pushRouteHandled = useRef(false);
 
   function applyOfflineSnapshot(snapshot: OfflineWorkspaceSnapshot, cachedWorkspaces: AvailableWorkspace[], pending: OfflineOperation[]) {
     configureWorkdaySchedule(snapshot.settings);
@@ -594,6 +597,35 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }, [page]);
 
   useEffect(() => {
+    if (loading || pushRouteHandled.current || !workspaces.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const notificationId = params.get("notification");
+    const routeWorkspace = params.get("workspace");
+    const routeMovement = Number(params.get("movement") || "0");
+    if (!notificationId && !routeWorkspace && !routeMovement) return;
+    pushRouteHandled.current = true;
+
+    void (async () => {
+      let notification: PraxisNotification | null = null;
+      if (notificationId && navigator.onLine) {
+        notification = await getNotification(notificationId).catch(() => null);
+        await markNotificationRead(notificationId).catch(() => undefined);
+      }
+      const targetWorkspace = notification?.workspaceId || routeWorkspace || "";
+      const targetMovement = notification?.movementId ?? (routeMovement > 0 ? routeMovement : null);
+      if (targetWorkspace && targetWorkspace !== currentWorkspaceInfo()?.workspaceId) {
+        await changeWorkspace(targetWorkspace);
+      }
+      if (targetMovement != null) {
+        setProcessPreset({ kind: "movement", label: notification?.processNumber || "Processo da notificação", movementId: targetMovement });
+        setPage("processes");
+      }
+      const clean = `${window.location.pathname}${window.location.hash || ""}`;
+      window.history.replaceState({}, "", clean);
+    })().catch((error) => setWorkspaceError(error instanceof Error ? error.message : String(error)));
+  }, [loading, workspaces.length]);
+
+  useEffect(() => {
     let cancelled = false;
     const prepare = async () => {
       const needsDetails = page === "import";
@@ -890,6 +922,21 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     hapticFeedback("success");
   }
 
+  async function openInformationNotification(notification: PraxisNotification) {
+    if (notification.workspaceId && notification.workspaceId !== currentWorkspaceInfo()?.workspaceId) {
+      await changeWorkspace(notification.workspaceId);
+    }
+    if (notification.movementId != null) {
+      setProcessPreset({
+        kind: "movement",
+        label: notification.processNumber || "Processo da notificação",
+        movementId: notification.movementId,
+      });
+      setPage("processes");
+      setTableFocusMode(false);
+    }
+  }
+
   if (loading) return <LoadingScreen message="Preparando seus processos..." />;
   if (!settings) return <div className="offline-startup-error"><WifiOff size={34} /><h1>Práxis indisponível</h1><p>{startupError || "Não há dados de contingência disponíveis neste dispositivo."}</p><small>Conecte-se ao servidor ao menos uma vez para preparar a contingência desta Procuradoria.</small></div>;
 
@@ -916,6 +963,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {contingencyMode && <div className="online-indicator offline" role="status"><WifiOff size={17} /><span>Contingência</span></div>}
         <WorkspaceSwitcher workspaces={workspaces} currentWorkspaceId={currentWorkspace?.workspaceId} busy={switchingWorkspace} onSwitch={changeWorkspace} />
         <div className="topbar-spacer" />
+        <InformationCenter userId={session.user.id} online={online && !contingencyMode} onOpenNotification={openInformationNotification} />
         <span className="current-user">{currentMember?.fullName || session.user.email}</span>
         <div className="global-font-control" role="group" aria-label="Tamanho da letra do Práxis">
           <button type="button" className={fontSize === "small" ? "active" : ""} aria-label="Letra pequena" title="Letra pequena" onClick={() => onFontSizeChange("small")}>A−</button>

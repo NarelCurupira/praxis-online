@@ -1,4 +1,5 @@
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
+import { PushSettingsPanel } from "./PushSettingsPanel";
 
 export function PersonalSettingsPage() {
   return (
@@ -11,6 +12,7 @@ export function PersonalSettingsPage() {
         </div>
       </div>
       <DeviceAccessPanel />
+      <PushSettingsPanel />
       <p className="personal-settings-note">
         As configurações institucionais, de equipe, prazos e relatórios são administradas exclusivamente pelo perfil administrador.
       </p>
