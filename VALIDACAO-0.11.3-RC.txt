@@ -1,0 +1,26 @@
+PRÁXIS ONLINE 0.11.3-RC — VALIDAÇÃO
+
+1. Base reconstruída e conferida contra o main 0.11.2-RC.
+2. Versão consolidada: 0.11.3-RC.
+3. scripts/check-version-consistency.mjs: PASS.
+4. Transpilação sintática TypeScript/TSX dos arquivos alterados: PASS.
+5. Testes estruturais de Push/Central: 9/9 PASS.
+6. Nenhum import de notificationApi em offlineStore.ts ou offlineSync.ts.
+7. Service Worker contém handlers separados para push e notificationclick.
+8. RLS da Central limita SELECT a recipient_user_id = auth.uid().
+9. Tabelas de assinaturas e entregas não possuem grants de acesso direto a authenticated/anon.
+10. RPCs de claim/complete da fila são exclusivas de service_role.
+11. Falhas da Central e do pg_net são capturadas nos triggers e não abortam a operação processual.
+12. Push VAPID privado não existe em nenhum arquivo do frontend ou ZIP de GitHub.
+13. npm ci/check completo não pôde ser executado localmente porque o ambiente não possui todas as dependências em cache; GitHub Actions continua sendo a validação semântica final.
+
+TESTES FUNCIONAIS RECOMENDADOS
+A. Ativar Push no celular/PWA e confirmar permissão do sistema operacional.
+B. De outra conta, atribuir processo ao usuário -> Central + Push.
+C. Transferir processo para outra Procuradoria -> Central + Push e abertura no workspace correto.
+D. Alterar status -> Central sem Push com configuração padrão.
+E. Habilitar Push de status e repetir -> Central + Push.
+F. Entrar em contingência, produzir alteração local, receber evento remoto e confirmar que sync_queue não muda.
+G. Reconectar e resolver conflito da 0.11.2-RC; confirmar que Push não participa da resolução.
+H. Marcar todas como lidas e confirmar contador zero.
+I. Desativar Push no dispositivo; Central deve continuar funcionando.

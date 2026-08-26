@@ -250,6 +250,7 @@ export function ProcessTable({
       if (!queueOnly && highlight === "Alta complexidade" && !record.extremelyComplex) return false;
       if (!queueOnly && highlight === "Ambos" && !(record.sociallyRelevant && record.extremelyComplex)) return false;
       if (preset?.assignedTo && record.assignedTo !== preset.assignedTo) return false;
+      if (preset?.kind === "movement" && preset.movementId != null && record.movementId !== preset.movementId) return false;
       if (preset?.kind === "pending" && record.workflowStatus === "Enviado") return false;
       if (preset?.kind === "overdue" && (record.workflowStatus === "Enviado" || !record.deadlineAt || daysUntil(record.deadlineAt) >= 0)) return false;
       if (preset?.kind === "sent-today" && (!record.sentAt || localDatePart(record.sentAt) !== localDatePart(new Date().toISOString()))) return false;

@@ -20,6 +20,7 @@ import type {
 } from "../types";
 import { HelpTip } from "./HelpTip";
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
+import { PushSettingsPanel } from "./PushSettingsPanel";
 import { ProcuradoriasPanel } from "./ProcuradoriasPanel";
 import { buildConfigurationExport, downloadConfigurationExport } from "../configurationExport";
 
@@ -195,7 +196,7 @@ export function SettingsPage(props: Props) {
         ].map(([key, title]) => <button type="button" key={key} className={settingsSection === key ? "active" : ""} onClick={() => setSettingsSection(key as typeof settingsSection)}>{title}</button>)}
       </nav>
 
-      {settingsSection === "equipe" && <DeviceAccessPanel />}
+      {settingsSection === "equipe" && <><DeviceAccessPanel /><PushSettingsPanel /></>}
 
       {settingsSection === "procuradorias" && <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />}
 
