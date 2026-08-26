@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.11.2-RC-conflitos-1";
+const CACHE_NAME = "praxis-shell-0.11.3-RC-push-1";
 const SHELL = [
   "/",
   "/index.html",
@@ -83,4 +83,46 @@ self.addEventListener("fetch", (event) => {
       });
     }),
   );
+});
+
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data?.json() ?? {}; }
+  catch { payload = { title: "Práxis", body: event.data?.text() ?? "Há uma nova informação no Práxis." }; }
+
+  const title = payload.title || "Práxis";
+  const body = payload.body || "Há uma nova informação na Central do Práxis.";
+  const tag = payload.notificationId ? `praxis-${payload.notificationId}` : "praxis-information";
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    tag,
+    renotify: Boolean(payload.severity === "urgent"),
+    data: {
+      url: payload.url || "/",
+      notificationId: payload.notificationId || null,
+      workspaceId: payload.workspaceId || null,
+      movementId: payload.movementId || null,
+    },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("navigate" in client) {
+        try { await client.navigate(targetUrl); } catch { /* usa abertura abaixo */ }
+      }
+      if ("focus" in client) {
+        await client.focus();
+        return;
+      }
+    }
+    await self.clients.openWindow(targetUrl);
+  })());
 });

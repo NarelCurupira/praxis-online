@@ -133,7 +133,8 @@ export type ProcessListPresetKind =
   | "sent-today"
   | "sent-week"
   | "overdue"
-  | "month";
+  | "month"
+  | "movement";
 
 export interface ProcessListPreset {
   kind: ProcessListPresetKind;
@@ -141,6 +142,7 @@ export interface ProcessListPreset {
   assignedTo?: string;
   year?: number;
   month?: number;
+  movementId?: number;
 }
 
 export type MovementSortField = "receivedAt" | "judicialNumber" | "mpNumber" | "className" | "deadlineAt" | "actionType" | "workflowStatus" | "assignedName";
