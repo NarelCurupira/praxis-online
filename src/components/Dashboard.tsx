@@ -157,7 +157,7 @@ export function Dashboard({ records, currentUserId, currentUserName, canOpenQual
     return { year, total: items.length, sent: yearSent.length, diligence: count("Diligências e medidas processuais"), unnecessary: count("Desnecessária intervenção"), science: count("Ciência"), interventions: count("Intervenção"), averageHours: hours.length ? hours.reduce((sum, value) => sum + value, 0) / hours.length : null, variation: priorTotal ? (items.length / priorTotal - 1) * 100 : null };
   });
 
-  return <div className="page-stack">
+  return <div className="page-stack dashboard-page">
     <div className="page-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedPeriod || "Todos"} onChange={(event) => setSelectedPeriod(event.target.value)}><option value="MesAtual">Mês atual</option><option value="Ultimos30">Últimos 30 dias</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}<option value="Todos">Todos</option></select></label></div></div>
 
     <div className="stats-grid stats-grid-v0107">
