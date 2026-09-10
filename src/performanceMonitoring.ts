@@ -16,6 +16,14 @@ async function logSlowOperation(operation: string, durationMs: number): Promise<
 
 type AsyncOperationName<T> = string | ((result: T) => string);
 
+function schedulePostRenderMetric(operation: string, startedAt: number): void {
+  if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") return;
+  window.requestAnimationFrame(() => {
+    const finished = typeof performance === "undefined" ? Date.now() : performance.now();
+    void logSlowOperation(`${operation}.render`, finished - startedAt);
+  });
+}
+
 export async function measureAsync<T>(operation: AsyncOperationName<T>, task: () => Promise<T>): Promise<T> {
   const started = typeof performance === "undefined" ? Date.now() : performance.now();
   let completed = false;
@@ -29,7 +37,19 @@ export async function measureAsync<T>(operation: AsyncOperationName<T>, task: ()
     const operationName = typeof operation === "function" && completed
       ? operation(result as T)
       : typeof operation === "string" ? operation : "operation.failed";
-    void logSlowOperation(operationName, finished - started);
+    const duration = finished - started;
+    void logSlowOperation(operationName, duration);
+
+    // 0.11.3-RC hardening:
+    // a mudança de status já mede o caminho servidor/API como "movements.status".
+    // Também registra explicitamente esse tempo como ".server" e mede o tempo
+    // entre a conclusão da requisição e o próximo paint, que engloba a
+    // atualização síncrona do estado local + render subsequente.
+    // Não existe reload/fetch posterior no handler atual de status.
+    if (operationName === "movements.status") {
+      void logSlowOperation("movements.status.server", duration);
+      schedulePostRenderMetric("movements.status", finished);
+    }
   }
 }
 
