@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarCheck2, CalendarDays, ClockAlert, DatabaseZap, Files, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { AlertTriangle, CalendarCheck2, CalendarDays, ChartColumnBig, ClockAlert, DatabaseZap, FileStack, Files, FolderKanban, Gauge, ShieldCheck, UserCircle2, Wrench } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { daysUntil, formatDate, formatElapsedTime, localDatePart } from "../date";
 import { inspectDataQuality } from "../dataQuality";
@@ -17,6 +18,10 @@ interface Props {
   canOpenQuality: boolean;
   onOpenProcesses: (preset: ProcessListPreset) => void;
   onOpenQuality: () => void;
+  onOpenQueue?: () => void;
+  onOpenReports?: () => void;
+  onOpenSettings?: () => void;
+  onOpenEfficiency?: () => void;
 }
 
 interface MonthlyPoint {
@@ -46,7 +51,7 @@ function startOfWeek(now: Date): Date {
   return start;
 }
 
-export function Dashboard({ records, currentUserId, currentUserName, canOpenQuality, onOpenProcesses, onOpenQuality }: Props) {
+export function Dashboard({ records, currentUserId, currentUserName, canOpenQuality, onOpenProcesses, onOpenQuality, onOpenQueue, onOpenReports, onOpenSettings, onOpenEfficiency }: Props) {
   const now = new Date();
   const todayLabel = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).format(now);
   const activeRecords = useMemo(() => records.filter((record) => !record.deletedAt && !record.archivedAt), [records]);
@@ -157,8 +162,50 @@ export function Dashboard({ records, currentUserId, currentUserName, canOpenQual
     return { year, total: items.length, sent: yearSent.length, diligence: count("Diligências e medidas processuais"), unnecessary: count("Desnecessária intervenção"), science: count("Ciência"), interventions: count("Intervenção"), averageHours: hours.length ? hours.reduce((sum, value) => sum + value, 0) / hours.length : null, variation: priorTotal ? (items.length / priorTotal - 1) * 100 : null };
   });
 
+  const firstName = currentUserName.trim().split(/\s+/)[0] || "Usuário";
+  const initials = currentUserName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "PR";
+  const homeCards = [
+    { label: "Pendentes", value: pending.length, helper: "na sua atuação", tone: "blue" },
+    { label: "Enviados", value: sentWeek.length, helper: "nesta semana", tone: "green" },
+    { label: "Qualidade", value: `${qualityScore}%`, helper: "dados consistentes", tone: "cyan" },
+  ] as const;
+  const quickActions = [
+    onOpenQueue ? { key: "queue", label: "Minha fila", hint: "Pendências pessoais", icon: FolderKanban, onClick: onOpenQueue } : null,
+    { key: "processes", label: "Processos", hint: "Todos os registros", icon: FileStack, onClick: () => openPreset({ kind: "pending", label: "Pendentes" }) },
+    onOpenReports ? { key: "reports", label: "Relatórios", hint: "Exportações e PDF", icon: ChartColumnBig, onClick: onOpenReports } : null,
+    onOpenEfficiency ? { key: "efficiency", label: "Eficiência", hint: "Indicadores", icon: Gauge, onClick: onOpenEfficiency } : null,
+    canOpenQuality ? { key: "quality", label: "Qualidade", hint: "Diagnósticos", icon: ShieldCheck, onClick: onOpenQuality } : null,
+    onOpenSettings ? { key: "settings", label: "Configurações", hint: "Preferências", icon: Wrench, onClick: onOpenSettings } : null,
+  ].filter((item): item is { key: string; label: string; hint: string; icon: LucideIcon; onClick: () => void } => Boolean(item));
+
   return <div className="page-stack dashboard-page">
-    <div className="page-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedPeriod || "Todos"} onChange={(event) => setSelectedPeriod(event.target.value)}><option value="MesAtual">Mês atual</option><option value="Ultimos30">Últimos 30 dias</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}<option value="Todos">Todos</option></select></label></div></div>
+    <section className="dashboard-mobile-home">
+      <div className="dashboard-mobile-home-head">
+        <div>
+          <img className="dashboard-mobile-brand" src="/brand/logo-horizontal-dark.webp" alt="Práxis" />
+          <p className="eyebrow">{todayLabel}</p>
+          <h1>Olá, {firstName}!</h1>
+          <p>Que bom ter você aqui. Acompanhe sua produção e os prazos da unidade.</p>
+        </div>
+        <div className="dashboard-mobile-avatar" aria-hidden="true"><UserCircle2 size={18} /><span>{initials}</span></div>
+      </div>
+
+      <button type="button" className="dashboard-mobile-highlight" onClick={() => openPreset({ kind: "pending", label: "Pendentes" })}>
+        <div className="dashboard-mobile-highlight-icon"><Gauge size={22} /></div>
+        <div><strong>Mais organização para grandes resultados.</strong><span>Abra sua fila, monitore prazos e acompanhe a produtividade.</span></div>
+      </button>
+
+      <div className="dashboard-mobile-kpis">
+        {homeCards.map((item) => <div key={item.label} className={`dashboard-mobile-kpi ${item.tone}`}><strong>{item.value}</strong><span>{item.label}</span><small>{item.helper}</small></div>)}
+      </div>
+
+      <div className="dashboard-mobile-quick-title"><h2>Acesso rápido</h2><span>{quickActions.length} atalhos</span></div>
+      <div className="dashboard-mobile-quick-grid">
+        {quickActions.map(({ key, label, hint, icon: Icon, onClick }) => <button type="button" key={key} className="dashboard-mobile-quick-card" onClick={() => { hapticFeedback(); onClick(); }}><span className="dashboard-mobile-quick-icon"><Icon size={21} /></span><strong>{label}</strong><small>{hint}</small></button>)}
+      </div>
+    </section>
+
+    <div className="page-heading dashboard-heading"><div><p className="eyebrow">{todayLabel}</p><h1>Visão geral</h1><p>{selectedAssignee === "Todos" ? "Acompanhe a fila, os prazos e a produção de toda a equipe." : "Acompanhe sua fila, seus prazos e sua produção."}</p></div><div className="dashboard-controls"><label className="year-control">Responsável<select value={selectedAssignee} onChange={(event) => setSelectedAssignee(event.target.value)}><option value={currentUserId}>{currentUserName || "Meus dados"}</option><option value="Todos">Todos os usuários</option></select></label><label className="year-control">Período<select value={selectedPeriod || "Todos"} onChange={(event) => setSelectedPeriod(event.target.value)}><option value="MesAtual">Mês atual</option><option value="Ultimos30">Últimos 30 dias</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}<option value="Todos">Todos</option></select></label></div></div>
 
     <div className="stats-grid stats-grid-v0107">
       <StatCard label="Pendentes" value={pending.length} helper="abrir lista pendente" icon={Files} onClick={() => openPreset({ kind: "pending", label: "Pendentes" })} />

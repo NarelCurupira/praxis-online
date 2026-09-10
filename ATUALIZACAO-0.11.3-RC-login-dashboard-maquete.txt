@@ -1,0 +1,17 @@
+PRÁXIS ONLINE 0.11.3-RC — COMPLEMENTO DO CONCEITO MOBILE
+
+Arquivos alterados/novos:
+- src/components/AuthPage.tsx
+- src/components/Dashboard.tsx
+- src/App.tsx
+- src/main.tsx
+- src/v0113-mobile-concept.css
+
+Escopo:
+- a tela de login com biometria passa a seguir o mesmo conceito visual aprovado (fundo azul profundo, card coerente com a marca, biometria em destaque e elementos de segurança);
+- após o login, o dashboard mobile ganha cabeçalho de boas-vindas, card de destaque, KPIs compactos e grade de acesso rápido, aproximando-se da maquete aprovada;
+- os gráficos e indicadores existentes permanecem abaixo, sem alteração de regra de negócio.
+
+Importante:
+- não há SQL;
+- não houve alteração de autenticação, Supabase, Push, MFA, RLS, contingência, sync_queue, central ou processos.

@@ -1,387 +1,168 @@
-/* Práxis 0.11.3-RC — conceito mobile aprovado
-   Camada estritamente visual: não altera autenticação, permissões, dados ou navegação. */
+/* Práxis — refinamentos mobile do conceito aprovado
+   Login com biometria e dashboard pós-login aproximados da maquete visual. */
 
-.praxis-welcome {
-  --welcome-navy: #062c57;
-  --welcome-deep: #031f40;
-  --welcome-blue: #0b5fa7;
-  --welcome-cyan: #22d8de;
-  --welcome-text: #f7fbff;
-  position: fixed;
-  inset: 0;
-  z-index: 100;
+.praxis-auth-shell {
+  position: relative;
   min-height: 100dvh;
   overflow: hidden;
-  display: grid;
-  place-items: center;
-  padding:
-    max(24px, env(safe-area-inset-top))
-    max(22px, env(safe-area-inset-right))
-    max(24px, env(safe-area-inset-bottom))
-    max(22px, env(safe-area-inset-left));
+  padding: max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
   background:
-    radial-gradient(circle at 78% 18%, rgba(20, 111, 184, .26), transparent 29%),
-    linear-gradient(160deg, #07396f 0%, var(--welcome-navy) 42%, var(--welcome-deep) 100%) !important;
-  color: var(--welcome-text);
-  isolation: isolate;
+    radial-gradient(circle at 78% 16%, rgba(20, 111, 184, .25), transparent 28%),
+    linear-gradient(160deg, #07396f 0%, #062c57 42%, #031f40 100%) !important;
 }
 
-html[data-theme="dark"] .praxis-welcome {
-  background:
-    radial-gradient(circle at 78% 18%, rgba(20, 111, 184, .26), transparent 29%),
-    linear-gradient(160deg, #07396f 0%, var(--welcome-navy) 42%, var(--welcome-deep) 100%) !important;
-}
+.praxis-auth-shape { position: absolute; border-radius: 999px; z-index: 0; pointer-events: none; }
+.praxis-auth-shape-a { width: min(108vw, 720px); height: min(46vw, 320px); right: -27%; top: 37%; transform: rotate(-19deg); background: linear-gradient(90deg, rgba(9, 77, 145, .26), rgba(20, 186, 205, .86)); }
+.praxis-auth-shape-b { width: min(92vw, 620px); height: min(45vw, 300px); right: -10%; top: 49%; transform: rotate(-28deg); background: linear-gradient(90deg, rgba(5, 46, 92, .96), rgba(8, 84, 153, .56)); }
+.praxis-auth-shape-c { width: 44vw; height: 44vw; max-width: 360px; max-height: 360px; left: -18%; bottom: -13%; background: linear-gradient(145deg, #0c67ae, #12bace); opacity: .9; }
 
-.praxis-welcome::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: linear-gradient(180deg, rgba(255,255,255,.025), transparent 30%, rgba(0,0,0,.08));
-  pointer-events: none;
-}
-
-.praxis-welcome-shape {
-  position: absolute;
-  z-index: -1;
-  border-radius: 999px;
-  pointer-events: none;
-  filter: saturate(108%);
-}
-
-.praxis-welcome-shape-a {
-  width: min(108vw, 720px);
-  height: min(46vw, 320px);
-  right: -27%;
-  top: 35%;
-  transform: rotate(-19deg);
-  background: linear-gradient(90deg, rgba(9, 77, 145, .28), rgba(20, 186, 205, .9));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
-}
-
-.praxis-welcome-shape-b {
-  width: min(92vw, 620px);
-  height: min(45vw, 300px);
-  right: -10%;
-  top: 47%;
-  transform: rotate(-28deg);
-  background: linear-gradient(90deg, rgba(5, 46, 92, .96), rgba(8, 84, 153, .62));
-  box-shadow: 0 -1px 0 rgba(93, 221, 237, .12);
-}
-
-.praxis-welcome-shape-c {
-  width: 44vw;
-  height: 44vw;
-  max-width: 360px;
-  max-height: 360px;
-  left: -18%;
-  bottom: -13%;
-  background: linear-gradient(145deg, #0c67ae, #12bace);
-  opacity: .9;
-}
-
-.praxis-welcome-content {
-  width: min(100%, 520px);
-  min-height: min(820px, calc(100dvh - 48px));
-  display: flex;
-  flex-direction: column;
+.praxis-auth-card {
   position: relative;
   z-index: 1;
-}
-
-.praxis-welcome-brand {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding-top: clamp(22px, 7vh, 66px);
-}
-
-.praxis-welcome .praxis-welcome-logo {
-  display: block !important;
-  width: min(66%, 310px);
-  height: auto;
-  max-height: none;
-  object-fit: contain;
-  padding: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  mix-blend-mode: normal !important;
-  box-shadow: none !important;
-}
-
-.praxis-welcome-copy {
-  margin-top: auto;
-  padding: 0 8px;
-  max-width: 430px;
-}
-
-.praxis-welcome-copy h1 {
-  margin: 0;
-  color: #fff;
-  font-size: clamp(42px, 11vw, 64px);
-  line-height: .98;
-  letter-spacing: -2.4px;
-  font-weight: 780;
-}
-
-.praxis-welcome-copy h1 em {
-  color: #36d9dd;
-  font-style: normal;
-}
-
-.praxis-welcome-copy p {
-  margin: 20px 0 0;
-  max-width: 390px;
-  color: rgba(232, 245, 255, .88);
-  font-size: clamp(17px, 4.4vw, 21px);
-  line-height: 1.45;
-  letter-spacing: -.15px;
-}
-
-.praxis-welcome-benefits {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin: clamp(28px, 5vh, 48px) 0 26px;
-}
-
-.praxis-welcome-benefits span {
-  min-width: 0;
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-  padding: 0 8px;
-  color: rgba(240, 249, 255, .88);
-  text-align: center;
-  font-size: 12px;
-  line-height: 1.2;
-}
-
-.praxis-welcome-benefits span + span {
-  border-left: 1px solid rgba(170, 221, 239, .18);
-}
-
-.praxis-welcome-benefits svg {
-  width: 25px;
-  height: 25px;
-  color: #29d7e3;
-  stroke-width: 1.9;
-}
-
-.praxis-welcome-benefits b {
-  font-weight: 560;
-}
-
-.praxis-welcome .praxis-welcome-progress {
-  width: 100%;
-  min-height: 62px;
-  margin: 0;
-  padding: 14px 20px;
-  display: flex;
-  flex-direction: row;
-  gap: 11px;
-  color: #0c315b !important;
-  background: rgba(255,255,255,.97);
-  border: 1px solid rgba(255,255,255,.74);
-  border-radius: 999px;
-  box-shadow: 0 14px 35px rgba(0, 20, 50, .25);
-  font-size: 14px;
-  font-weight: 720;
+  width: min(460px, 100%);
+  margin: 0 auto;
+  padding: 28px 22px 24px;
+  border-radius: 30px;
+  background: rgba(7, 35, 68, .74) !important;
+  border: 1px solid rgba(163, 213, 236, .15) !important;
+  box-shadow: 0 22px 70px rgba(0, 16, 42, .28) !important;
+  color: #f2f8fd;
   backdrop-filter: blur(12px);
 }
 
-.praxis-welcome .splash-message {
-  max-width: calc(100% - 34px);
+.praxis-auth-card > .auth-logo { width: min(260px, 74%); max-height: 98px; margin: 0 auto 22px; }
+.praxis-auth-card .eyebrow { color: #55cfe6; }
+.praxis-auth-card h1 { margin: 6px 0 10px; color: #fff !important; font-size: clamp(2rem, 7vw, 2.7rem); line-height: .98; letter-spacing: -1.3px; }
+.praxis-auth-card > p:not(.eyebrow), .praxis-auth-card .praxis-auth-copy > p { color: rgba(229, 242, 249, .86) !important; line-height: 1.55; }
+.praxis-auth-features { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 18px; }
+.praxis-auth-features span { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 999px; background: rgba(255,255,255,.09); color: #ecf8ff; font-size: 12px; border: 1px solid rgba(173, 223, 240, .12); }
+.praxis-auth-features svg { color: #35d7e1; }
+.praxis-biometric-hero {
+  width: 100%; min-height: 60px; justify-content: center; gap: 10px; border: 0 !important;
+  border-radius: 999px !important; background: rgba(255,255,255,.97) !important; color: #0b3159 !important;
+  box-shadow: 0 14px 35px rgba(0, 20, 50, .22);
 }
+.praxis-biometric-helper { display: block; margin: 9px 0 0; color: rgba(216, 235, 246, .78); line-height: 1.45; text-align: center; }
+.praxis-auth-card form, .praxis-auth-form { display: grid; gap: 15px; }
+.praxis-auth-card label { color: #edf7fd !important; }
+.praxis-auth-card .input-with-icon {
+  border: 1px solid rgba(184, 219, 237, .18);
+  background: rgba(255,255,255,.08);
+  border-radius: 14px;
+}
+.praxis-auth-card input { background: transparent !important; color: #fff !important; border-color: transparent !important; }
+.praxis-auth-card input::placeholder { color: rgba(216, 231, 241, .52); }
+.praxis-auth-card .input-with-icon svg { color: #93d8ee; }
+.praxis-auth-card .input-with-icon button { color: #d6edf8; }
+.praxis-auth-card .auth-submit {
+  min-height: 54px; border-radius: 16px; font-size: 15px; font-weight: 760;
+  background: linear-gradient(135deg, #2e78d8, #1f66c6) !important;
+}
+.praxis-auth-notice, .praxis-auth-card .auth-message {
+  margin-top: 10px; border-radius: 14px; background: rgba(255,255,255,.09); color: #f4fbff;
+  border: 1px solid rgba(173, 223, 240, .12);
+}
+.praxis-auth-card .auth-switch, .praxis-auth-card .forgot-password {
+  color: #6ddbed; background: transparent; border: 0; margin-top: 12px;
+}
+.praxis-auth-card .auth-switch:hover, .praxis-auth-card .forgot-password:hover { color: #b8f4fa; }
+.praxis-auth-card > small { margin-top: 20px; padding-top: 16px; border-top-color: rgba(177, 215, 235, .12); color: rgba(212, 231, 242, .72) !important; }
 
-.praxis-welcome .splash-spinner {
-  width: 19px;
-  height: 19px;
-  border: 2px solid #cfe2ee;
-  border-top-color: #0b73b8;
-}
-
-.praxis-welcome-footer {
-  min-height: 74px;
-  padding: 19px 5px 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  color: rgba(193, 222, 239, .7);
-}
-
-.praxis-welcome .splash-version {
-  color: rgba(211, 232, 244, .68) !important;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .2px;
-  text-align: left;
-}
-
-.praxis-welcome-tagline {
-  max-width: 160px;
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: 1.15px;
-  text-transform: uppercase;
-  text-align: right;
-}
+.dashboard-mobile-home { display: none; }
 
 @media (max-width: 700px) {
-  .dashboard-page {
-    gap: 16px;
+  .topbar {
+    height: auto; min-height: 70px; margin: 0 0 16px; padding: 12px 14px !important; border: 0;
+    border-radius: 22px; background: linear-gradient(160deg, #072f5e, #062549) !important; box-shadow: 0 10px 30px rgba(13, 42, 70, .16);
   }
-
-  .dashboard-page > .page-heading {
-    display: grid;
-    gap: 14px;
-    align-items: start;
-    padding: 6px 2px 2px;
+  .topbar .current-user { display: none; }
+  .topbar .icon-button, .topbar .global-font-control button {
+    border-color: rgba(171, 210, 232, .16) !important; background: rgba(255,255,255,.03) !important; color: #edf7fd !important;
+    border-radius: 14px;
   }
+  .topbar .global-font-control { border-color: rgba(171, 210, 232, .16); background: rgba(255,255,255,.03); }
+  .topbar .global-font-control button.active { background: rgba(46, 120, 216, .55) !important; color: #fff !important; }
+  .topbar .new-process-button { min-height: 44px; border-radius: 15px; }
 
-  .dashboard-page > .page-heading h1 {
-    margin: 3px 0 5px;
-    font-size: 30px;
-    line-height: 1.05;
-    letter-spacing: -1px;
-    color: #09294b;
+  .content { padding-top: 0; }
+  .dashboard-mobile-home {
+    display: grid; gap: 14px; margin: -4px 0 12px;
   }
-
-  .dashboard-page > .page-heading .eyebrow {
-    color: #1587ba;
-    font-size: 10px;
-    letter-spacing: 1.1px;
+  .dashboard-mobile-home-head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; align-items: start;
   }
-
-  .dashboard-page > .page-heading p:not(.eyebrow) {
-    color: #70879b;
-    font-size: 13px;
-    line-height: 1.45;
+  .dashboard-mobile-brand { width: 112px; height: auto; margin-bottom: 12px; }
+  .dashboard-mobile-home-head .eyebrow { color: #3186bf; font-size: 10px; letter-spacing: 1.15px; }
+  .dashboard-mobile-home-head h1 { margin: 5px 0 6px; color: #0b284b; font-size: clamp(2rem, 8vw, 2.45rem); line-height: .98; letter-spacing: -1px; }
+  .dashboard-mobile-home-head p:not(.eyebrow) { margin: 0; color: #6b8193; line-height: 1.45; }
+  .dashboard-mobile-avatar {
+    width: 48px; height: 48px; display: grid; place-items: center; gap: 1px; padding-top: 4px;
+    border-radius: 50%; color: #fff; background: linear-gradient(145deg, #103b76, #0a2f5f); box-shadow: 0 8px 22px rgba(14, 57, 90, .18);
   }
-
-  .dashboard-page .dashboard-controls {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 9px;
+  .dashboard-mobile-avatar svg { width: 14px; height: 14px; }
+  .dashboard-mobile-avatar span { font-size: 10px; font-weight: 800; letter-spacing: .4px; }
+  .dashboard-mobile-highlight {
+    display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 16px;
+    border: 0; border-radius: 20px; text-align: left; color: #fff; background: linear-gradient(135deg, #1386c5, #1d5fbe 78%);
+    box-shadow: 0 16px 34px rgba(29, 95, 190, .2);
   }
-
-  .dashboard-page .year-control {
-    min-width: 0;
+  .dashboard-mobile-highlight-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; background: rgba(255,255,255,.16); }
+  .dashboard-mobile-highlight strong { display: block; font-size: 17px; line-height: 1.15; }
+  .dashboard-mobile-highlight span { display: block; margin-top: 5px; color: rgba(237, 247, 253, .88); font-size: 12px; line-height: 1.45; }
+  .dashboard-mobile-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .dashboard-mobile-kpi {
+    min-height: 108px; padding: 15px 12px; border-radius: 18px; background: #fff; border: 1px solid #e5edf3;
+    box-shadow: 0 8px 22px rgba(20, 55, 87, .06); display: grid; align-content: start;
   }
+  .dashboard-mobile-kpi strong { color: #0b284b; font-size: 28px; line-height: 1; }
+  .dashboard-mobile-kpi span { margin-top: 8px; color: #234a72; font-size: 13px; font-weight: 700; }
+  .dashboard-mobile-kpi small { margin-top: 3px; color: #7b91a4; font-size: 11px; line-height: 1.35; }
+  .dashboard-mobile-kpi.cyan strong { color: #0d8ca6; }
+  .dashboard-mobile-kpi.green strong { color: #127851; }
+  .dashboard-mobile-quick-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 2px; }
+  .dashboard-mobile-quick-title h2 { margin: 0; color: #0b284b; font-size: 18px; }
+  .dashboard-mobile-quick-title span { color: #507092; font-size: 12px; font-weight: 700; }
+  .dashboard-mobile-quick-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .dashboard-mobile-quick-card {
+    min-height: 122px; padding: 14px 10px; display: grid; justify-items: center; align-content: start; gap: 9px;
+    border-radius: 18px; border: 1px solid #e5edf3; background: #fff; text-align: center;
+    box-shadow: 0 8px 22px rgba(20, 55, 87, .06); color: #10385f;
+  }
+  .dashboard-mobile-quick-icon {
+    width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px;
+    background: linear-gradient(145deg, #e8f7fb, #edf4fb); color: #157eb8;
+  }
+  .dashboard-mobile-quick-card strong { font-size: 13px; line-height: 1.15; }
+  .dashboard-mobile-quick-card small { color: #7c91a4; font-size: 10px; line-height: 1.35; }
 
+  .dashboard-heading > div:first-child { display: none; }
+  .dashboard-page .dashboard-controls { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dashboard-page .year-control { min-width: 0; }
   .dashboard-page .year-control select {
-    min-width: 0;
-    width: 100%;
-    min-height: 44px;
-    border-radius: 13px;
-    border-color: #dce8f0;
-    background: #fff;
-    box-shadow: 0 5px 18px rgba(24, 73, 110, .055);
+    min-height: 46px; border-radius: 14px; border-color: #dce8f0; background: #fff; box-shadow: 0 5px 18px rgba(24, 73, 110, .055);
   }
+  .dashboard-page .stats-grid-v0107 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dashboard-page .stat-card { min-height: 132px; padding: 15px 13px; display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 9px 10px; border: 1px solid #e5edf3; border-radius: 17px; box-shadow: 0 8px 24px rgba(23, 62, 91, .07); }
+  .dashboard-page .stat-icon { width: 42px; height: 42px; border-radius: 13px; background: linear-gradient(145deg, #e7f7fb, #eef5fb); color: #087eb8; }
+  .dashboard-page .stat-card strong { margin: 4px 0 2px; color: #08294c; font-size: 27px; letter-spacing: -.7px; }
+  .dashboard-page .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .dashboard-page .panel { border-radius: 18px; border-color: #e5edf3; box-shadow: 0 9px 26px rgba(23, 62, 91, .065); }
+  .dashboard-page .panel-title h2, .dashboard-page .action-panel h2 { color: #09294b; font-size: 17px; }
+  .dashboard-page .chart-box { height: 220px; }
+}
 
-  .dashboard-page .stats-grid-v0107 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .dashboard-page .stat-card {
-    min-height: 132px;
-    padding: 15px 13px;
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
-    align-items: start;
-    gap: 9px 10px;
-    border: 1px solid #e5edf3;
-    border-radius: 17px;
-    box-shadow: 0 8px 24px rgba(23, 62, 91, .07);
-  }
-
-  .dashboard-page .stat-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 13px;
-    background: linear-gradient(145deg, #e7f7fb, #eef5fb);
-    color: #087eb8;
-  }
-
-  .dashboard-page .stat-card > div:last-child {
-    min-width: 0;
-  }
-
-  .dashboard-page .stat-card span,
-  .dashboard-page .stat-card small {
-    font-size: 10px;
-  }
-
-  .dashboard-page .stat-card strong {
-    margin: 4px 0 2px;
-    color: #08294c;
-    font-size: 27px;
-    letter-spacing: -.7px;
-  }
-
-  .dashboard-page .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .dashboard-page .panel {
-    border-radius: 18px;
-    border-color: #e5edf3;
-    box-shadow: 0 9px 26px rgba(23, 62, 91, .065);
-  }
-
-  .dashboard-page .panel-title h2,
-  .dashboard-page .action-panel h2 {
-    color: #09294b;
-    font-size: 17px;
-  }
-
-  .dashboard-page .chart-box {
-    height: 220px;
-  }
+@media (max-width: 520px) {
+  .dashboard-mobile-kpis, .dashboard-mobile-quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 390px) {
-  .praxis-welcome-copy h1 { font-size: 40px; }
-  .praxis-welcome-copy p { font-size: 16px; }
-  .praxis-welcome-benefits { margin-top: 24px; }
-  .praxis-welcome .praxis-welcome-progress { min-height: 58px; }
+  .praxis-auth-card { padding: 24px 18px 22px; }
+  .praxis-auth-card > .auth-logo { width: min(228px, 82%); }
+  .dashboard-mobile-home-head h1 { font-size: 30px; }
+  .dashboard-mobile-kpis, .dashboard-mobile-quick-grid, .dashboard-page .stats-grid-v0107 { grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-height: 700px) and (orientation: portrait) {
-  .praxis-welcome-brand { padding-top: 10px; }
-  .praxis-welcome-copy { margin-top: auto; }
-  .praxis-welcome-copy h1 { font-size: clamp(34px, 8vh, 48px); }
-  .praxis-welcome-copy p { margin-top: 12px; font-size: 15px; }
-  .praxis-welcome-benefits { margin: 20px 0 18px; }
-  .praxis-welcome-footer { min-height: 48px; padding-top: 12px; }
+html[data-theme="dark"] .praxis-auth-shell {
+  background: radial-gradient(circle at 78% 16%, rgba(20, 111, 184, .25), transparent 28%), linear-gradient(160deg, #07396f 0%, #062c57 42%, #031f40 100%) !important;
 }
-
-@media (max-height: 560px) and (orientation: landscape) {
-  .praxis-welcome-content {
-    width: min(900px, 94vw);
-    min-height: auto;
-    display: grid;
-    grid-template-columns: .8fr 1.2fr;
-    grid-template-areas:
-      "brand copy"
-      "brand benefits"
-      "brand progress"
-      "brand footer";
-    gap: 8px 28px;
-    align-items: center;
-  }
-  .praxis-welcome-brand { grid-area: brand; padding: 0; }
-  .praxis-welcome-copy { grid-area: copy; margin: 0; padding: 0; }
-  .praxis-welcome-benefits { grid-area: benefits; margin: 8px 0; }
-  .praxis-welcome-progress { grid-area: progress; }
-  .praxis-welcome-footer { grid-area: footer; min-height: 0; padding-top: 8px; }
-  .praxis-welcome .praxis-welcome-logo { width: min(90%, 290px); }
-  .praxis-welcome-copy h1 { font-size: 40px; }
-  .praxis-welcome-copy p { margin-top: 10px; font-size: 14px; }
-}
+html[data-theme="dark"] .praxis-auth-card { background: rgba(7, 35, 68, .76) !important; }
