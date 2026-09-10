@@ -15,6 +15,8 @@ interface Props {
   onOpenNotification: (notification: PraxisNotification) => Promise<void> | void;
 }
 
+const CENTRAL_RETRY_DELAYS_MS = [3000, 6000, 12000, 15000];
+
 function when(value: string): string {
   const date = new Date(value);
   const now = new Date();
@@ -24,25 +26,70 @@ function when(value: string): string {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
+function isTransientCentralFailure(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLocaleLowerCase("pt-BR");
+  return /failed to fetch|fetch failed|network|load failed|timeout|timed out|connection|gateway|\b521\b|\b502\b|\b503\b|\b504\b/.test(message);
+}
+
 export function InformationCenter({ userId, online, onOpenNotification }: Props) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<PraxisNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const mounted = useRef(true);
+  const retryTimer = useRef<number | null>(null);
+  const retryAttempt = useRef(0);
+  const refreshInFlight = useRef(false);
   const unread = useMemo(() => items.filter((item) => !item.readAt).length, [items]);
 
-  async function refresh() {
-    if (!online) return;
+  function clearRetry() {
+    if (retryTimer.current != null) {
+      window.clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
+  }
+
+  function scheduleRetry() {
+    clearRetry();
+    if (!mounted.current || !navigator.onLine) return;
+    const attempt = Math.min(retryAttempt.current, CENTRAL_RETRY_DELAYS_MS.length - 1);
+    const delay = CENTRAL_RETRY_DELAYS_MS[attempt];
+    retryAttempt.current += 1;
+    retryTimer.current = window.setTimeout(() => {
+      retryTimer.current = null;
+      if (mounted.current && navigator.onLine) void refresh(true);
+    }, delay);
+  }
+
+  async function refresh(isAutomaticRetry = false) {
+    if (!online || refreshInFlight.current) return;
+    refreshInFlight.current = true;
     setLoading(true);
+    if (!isAutomaticRetry) {
+      clearRetry();
+      retryAttempt.current = 0;
+    }
     setError("");
     try {
       const next = await listNotifications();
-      if (mounted.current) setItems(next);
+      if (mounted.current) {
+        setItems(next);
+        setError("");
+        retryAttempt.current = 0;
+        clearRetry();
+      }
       void pokePushDelivery().catch(() => undefined);
     } catch (err) {
-      if (mounted.current) setError(err instanceof Error ? err.message : String(err));
+      if (mounted.current) {
+        if (isTransientCentralFailure(err)) {
+          setError("Central temporariamente indisponível. Tentando reconectar…");
+          scheduleRetry();
+        } else {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      }
     } finally {
+      refreshInFlight.current = false;
       if (mounted.current) setLoading(false);
     }
   }
@@ -50,7 +97,14 @@ export function InformationCenter({ userId, online, onOpenNotification }: Props)
   useEffect(() => {
     mounted.current = true;
     if (online) void refresh();
-    return () => { mounted.current = false; };
+    else {
+      clearRetry();
+      retryAttempt.current = 0;
+    }
+    return () => {
+      mounted.current = false;
+      clearRetry();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, online]);
 
@@ -72,15 +126,29 @@ export function InformationCenter({ userId, online, onOpenNotification }: Props)
       await onOpenNotification(item);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (isTransientCentralFailure(err)) {
+        setError("Central temporariamente indisponível. Tentando reconectar…");
+        scheduleRetry();
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     }
   }
 
   async function readAll() {
     if (!online || !unread) return;
-    await markAllNotificationsRead();
-    const timestamp = new Date().toISOString();
-    setItems((current) => current.map((item) => item.readAt ? item : { ...item, readAt: timestamp }));
+    try {
+      await markAllNotificationsRead();
+      const timestamp = new Date().toISOString();
+      setItems((current) => current.map((item) => item.readAt ? item : { ...item, readAt: timestamp }));
+    } catch (err) {
+      if (isTransientCentralFailure(err)) {
+        setError("Central temporariamente indisponível. Tentando reconectar…");
+        scheduleRetry();
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    }
   }
 
   return <div className="information-center">
@@ -108,7 +176,7 @@ export function InformationCenter({ userId, online, onOpenNotification }: Props)
         {!online && <div className="information-center-offline"><CircleAlert size={17} /><span>Sem conexão: a Central não altera nem substitui dados da contingência. As informações serão atualizadas na reconexão.</span></div>}
         {error && <div className="information-center-error">{error}</div>}
         <div className="information-center-list">
-          {!items.length && !loading && <div className="information-center-empty"><Bell size={28} /><strong>Nenhuma informação nova</strong><span>Atribuições, transferências e atualizações relevantes aparecerão aqui.</span></div>}
+          {!items.length && !loading && !error && <div className="information-center-empty"><Bell size={28} /><strong>Nenhuma informação nova</strong><span>Atribuições, transferências e atualizações relevantes aparecerão aqui.</span></div>}
           {items.map((item) => <button type="button" key={item.id} className={`information-item severity-${item.severity} ${item.readAt ? "read" : "unread"}`} onClick={() => void read(item)}>
             <span className="information-item-dot" />
             <span className="information-item-main">

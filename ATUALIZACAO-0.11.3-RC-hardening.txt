@@ -1,0 +1,24 @@
+PRÁXIS ONLINE 0.11.3-RC — HARDENING DE TELEMETRIA E CENTRAL
+
+Arquivos alterados:
+- src/performanceMonitoring.ts
+- src/components/InformationCenter.tsx
+
+Alterações:
+1. movements.status
+   - mantém a métrica existente movements.status;
+   - adiciona movements.status.server com o mesmo tempo do caminho API/servidor;
+   - adiciona movements.status.render, medindo da conclusão da requisição até o próximo paint;
+   - o handler atual não executa reload/fetch posterior após status, portanto não foi criada métrica fictícia para essa etapa.
+
+2. Central de Informações
+   - Failed to fetch, 521, 502, 503, 504, timeout e falhas de conexão passam a exibir:
+     “Central temporariamente indisponível. Tentando reconectar…”
+   - retry automático com 3s, 6s, 12s e depois 15s;
+   - evita requisições concorrentes;
+   - cancela retry ao ficar offline ou desmontar o componente;
+   - sucesso zera o backoff;
+   - erros não transitórios continuam exibindo a mensagem técnica retornada.
+
+Banco/RLS/SQL:
+- nenhuma alteração.
