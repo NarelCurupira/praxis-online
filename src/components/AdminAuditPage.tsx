@@ -80,8 +80,12 @@ export function AdminAuditPage() {
     setLoading(true); setMessage("");
     try {
       const archived = await archivePerformanceMetrics();
-      setPerformanceItems([]);
-      setDiagnostics((current) => current ? { ...current, slowOperations: 0, archivedSlowOperations: current.archivedSlowOperations + archived } : current);
+      const [nextPerformance, nextDiagnostics] = await Promise.all([
+        listPerformanceMetrics(500),
+        getSystemDiagnostics(),
+      ]);
+      setPerformanceItems(nextPerformance);
+      setDiagnostics(nextDiagnostics);
       setMessage(`${archived} operação(ões) arquivada(s). Os registros permanecem no banco e apenas deixam de aparecer na lista atual.`);
       setShowArchiveConfirm(false);
     } catch (error) { setMessage(`Não foi possível arquivar: ${String(error)}`); }
