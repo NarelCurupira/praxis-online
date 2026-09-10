@@ -1,0 +1,7 @@
+PRÁXIS ONLINE 0.11.3-RC — CORREÇÃO DO ARQUIVAMENTO DO DIAGNÓSTICO
+
+- AdminAuditPage.tsx passa a recarregar lista e diagnóstico do Supabase após arquivar.
+- SQL limita list_performance_metrics_v0102 à Procuradoria atualmente ativa.
+- Nenhuma alteração em RLS de processos, Push, contingência ou demais RPCs.
+
+A correção previamente reservada da Central ("Central temporariamente indisponível. Tentando reconectar…" + retry automático) já está incorporada no main atual, portanto não foi duplicada neste pacote.
