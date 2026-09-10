@@ -1,0 +1,21 @@
+PRÁXIS ONLINE 0.11.3-RC — PACOTE CORRIGIDO (LOGIN + HOME MOBILE)
+
+Este pacote substitui o pacote anterior da PR 57.
+
+IMPORTANTE:
+- NÃO contém src/App.tsx.
+- NÃO contém src/main.tsx.
+- Portanto preserva integralmente contingência/offline, troca de Procuradoria, Central de Informações, Push, transferências, carregamentos detalhados e MFA atuais.
+
+Arquivos:
+- src/components/AuthPage.tsx
+- src/components/Dashboard.tsx
+- src/v0113-mobile-concept.css
+
+Mudanças:
+- login/biometria no mesmo sistema visual da abertura aprovada;
+- dashboard mobile com saudação, card de destaque, KPIs e atalhos reais;
+- atalhos usam apenas a API já existente do Dashboard, sem exigir mudança em App.tsx;
+- CSS mantém a abertura já aprovada e acrescenta login/home.
+
+Não há SQL.
