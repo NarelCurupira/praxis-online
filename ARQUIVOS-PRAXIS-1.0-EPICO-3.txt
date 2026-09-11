@@ -1,7 +1,0 @@
-src/components/SplashScreen.tsx
-src/components/AuthPage.tsx
-src/components/MfaGate.tsx
-src/components/ResetPasswordPage.tsx
-src/main.tsx
-src/praxis1-entry.css
-ATUALIZACAO-PRAXIS-1.0-EPICO-3.txt

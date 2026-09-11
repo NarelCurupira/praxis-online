@@ -1,4 +1,0 @@
-src/components/Dashboard.tsx
-src/main.tsx
-src/praxis1-home-utility.css
-ATUALIZACAO-PRAXIS-1.0-HOME-ATALHOS.txt
