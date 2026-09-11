@@ -3,7 +3,7 @@
 ## Ordem recomendada
 
 1. Faça backup do banco e do repositório.
-2. No **SQL Editor do Supabase**, execute integralmente `EXECUTAR-NO-SUPABASE-0.10.8.0.sql`.
+2. No **SQL Editor do Supabase**, execute integralmente `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.8.0.sql`.
 3. Confirme que a consulta final retorna a Procuradoria atual e o respectivo vínculo.
 4. Substitua no GitHub os arquivos do pacote da 0.10.8.0, preservando as pastas.
 5. Se a função `admin-manage-user` é implantada manualmente no seu projeto, redeploy a Edge Function a partir de `supabase/functions/admin-manage-user/index.ts`; a 0.10.8.0 passa a aceitar também o perfil **Estagiário** no cadastro de novas contas.

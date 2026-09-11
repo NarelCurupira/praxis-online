@@ -2,7 +2,7 @@
 
 ## Ordem obrigatória
 
-1. Execute integralmente `EXECUTAR-NO-SUPABASE-0.10.7.6.sql` no SQL Editor do Supabase.
+1. Execute integralmente `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.7.6.sql` no SQL Editor do Supabase.
 2. Extraia o ZIP na raiz do repositório, autorizando a substituição dos arquivos.
 3. Envie as alterações ao GitHub e aguarde a publicação.
 4. Confirme a versão 0.10.7.6 na aba **Sobre**.
