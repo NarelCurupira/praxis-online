@@ -1,0 +1,3 @@
+src/main.tsx
+src/praxis1-secondary.css
+ATUALIZACAO-PRAXIS-1.0-EPICO-6.txt

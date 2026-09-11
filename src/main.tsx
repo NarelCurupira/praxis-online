@@ -18,6 +18,7 @@ import "./praxis1-shell.css";
 import "./praxis1-entry.css";
 import "./praxis1-home.css";
 import "./praxis1-workflow.css";
+import "./praxis1-secondary.css";
 
 const App = lazy(() => import("./App"));
 
