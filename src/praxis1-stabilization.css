@@ -1,0 +1,422 @@
+/* ============================================================
+   PRÁXIS 1.0 — ESTABILIZAÇÃO PÓS-ÉPICO 7
+   Correções a partir da validação visual desktop/mobile
+   ============================================================ */
+
+/* 1. Logos: cada variante no tema correto */
+.praxis1-brand-logo-light,
+.p1-home-logo-light {
+  display: block !important;
+}
+
+.praxis1-brand-logo-dark,
+.p1-home-logo-dark {
+  display: none !important;
+}
+
+html[data-theme="dark"] .praxis1-brand-logo-light,
+html[data-theme="dark"] .p1-home-logo-light {
+  display: none !important;
+}
+
+html[data-theme="dark"] .praxis1-brand-logo-dark,
+html[data-theme="dark"] .p1-home-logo-dark {
+  display: block !important;
+}
+
+.p1-home-logo-wrap {
+  display: block;
+  width: 132px;
+  flex: 0 0 132px;
+}
+
+.p1-home-logo-wrap .p1-home-logo {
+  width: 100%;
+  margin: 2px 0 0;
+}
+
+.praxis1-brand-mark {
+  display: none;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.app.sidebar-collapsed .praxis1-brand-logo,
+.app.sidebar-collapsed .praxis1-brand-symbol {
+  display: none !important;
+}
+
+.app.sidebar-collapsed .praxis1-brand-mark {
+  display: block !important;
+  margin: 0 auto;
+}
+
+/* 2 e 6. Recharts: desfaz a regra global que colapsava os SVGs dos gráficos */
+svg {
+  max-width: none;
+}
+
+.chart-box {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-box > .recharts-responsive-container,
+.annual-chart > .recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.recharts-wrapper,
+.recharts-surface {
+  max-width: none !important;
+}
+
+.movement-chart-v0107 .chart-box {
+  height: 290px;
+  min-height: 290px;
+}
+
+.pie-box {
+  height: 220px;
+  min-height: 220px;
+}
+
+.efficiency-flow-chart {
+  height: 330px;
+  min-height: 330px;
+}
+
+.efficiency-evolution-chart {
+  height: 300px;
+  min-height: 300px;
+}
+
+.efficiency-load-grid .chart-box,
+.composition-chart {
+  height: 310px;
+  min-height: 310px;
+}
+
+/* 3. Avatar MA passa a ser controle real */
+button.p1-home-avatar {
+  border: 0;
+  cursor: pointer;
+}
+
+button.p1-home-avatar:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--p1-shadow-2);
+}
+
+button.p1-home-avatar:focus-visible {
+  outline: 2px solid var(--p1-blue-500);
+  outline-offset: 3px;
+}
+
+/* 4. Tipografia: volta a um tamanho confortável sem perder densidade */
+html[data-font-size="small"] {
+  font-size: 15px;
+}
+
+html[data-font-size="normal"] {
+  font-size: 16px;
+}
+
+html[data-font-size="large"] {
+  font-size: 18px;
+}
+
+.sidebar .nav-item {
+  font-size: 14px;
+}
+
+.sidebar-foot.praxis1-sidebar-foot span {
+  font-size: 11px;
+}
+
+.current-user {
+  font-size: 13px;
+}
+
+.page-stack > .page-heading:not(.dashboard-heading) p,
+.page-stack .panel-title p,
+.action-panel p {
+  font-size: 13px;
+}
+
+.year-control,
+.filter-field,
+.report-period-grid label,
+.report-filter-grid label,
+.import-rules-grid label,
+.managed-member-form-v091 label,
+.member-editor-grid label,
+.settings-grid label,
+.technical-settings-grid label {
+  font-size: 11px;
+}
+
+.report-mode strong,
+.efficiency-context strong,
+.quality-description strong,
+.quality-process strong,
+.team-row .grow strong,
+.configuration-export-actions strong,
+.device-access-actions strong,
+.push-device-row strong,
+.audit-row strong,
+.performance-list strong {
+  font-size: 12px;
+}
+
+.report-mode small,
+.report-preview dt,
+.report-preview dd,
+.efficiency-context span,
+.quality-description p,
+.quality-process small,
+.team-row .grow span,
+.team-row .grow small,
+.configuration-export-actions span,
+.device-access-actions small,
+.push-device-row small,
+.audit-row small,
+.performance-list span,
+.performance-list small {
+  font-size: 11px;
+}
+
+.quality-severity,
+.role-badge,
+.workspace-state-badge,
+.batch-status,
+.preview-status {
+  font-size: 10px;
+}
+
+.admin-tabs button,
+.settings-subnav button,
+.metric-selector button,
+.table-quick-views button {
+  font-size: 11px;
+}
+
+/* 5. Logo da tela Sobre centralizado */
+.about-card .about-logo {
+  margin: 0 auto 18px !important;
+}
+
+/* 7. Central mobile: sheet estável + evita hover persistente do Safari */
+@media (max-width: 700px) {
+  .information-center-panel {
+    top: auto !important;
+    right: 0 !important;
+    bottom: calc(var(--p1-bottom-nav-height) + var(--praxis-safe-bottom, 0px)) !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-height: min(72dvh, 640px) !important;
+    border-radius: 24px 24px 0 0 !important;
+    z-index: 96 !important;
+  }
+
+  .information-center-panel > header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    min-height: 72px;
+    padding: 12px 14px;
+  }
+
+  .information-center-header-actions .icon-button {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .information-center-backdrop {
+    z-index: 95 !important;
+  }
+
+  .mobile-bottom-nav button:hover {
+    color: var(--p1-text-secondary);
+    background: transparent;
+  }
+
+  .mobile-bottom-nav button.active:hover {
+    color: var(--p1-blue-600);
+    background: var(--p1-info-soft);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-bottom-nav button:hover {
+    color: var(--p1-blue-600);
+    background: var(--p1-info-soft);
+  }
+}
+
+/* 8. Perfil/Menu: sheet próprio; não redireciona mais para Configurações */
+.p1-profile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 97;
+  border: 0;
+  padding: 0;
+  background: rgba(4, 18, 36, .42);
+  backdrop-filter: blur(4px);
+}
+
+.p1-profile-menu {
+  position: fixed;
+  z-index: 98;
+  right: 18px;
+  bottom: 18px;
+  width: min(390px, calc(100vw - 36px));
+  overflow: hidden;
+  border: 1px solid var(--p1-border);
+  border-radius: 22px;
+  color: var(--p1-text);
+  background: var(--p1-surface);
+  box-shadow: var(--p1-shadow-3);
+}
+
+.p1-profile-menu > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 14px;
+  border-bottom: 1px solid var(--p1-divider);
+}
+
+.p1-profile-menu > header > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+}
+
+.p1-profile-menu > header strong {
+  color: var(--p1-text);
+  font-size: 14px;
+}
+
+.p1-profile-menu > header small {
+  color: var(--p1-text-secondary);
+  font-size: 11px;
+}
+
+.p1-profile-menu-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: var(--p1-blue-600);
+  background: var(--p1-info-soft);
+}
+
+.p1-profile-menu-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.p1-profile-menu-actions {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+}
+
+.p1-profile-menu-actions > button {
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 13px;
+  color: var(--p1-text);
+  text-align: left;
+  background: transparent;
+}
+
+.p1-profile-menu-actions > button:hover {
+  background: var(--p1-surface-soft);
+}
+
+.p1-profile-menu-actions > button > svg {
+  color: var(--p1-blue-500);
+}
+
+.p1-profile-menu-actions > button > span {
+  display: grid;
+  gap: 2px;
+}
+
+.p1-profile-menu-actions > button strong {
+  font-size: 12px;
+}
+
+.p1-profile-menu-actions > button small {
+  color: var(--p1-text-secondary);
+  font-size: 10px;
+}
+
+.p1-profile-menu-actions > button.danger,
+.p1-profile-menu-actions > button.danger > svg {
+  color: var(--p1-danger);
+}
+
+/* 9. Mobile: Novo processo não disputa espaço com Sair.
+   Sair passa a existir no Perfil/Menu. */
+@media (max-width: 900px) {
+  .topbar > button.icon-button[title="Sair"] {
+    display: none !important;
+  }
+
+  .topbar .mobile-menu {
+    order: 1;
+  }
+
+  .topbar .global-font-control {
+    order: 2;
+  }
+
+  .topbar > button.icon-button[title="Usar modo claro"],
+  .topbar > button.icon-button[title="Usar modo noturno"] {
+    order: 3;
+  }
+
+  .topbar .new-process-button {
+    order: 4;
+    margin-left: 0 !important;
+  }
+
+  .topbar .workspace-switcher,
+  .topbar .workspace-indicator {
+    order: 20;
+  }
+
+  .p1-profile-menu {
+    right: 0;
+    bottom: calc(var(--p1-bottom-nav-height) + var(--praxis-safe-bottom, 0px));
+    left: 0;
+    width: 100%;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 24px 24px 0 0;
+    padding-bottom: max(8px, var(--praxis-safe-bottom, 0px));
+  }
+
+  .p1-home-logo-wrap {
+    width: 126px;
+    flex-basis: 126px;
+  }
+}

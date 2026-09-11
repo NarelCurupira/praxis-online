@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, LogOut, Settings, ShieldCheck, Trash2, UserRound, Users, X } from "lucide-react";
 import type { AccessCapabilities } from "../access";
 import type { Page } from "../types";
 
@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function Sidebar({ page, access, onChange }: Props) {
-  const profilePage: Page = access.visiblePages.has("settings") ? "settings" : "about";
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const navigateFromProduct = (event: Event) => {
@@ -38,16 +38,37 @@ export function Sidebar({ page, access, onChange }: Props) {
     return () => window.removeEventListener("praxis:navigate", navigateFromProduct);
   }, [access.visiblePages, onChange]);
 
+  useEffect(() => {
+    const openProfileMenu = () => setProfileOpen(true);
+    window.addEventListener("praxis:open-profile-menu", openProfileMenu);
+    return () => window.removeEventListener("praxis:open-profile-menu", openProfileMenu);
+  }, []);
+
   function openCentral() {
+    setProfileOpen(false);
     window.dispatchEvent(new CustomEvent("praxis:open-information-center"));
+  }
+
+  function openPageFromProfile(target: Page) {
+    if (!access.visiblePages.has(target)) return;
+    setProfileOpen(false);
+    onChange(target);
+  }
+
+  function logoutFromProfile() {
+    setProfileOpen(false);
+    const logoutButton = document.querySelector<HTMLButtonElement>('.topbar button[title="Sair"]');
+    logoutButton?.click();
   }
 
   return <>
     <aside className="sidebar">
       <div className="brand praxis1-brand">
-        <img className="praxis1-brand-logo" src="/brand/praxis-1-logo-dark.webp" alt="Práxis" />
-        <img className="brand-symbol brand-symbol-light praxis1-brand-symbol" src="/brand/symbol-light.webp" alt="Práxis" />
-        <img className="brand-symbol brand-symbol-dark praxis1-brand-symbol" src="/brand/symbol-dark.webp" alt="Práxis" />
+        <img className="praxis1-brand-logo praxis1-brand-logo-light" src="/brand/praxis-1-logo-light.webp" alt="Práxis" />
+        <img className="praxis1-brand-logo praxis1-brand-logo-dark" src="/brand/praxis-1-logo-dark.webp" alt="Práxis" />
+        <img className="praxis1-brand-mark" src="/brand/praxis-1-mark.webp" alt="Práxis" />
+        <img className="brand-symbol brand-symbol-light praxis1-brand-symbol" src="/brand/symbol-light.webp" alt="" aria-hidden="true" />
+        <img className="brand-symbol brand-symbol-dark praxis1-brand-symbol" src="/brand/symbol-dark.webp" alt="" aria-hidden="true" />
       </div>
 
       <nav className="sidebar-nav">
@@ -94,9 +115,44 @@ export function Sidebar({ page, access, onChange }: Props) {
         <Bell /><span>Central</span>
       </button>
 
-      <button type="button" className={page === profilePage ? "active" : ""} onClick={() => onChange(profilePage)} aria-label="Perfil e preferências">
+      <button type="button" className={profileOpen ? "active" : ""} onClick={() => setProfileOpen(true)} aria-label="Perfil e menu">
         <UserRound /><span>Perfil</span>
       </button>
     </nav>
+
+    {profileOpen && <>
+      <button
+        type="button"
+        className="p1-profile-backdrop"
+        aria-label="Fechar perfil e menu"
+        onClick={() => setProfileOpen(false)}
+      />
+      <section className="p1-profile-menu" aria-label="Perfil e menu">
+        <header>
+          <span className="p1-profile-menu-icon"><UserRound /></span>
+          <span>
+            <strong>Perfil e menu</strong>
+            <small>Preferências, informações e sessão</small>
+          </span>
+          <button type="button" className="icon-button" aria-label="Fechar" onClick={() => setProfileOpen(false)}><X /></button>
+        </header>
+
+        <div className="p1-profile-menu-actions">
+          {access.visiblePages.has("settings") && (
+            <button type="button" onClick={() => openPageFromProfile("settings")}>
+              <Settings /><span><strong>Configurações</strong><small>Preferências e ajustes disponíveis</small></span>
+            </button>
+          )}
+          {access.visiblePages.has("about") && (
+            <button type="button" onClick={() => openPageFromProfile("about")}>
+              <Info /><span><strong>Sobre o Práxis</strong><small>Versão e informações do aplicativo</small></span>
+            </button>
+          )}
+          <button type="button" className="danger" onClick={logoutFromProfile}>
+            <LogOut /><span><strong>Sair</strong><small>Encerrar esta sessão</small></span>
+          </button>
+        </div>
+      </section>
+    </>}
   </>;
 }
