@@ -1,44 +1,41 @@
 # Práxis Online
 
-Versão atual: **0.11.3-RC**, conectada ao PostgreSQL do Supabase e com contingência local de leitura, gravação operacional e resolução de conflitos concorrentes.
+Versão atual: **1.0.0**, conectada ao PostgreSQL do Supabase e consolidada como aplicação web/PWA estável, com contingência local, múltiplas Procuradorias, governança de acesso, auditoria, relatórios, Central de Informações e Web Push.
 
-Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local com leitura e fila de gravações operacionais.
+Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local com leitura, gravação operacional e resolução de conflitos concorrentes.
 
+## Versão 1.0.0
 
-## Contingência 0.11.3-RC
+- Consolida como versão estável as funcionalidades desenvolvidas na série 0.x e nas versões 0.11.x-RC.
+- Mantém contingência local com snapshot operacional, fila de gravações no IndexedDB e resolução de conflitos por comparação em três vias.
+- Inclui Central de Informações persistente por usuário e Procuradoria, com leitura/não leitura e atualização em tempo real.
+- Inclui Web Push para PWA instalado, com preferências configuráveis por usuário.
+- Mantém suporte a múltiplas Procuradorias, com perfis, permissões e isolamento por workspace.
+- Consolida auditoria administrativa, histórico processual, diagnóstico, telemetria técnica, relatórios e controles de qualidade.
+- Consolida `supabase/migrations/` como fonte única das alterações versionadas do banco.
+- Reorganiza a documentação histórica em `docs/` e remove scripts SQL e artefatos redundantes do repositório.
 
-- Mantém a fila local da 0.11.1-RC e acrescenta uma base de comparação por alteração pendente.
-- Na reconexão, o Práxis faz comparação em três vias entre o valor visto quando a alteração foi criada, o valor atual do servidor e o valor desejado localmente.
-- Alterações independentes ou que já convergiram para o mesmo valor são sincronizadas automaticamente, sem criar conflito artificial.
-- Quando o mesmo campo foi modificado de forma diferente no servidor, a fila é pausada naquele ponto e mostra os valores **Antes**, **Servidor** e **Local**.
-- O usuário pode escolher **Manter servidor** (descarta apenas aquela alteração local) ou **Aplicar alteração local** (reenvia a alteração pelas APIs normais, mantendo RLS, permissões e validações).
+## Contingência
+
+- Os dados operacionais da Procuradoria visitada são armazenados localmente no IndexedDB, isolados por usuário + Procuradoria.
+- Sem conexão, ficam disponíveis os dados previamente sincronizados e as operações autorizadas pelo perfil em cache.
+- Alterações operacionais pendentes são mantidas em fila local e reenviadas na ordem original quando a conexão retorna.
+- Na reconexão, o Práxis compara o valor visto quando a alteração foi criada, o valor atual do servidor e o valor desejado localmente.
+- Alterações independentes ou já convergentes são sincronizadas automaticamente.
+- Quando o mesmo campo foi alterado de forma diferente no servidor, o usuário pode escolher **Manter servidor** ou **Aplicar alteração local**.
 - Arquivamento, exclusão ou desaparecimento concorrente do registro não podem ser sobrescritos pela contingência.
-- A fila continua isolada por usuário + Procuradoria, e operações posteriores permanecem ordenadas para evitar inversão de dependências.
-- A política de MFA permanece fora do snapshot confiável: snapshots antigos são neutralizados na leitura e novos snapshots não persistem `mfaRequired=true`.
-- Não há nova migração SQL nesta versão.
-- Push e notificações ficam reservados para a 0.11.3-RC.
+- O Supabase permanece como fonte de verdade.
+- O logout remove os dados locais do usuário e exige confirmação quando houver alterações ainda não sincronizadas.
+- A política de MFA não é restaurada a partir de snapshots locais antigos.
 
-## Contingência 0.11.1-RC
+## Central de Informações e Push
 
-- Mantém o snapshot de leitura da 0.11.0 e acrescenta fila local de sincronização no IndexedDB.
-- Em contingência, respeitadas as permissões do perfil em cache, podem ser cadastrados processos e alterados status, providência e responsável; edição completa só é permitida quando o registro detalhado já está disponível localmente.
-- Exclusão, arquivamento, exportação, transferência entre Procuradorias, administração, importação e demais ações sensíveis continuam dependentes do servidor.
-- Ao reconectar, as operações são reenviadas na ordem original pelas mesmas APIs do Práxis e continuam sujeitas às RLS, permissões e validações do Supabase.
-- A fila mostra operações pendentes e falhas e permite nova tentativa ou descarte explícito.
-- Cadastro offline recebe identificador temporário negativo até ser confirmado pelo servidor; uma verificação de idempotência reduz o risco de duplicidade se a confirmação da primeira tentativa se perder.
-- A data/hora de envio registrada offline é preservada quando o status Enviado é sincronizado.
-- Detecção e resolução de alterações concorrentes entre usuários foram incorporadas na 0.11.3-RC.
-- Logout com alterações pendentes exige confirmação, pois a fila local é apagada junto com os demais dados do usuário.
-
-## Contingência 0.11.0
-
-- Os dados operacionais da Procuradoria visitada são armazenados no IndexedDB do navegador por até 72 horas.
-- O cache é isolado por usuário + Procuradoria e contém apenas dados necessários à consulta; documentos, observações e metadados detalhados não são persistidos.
-- Sem conexão, ficam disponíveis Visão Geral, Minha Fila e Processos em modo somente leitura.
-- A troca offline de Procuradoria é permitida apenas para unidades previamente sincronizadas no mesmo dispositivo.
-- O logout remove os snapshots locais do usuário.
-- Quando a conexão retorna, o Supabase volta automaticamente a ser a fonte de verdade.
-- O Service Worker armazena apenas o shell da aplicação; os dados processuais de contingência ficam no IndexedDB.
+- Central persistente por usuário e Procuradoria.
+- Atualização em tempo real e controle de leitura/não leitura.
+- Web Push disponível para PWA instalado.
+- Notificações de atribuições e transferências habilitadas por padrão; status e prazo podem ser configurados.
+- O sistema de notificações é separado da fila de contingência e da resolução de conflitos.
+- Notificações não alteram registros locais nem operações pendentes da fila de sincronização.
 
 ## Configuração
 
@@ -57,17 +54,17 @@ npm install
 npm run dev
 ```
 
-Validação:
+Validação completa:
 
 ```bash
-npm run check
-npm test
-npm run build
+npm run quality
 ```
+
+O comando executa a verificação de consistência da versão, TypeScript, testes automatizados e build.
 
 ## Usuários e workspaces
 
-O cadastro cria o perfil do usuário. O acesso a um workspace depende de vínculo ativo ou aceite de convite. Papéis disponíveis: administrador, procurador, assessor e consulta.
+O cadastro cria o perfil do usuário. O acesso a uma Procuradoria depende de vínculo ativo ou aceite de convite. Os papéis e permissões são aplicados no contexto do workspace ativo.
 
 ## Segurança do banco
 
@@ -84,6 +81,17 @@ O cadastro cria o perfil do usuário. O acesso a um workspace depende de víncul
 
 Erros técnicos e métricas de desempenho podem ser excluídos pela área **Auditoria e diagnóstico** quando tiverem mais de 15 dias. A limpeza exige administrador com autenticação forte e não alcança auditoria, histórico processual ou dados funcionais.
 
+## Estrutura do repositório
+
+- `src/` — aplicação e testes.
+- `public/` — recursos públicos e PWA.
+- `supabase/migrations/` — fonte canônica das alterações versionadas do banco.
+- `supabase/functions/` — Edge Functions.
+- `docs/updates/` — documentação histórica das versões.
+- `docs/setup/` — instruções de configuração.
+- `docs/roadmap/` — critérios e documentação de evolução.
+- `scripts/` — automações de build, validação e geração de artefatos.
+
 ## Funções legadas
 
-As funções `get_praxis_diagnostics_v0101`, `list_performance_metrics_v0101` e `list_current_workspace_members_v09` permanecem porque ainda são utilizadas como fallbacks de compatibilidade no frontend.
+As funções `get_praxis_diagnostics_v0101`, `list_performance_metrics_v0101` e `list_current_workspace_members_v09` permanecem enquanto forem necessárias como fallbacks de compatibilidade no frontend.
