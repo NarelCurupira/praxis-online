@@ -1,21 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
-  Bell,
   CalendarCheck2,
   CalendarDays,
   ClockAlert,
   DatabaseZap,
-  FileText,
+  FileSpreadsheet,
   Files,
-  FolderKanban,
-  Gauge,
-  Gavel,
-  Settings,
   ShieldCheck,
   UserCircle2,
+  Users,
 } from "lucide-react";
 import {
   Bar,
@@ -187,6 +184,23 @@ export function Dashboard({
     (record) => Boolean(record.deadlineAt) && daysUntil(record.deadlineAt) < 0,
   );
 
+  const nextDeadlineRecord = [...pending]
+    .filter((record) => Boolean(record.deadlineAt) && daysUntil(record.deadlineAt) >= 0)
+    .sort((a, b) => daysUntil(a.deadlineAt) - daysUntil(b.deadlineAt))[0];
+
+  const nextDeadlineDays = nextDeadlineRecord ? daysUntil(nextDeadlineRecord.deadlineAt) : null;
+  const nextDeadlineValue = nextDeadlineDays === null
+    ? "—"
+    : nextDeadlineDays === 0
+      ? "Hoje"
+      : nextDeadlineDays === 1
+        ? "1 dia"
+        : `${nextDeadlineDays} dias`;
+
+  const nextDeadlineHelper = nextDeadlineRecord
+    ? `vence em ${formatDate(nextDeadlineRecord.deadlineAt)}`
+    : "sem prazo próximo";
+
   const qualityIssues = useMemo(() => inspectDataQuality(scopedRecords), [scopedRecords]);
   const affectedRecords = new Set(qualityIssues.map((issue) => issue.record.movementId)).size;
   const qualityScore = scopedRecords.length
@@ -264,11 +278,6 @@ export function Dashboard({
   function navigate(page: Page) {
     hapticFeedback();
     window.dispatchEvent(new CustomEvent<Page>("praxis:navigate", { detail: page }));
-  }
-
-  function openCentral() {
-    hapticFeedback();
-    window.dispatchEvent(new CustomEvent("praxis:open-information-center"));
   }
 
   function chartClick(entry: unknown, seriesYear?: number) {
@@ -363,34 +372,54 @@ export function Dashboard({
 
   const productKpis = [
     {
-      label: "Minha fila",
-      value: pending.length,
-      helper: pending.length === 1 ? "1 processo pendente" : `${pending.length} processos pendentes`,
-      tone: "primary",
-      icon: FolderKanban,
-      onClick: () => navigate("queue"),
-    },
-    {
-      label: "Prazos",
+      label: "Atrasados",
       value: overdue.length,
       helper: overdue.length
         ? `${overdue.length} ${overdue.length === 1 ? "prazo vencido" : "prazos vencidos"}`
-        : "nenhum prazo vencido",
+        : "nenhum vencido",
       tone: overdue.length ? "danger" : "success",
       icon: ClockAlert,
       onClick: () => openPreset({ kind: "overdue", label: "Atrasados" }),
     },
+    {
+      label: "Próximo prazo",
+      value: nextDeadlineValue,
+      helper: nextDeadlineHelper,
+      tone: nextDeadlineDays !== null && nextDeadlineDays <= 2 ? "warning" : "primary",
+      icon: CalendarDays,
+      onClick: () => navigate("queue"),
+    },
     thirdKpi,
   ];
 
-  const quickActions = [
-    { key: "queue", label: "Minha fila", icon: FileText, onClick: () => navigate("queue") },
-    { key: "processes", label: "Processos", icon: Gavel, onClick: () => navigate("processes") },
-    { key: "central", label: "Central", icon: Bell, onClick: openCentral },
-    { key: "overdue", label: "Atrasados", icon: ClockAlert, onClick: () => openPreset({ kind: "overdue", label: "Atrasados" }) },
-    { key: "today", label: "Enviados hoje", icon: CalendarCheck2, onClick: () => openPreset({ kind: "sent-today", label: "Enviados hoje" }) },
-    { key: "settings", label: "Configurações", icon: Settings, onClick: () => navigate("settings") },
-  ];
+  const quickActions = canOpenQuality
+    ? [
+        {
+          key: "today",
+          label: "Enviados hoje",
+          icon: CalendarCheck2,
+          onClick: () => openPreset({ kind: "sent-today", label: "Enviados hoje" }),
+        },
+        { key: "reports", label: "Relatórios", icon: BarChart3, onClick: () => navigate("reports") },
+        { key: "efficiency", label: "Eficiência", icon: Activity, onClick: () => navigate("efficiency") },
+        { key: "team", label: "Equipe", icon: Users, onClick: () => navigate("team") },
+        { key: "import", label: "Importar", icon: FileSpreadsheet, onClick: () => navigate("import") },
+        { key: "audit", label: "Auditoria", icon: DatabaseZap, onClick: () => navigate("audit") },
+      ]
+    : [
+        {
+          key: "today",
+          label: "Enviados hoje",
+          icon: CalendarCheck2,
+          onClick: () => openPreset({ kind: "sent-today", label: "Enviados hoje" }),
+        },
+        {
+          key: "week",
+          label: "Enviados na semana",
+          icon: CalendarDays,
+          onClick: () => openPreset({ kind: "sent-week", label: "Enviados na semana" }),
+        },
+      ];
 
   return (
     <div className="page-stack dashboard-page p1-home">
@@ -428,11 +457,15 @@ export function Dashboard({
           className="p1-home-hero"
           onClick={() => navigate("queue")}
         >
-          <span className="p1-home-hero-icon"><Gauge /></span>
+          <span className="p1-home-hero-icon"><Files /></span>
           <span className="p1-home-hero-copy">
-            <small>PROCESSOS EM ANDAMENTO</small>
+            <small>MINHA FILA</small>
             <strong>{pending.length}</strong>
-            <em>Acompanhe sua fila e mantenha tudo em dia.</em>
+            <em>
+              {pending.length
+                ? `${pending.length} ${pending.length === 1 ? "processo pendente" : "processos pendentes"}. Ver fila`
+                : "Tudo em dia. Ver fila"}
+            </em>
           </span>
           <ArrowRight className="p1-home-hero-arrow" />
         </button>
@@ -455,8 +488,8 @@ export function Dashboard({
 
         <div className="p1-home-section-title">
           <div>
-            <h2>Acesso rápido</h2>
-            <p>Continue seu trabalho com um toque.</p>
+            <h2>Atalhos de trabalho</h2>
+            <p>Ações úteis que não repetem a navegação principal.</p>
           </div>
         </div>
 
