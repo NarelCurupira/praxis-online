@@ -1,7 +1,0 @@
-BUILD LOCAL: NÃO CONCLUÍDO
-
-
-> praxis-online@0.10.7.7 build
-> vite build
-
-sh: 1: vite: Permission denied

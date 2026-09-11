@@ -1,7 +1,0 @@
-VALIDAÇÃO DE CONTRATO
-
-- brand-symbol-light: OK
-- brand-symbol-dark: OK
-- symbol-light.webp: OK
-- symbol-dark.webp: OK
-- sem SVG no Sidebar: OK

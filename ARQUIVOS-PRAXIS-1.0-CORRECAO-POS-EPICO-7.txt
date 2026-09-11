@@ -1,5 +1,0 @@
-src/components/Dashboard.tsx
-src/components/Sidebar.tsx
-src/main.tsx
-src/praxis1-stabilization.css
-ATUALIZACAO-PRAXIS-1.0-CORRECAO-POS-EPICO-7.txt
