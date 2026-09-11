@@ -1,0 +1,38 @@
+PRÁXIS 1.0 — HOME SEM ATALHOS DUPLICADOS
+
+OBJETIVO
+Dar uma função distinta a cada bloco da Home e eliminar os atalhos repetidos.
+
+NOVA ARQUITETURA
+- Barra inferior: navegação persistente (Início, Fila, Processos, Central, Perfil).
+- Hero: única representação principal da Minha fila na Home.
+- KPIs: Atrasados, Próximo prazo e Qualidade/Produção.
+- Atalhos de trabalho: ações e módulos que não repetem a barra inferior.
+
+PARA ADMINISTRADOR
+- Enviados hoje
+- Relatórios
+- Eficiência
+- Equipe
+- Importar
+- Auditoria
+
+A Qualidade não é repetida em Atalhos porque o KPI Qualidade já abre o módulo.
+
+PARA PERFIS SEM ACESSO ADMINISTRATIVO
+A Home mantém somente atalhos operacionais seguros:
+- Enviados hoje
+- Enviados na semana
+Os demais módulos continuam acessíveis pelo menu quando autorizados.
+
+NÃO ALTERADO
+- App.tsx
+- Sidebar / Perfil
+- regras de permissão
+- Supabase / RLS
+- contingência / sincronização
+- Push / Central
+- MFA / passkey
+- gráficos e análises detalhadas
+
+NÃO HÁ SQL.
