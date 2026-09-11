@@ -2,7 +2,7 @@
 
 ## Ordem de atualização
 
-1. Execute `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.8.1.sql` no SQL Editor do Supabase.
+1. Execute `supabase/migrations/20260812_praxis_v01081_ux_performance.sql` no SQL Editor do Supabase.
 2. Substitua/adicione no GitHub os arquivos do pacote `praxis-0.10.8.1-arquivos-para-github.zip`.
 3. Aguarde o workflow de qualidade (`npm run quality`).
 4. Publique somente após `check`, testes e build concluírem sem erro.

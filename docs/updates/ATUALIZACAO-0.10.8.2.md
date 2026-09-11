@@ -10,7 +10,7 @@ Reduzir a regressão de desempenho observada após a adoção do RLS multi-Procu
 - Configurações: campo de renomeação passa a usar o mesmo padrão visual do cadastro de Procuradoria.
 
 ## Instalação
-1. Execute `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.8.2.sql` no SQL Editor do Supabase.
+1. Execute `supabase/migrations/20260812_praxis_v01082_rls_quality_switch.sql` no SQL Editor do Supabase.
 2. Substitua/adicione os arquivos do ZIP no GitHub.
 3. Aguarde o workflow `quality.yml` (`npm run quality`).
 4. Publique somente após o workflow concluir sem erros.

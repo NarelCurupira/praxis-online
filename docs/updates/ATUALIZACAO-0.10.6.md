@@ -3,7 +3,7 @@
 ## Ordem de atualização
 
 1. No Supabase, abra o **SQL Editor**.
-2. Execute integralmente `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.6.sql`.
+2. Execute integralmente `supabase/migrations/20260729_praxis_v0106_desempenho.sql`.
 3. Envie o conteúdo deste pacote ao GitHub e aguarde a conclusão do workflow.
 4. Confirme no Práxis, em **Sobre**, a versão `0.10.6`.
 5. Teste a abertura da Visão Geral e a alteração da providência de um processo.
