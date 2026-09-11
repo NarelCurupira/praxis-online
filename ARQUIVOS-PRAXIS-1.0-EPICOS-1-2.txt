@@ -1,0 +1,9 @@
+src/components/Sidebar.tsx
+src/components/InformationCenter.tsx
+src/main.tsx
+src/praxis1-tokens.css
+src/praxis1-shell.css
+public/brand/praxis-1-mark.svg
+public/brand/praxis-1-logo-light.svg
+public/brand/praxis-1-logo-dark.svg
+ATUALIZACAO-PRAXIS-1.0-EPICOS-1-2.txt

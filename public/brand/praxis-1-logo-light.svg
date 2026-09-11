@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 128" role="img" aria-labelledby="title">
+<title>Práxis Web WPA</title>
+<defs>
+  <linearGradient id="g1" x1="18" y1="16" x2="108" y2="104" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0F62FE"/>
+    <stop offset=".52" stop-color="#149BDF"/>
+    <stop offset="1" stop-color="#22D3EE"/>
+  </linearGradient>
+  <linearGradient id="g2" x1="14" y1="110" x2="91" y2="38" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#1485E8"/>
+    <stop offset="1" stop-color="#42E3E5"/>
+  </linearGradient>
+</defs>
+<g transform="translate(0 0)">
+  <path fill="url(#g1)" d="M26 15h46c22 0 40 17 40 38S94 91 72 91H50V72h22c11 0 20-8 20-19S83 34 72 34H26V15Z"/>
+  <path fill="url(#g2)" d="M17 43c0-9 7-16 16-16h23v20H37v64H17V43Z"/>
+  <path fill="#0B2D61" opacity=".94" d="M37 47h36c10 0 18 8 18 18S83 83 73 83H37V64h34v-1H37V47Z"/>
+</g>
+<text x="138" y="67" fill="#102A4C" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="750" letter-spacing="-1.7">Práxis</text>
+<text x="141" y="94" fill="#5C7898" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="6">WEB · WPA</text>
+</svg>

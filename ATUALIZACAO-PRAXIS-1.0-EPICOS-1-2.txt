@@ -1,0 +1,54 @@
+PRÁXIS 1.0 — ÉPICOS 1 E 2
+FUNDAÇÃO VISUAL + PRODUCT SHELL
+
+ESCOPO IMPLEMENTADO
+1. Product Design Tokens:
+   - paleta oficial;
+   - modo claro e modo noite;
+   - tipografia;
+   - escala 4/8;
+   - raios;
+   - sombras;
+   - estados semânticos;
+   - focus ring e acessibilidade básica.
+
+2. Product Shell:
+   - sidebar desktop redesenhada;
+   - sidebar recolhida compatível;
+   - topbar clara/escura;
+   - WorkspaceSwitcher integrado visualmente;
+   - safe areas de iPhone preservadas;
+   - bottom navigation mobile: Início, Fila, Processos, Central, Perfil;
+   - Central pode ser aberta pela bottom navigation sem alterar App.tsx;
+   - conteúdo mobile reserva espaço para a bottom navigation;
+   - modais respeitam safe area.
+
+3. Nova identidade-base:
+   - public/brand/praxis-1-mark.svg
+   - public/brand/praxis-1-logo-light.svg
+   - public/brand/praxis-1-logo-dark.svg
+
+ARQUIVOS ALTERADOS
+- src/components/Sidebar.tsx
+- src/components/InformationCenter.tsx
+- src/main.tsx
+
+ARQUIVOS NOVOS
+- src/praxis1-tokens.css
+- src/praxis1-shell.css
+- public/brand/praxis-1-mark.svg
+- public/brand/praxis-1-logo-light.svg
+- public/brand/praxis-1-logo-dark.svg
+
+NÃO ALTERADO
+- App.tsx
+- Supabase / SQL / RLS
+- contingência / IndexedDB / sync_queue / conflitos
+- Push / entregas
+- regras de permissão
+- regras de negócio de processos
+- MFA / passkey
+
+OBSERVAÇÃO DE PRODUTO
+A entrada (Splash/Login/MFA) ainda será consolidada no Épico 3.
+O Dashboard/Home será consolidado no Épico 4.
