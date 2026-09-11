@@ -1,9 +1,9 @@
-import { Activity, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, Settings, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
 import type { AccessCapabilities } from "../access";
 import type { Page } from "../types";
 
 const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> = [
-  { page: "dashboard", label: "Visão geral", icon: LayoutDashboard },
+  { page: "dashboard", label: "Início", icon: LayoutDashboard },
   { page: "queue", label: "Minha fila", icon: ListTodo },
   { page: "processes", label: "Processos", icon: Gavel },
   { page: "efficiency", label: "Eficiência", icon: Activity },
@@ -16,7 +16,75 @@ const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> 
   { page: "audit", label: "Auditoria e diagnóstico", icon: ClipboardList },
   { page: "about", label: "Sobre", icon: Info },
 ];
-interface Props { page: Page; access: AccessCapabilities; onChange: (page: Page) => void; }
+
+interface Props {
+  page: Page;
+  access: AccessCapabilities;
+  onChange: (page: Page) => void;
+}
+
 export function Sidebar({ page, access, onChange }: Props) {
-  return <aside className="sidebar"><div className="brand"><img className="brand-logo brand-logo-light" src="/brand/logo-horizontal-light.webp" alt="Práxis — Controle de Processos" /><img className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.webp" alt="Práxis — Controle de Processos" /><img className="brand-symbol brand-symbol-light" src="/brand/symbol-light.webp" alt="Práxis" /><img className="brand-symbol brand-symbol-dark" src="/brand/symbol-dark.webp" alt="Práxis" /></div><nav>{items.filter((item) => access.visiblePages.has(item.page)).map(({ page: itemPage, label, icon: Icon }) => <button aria-label={label} className={page === itemPage ? "nav-item active" : "nav-item"} key={itemPage} onClick={() => onChange(itemPage)}><Icon size={19} /><span className="nav-label">{label}</span><span className="nav-tooltip" role="tooltip">{label}</span></button>)}</nav><div className="sidebar-foot"><Database size={16} /><span>Banco online protegido</span></div></aside>;
+  const profilePage: Page = access.visiblePages.has("settings") ? "settings" : "about";
+
+  function openCentral() {
+    window.dispatchEvent(new CustomEvent("praxis:open-information-center"));
+  }
+
+  return <>
+    <aside className="sidebar">
+      <div className="brand praxis1-brand">
+        <img className="praxis1-brand-logo" src="/brand/praxis-1-logo-dark.webp" alt="Práxis" />
+        <img className="brand-symbol brand-symbol-light praxis1-brand-symbol" src="/brand/symbol-light.webp" alt="Práxis" />
+        <img className="brand-symbol brand-symbol-dark praxis1-brand-symbol" src="/brand/symbol-dark.webp" alt="Práxis" />
+      </div>
+
+      <nav className="sidebar-nav">
+        {items
+          .filter((item) => access.visiblePages.has(item.page))
+          .map(({ page: itemPage, label, icon: Icon }) =>
+            <button
+              aria-label={label}
+              className={page === itemPage ? "nav-item active" : "nav-item"}
+              key={itemPage}
+              onClick={() => onChange(itemPage)}
+            >
+              <Icon size={19} />
+              <span className="nav-label">{label}</span>
+              <span className="nav-tooltip" role="tooltip">{label}</span>
+            </button>
+          )}
+      </nav>
+
+      <div className="sidebar-foot praxis1-sidebar-foot">
+        <Database size={16} />
+        <span>Práxis 1.0 · ambiente protegido</span>
+      </div>
+    </aside>
+
+    <nav className="mobile-bottom-nav" aria-label="Navegação principal">
+      <button type="button" className={page === "dashboard" ? "active" : ""} onClick={() => onChange("dashboard")} aria-label="Início">
+        <LayoutDashboard /><span>Início</span>
+      </button>
+
+      {access.visiblePages.has("queue")
+        ? <button type="button" className={page === "queue" ? "active" : ""} onClick={() => onChange("queue")} aria-label="Minha fila">
+            <ListTodo /><span>Fila</span>
+          </button>
+        : <span />}
+
+      {access.visiblePages.has("processes")
+        ? <button type="button" className={page === "processes" ? "active" : ""} onClick={() => onChange("processes")} aria-label="Processos">
+            <Gavel /><span>Processos</span>
+          </button>
+        : <span />}
+
+      <button type="button" onClick={openCentral} aria-label="Central de Informações">
+        <Bell /><span>Central</span>
+      </button>
+
+      <button type="button" className={page === profilePage ? "active" : ""} onClick={() => onChange(profilePage)} aria-label="Perfil e preferências">
+        <UserRound /><span>Perfil</span>
+      </button>
+    </nav>
+  </>;
 }

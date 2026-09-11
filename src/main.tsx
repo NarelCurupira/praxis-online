@@ -13,6 +13,8 @@ import "./v0110-layout-fixes.css";
 import "./v0113-notifications.css";
 import "./v0113-mobile-concept.css";
 import "./v0113-topbar-safearea.css";
+import "./praxis1-tokens.css";
+import "./praxis1-shell.css";
 
 const App = lazy(() => import("./App"));
 

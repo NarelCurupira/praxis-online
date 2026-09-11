@@ -1,0 +1,135 @@
+/* ============================================================
+   PRÁXIS 1.0 — PRODUCT DESIGN TOKENS
+   Épico 1 · Fundação visual oficial
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* Marca */
+  --p1-navy-950: #061D3C;
+  --p1-navy-900: #0B2D61;
+  --p1-navy-800: #123F78;
+  --p1-blue-600: #1F6ED4;
+  --p1-blue-500: #2E82E8;
+  --p1-cyan-500: #22C3DE;
+  --p1-cyan-400: #48E0E7;
+
+  /* Superfícies */
+  --p1-bg: #F6F9FC;
+  --p1-surface: #FFFFFF;
+  --p1-surface-soft: #F8FAFC;
+  --p1-surface-raised: #FFFFFF;
+  --p1-border: #E2EAF1;
+  --p1-divider: #EDF2F6;
+
+  /* Texto */
+  --p1-text: #102A4C;
+  --p1-text-secondary: #6F8298;
+  --p1-text-tertiary: #94A3B8;
+
+  /* Semântica */
+  --p1-success: #10B981;
+  --p1-success-soft: #E8F8F2;
+  --p1-warning: #F59E0B;
+  --p1-warning-soft: #FFF4DA;
+  --p1-danger: #EF4444;
+  --p1-danger-soft: #FDEBEC;
+  --p1-info: #3B82F6;
+  --p1-info-soft: #EAF2FF;
+
+  /* Tipografia */
+  --p1-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --p1-text-xs: .75rem;
+  --p1-text-sm: .875rem;
+  --p1-text-md: 1rem;
+  --p1-text-lg: 1.125rem;
+  --p1-text-xl: 1.5rem;
+  --p1-text-2xl: 2rem;
+
+  /* Escala 4/8 */
+  --p1-space-1: 4px;
+  --p1-space-2: 8px;
+  --p1-space-3: 12px;
+  --p1-space-4: 16px;
+  --p1-space-5: 20px;
+  --p1-space-6: 24px;
+  --p1-space-8: 32px;
+  --p1-space-10: 40px;
+  --p1-space-12: 48px;
+
+  /* Radius */
+  --p1-radius-sm: 8px;
+  --p1-radius-md: 12px;
+  --p1-radius-lg: 16px;
+  --p1-radius-xl: 20px;
+  --p1-radius-pill: 999px;
+
+  /* Elevação */
+  --p1-shadow-1: 0 4px 14px rgba(13,49,82,.05);
+  --p1-shadow-2: 0 10px 28px rgba(13,49,82,.08);
+  --p1-shadow-3: 0 18px 54px rgba(6,29,60,.16);
+
+  --p1-focus: 0 0 0 3px rgba(46,130,232,.22);
+  --p1-ease: 160ms cubic-bezier(.2,.8,.2,1);
+
+  /* Shell */
+  --p1-sidebar-width: 244px;
+  --p1-sidebar-collapsed: 76px;
+  --p1-topbar-height: 68px;
+  --p1-bottom-nav-height: 70px;
+
+  /* Compatibilidade com estilos existentes */
+  --border-color: var(--p1-border);
+  --muted-color: var(--p1-text-secondary);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --p1-bg: #07182D;
+  --p1-surface: #0D2543;
+  --p1-surface-soft: #0A203A;
+  --p1-surface-raised: #123054;
+  --p1-border: #23476A;
+  --p1-divider: #1B3B5C;
+  --p1-text: #F3F8FC;
+  --p1-text-secondary: #9CB2C8;
+  --p1-text-tertiary: #748DA6;
+
+  --p1-success-soft: #0B3B32;
+  --p1-warning-soft: #49340C;
+  --p1-danger-soft: #4A2027;
+  --p1-info-soft: #102F5C;
+
+  --p1-shadow-1: 0 4px 16px rgba(0,0,0,.16);
+  --p1-shadow-2: 0 12px 30px rgba(0,0,0,.24);
+  --p1-shadow-3: 0 20px 60px rgba(0,0,0,.32);
+}
+
+html,
+body {
+  font-family: var(--p1-font);
+  background: var(--p1-bg);
+  color: var(--p1-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--p1-focus);
+}
+
+::selection {
+  background: rgba(34,195,222,.24);
+}

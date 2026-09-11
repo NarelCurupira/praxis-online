@@ -116,6 +116,16 @@ export function InformationCenter({ userId, online, onOpenNotification }: Props)
     return () => { void channel.unsubscribe(); };
   }, [userId, online]);
 
+  useEffect(() => {
+    const openFromProductShell = () => {
+      setOpen(true);
+      if (online) void refresh();
+    };
+    window.addEventListener("praxis:open-information-center", openFromProductShell);
+    return () => window.removeEventListener("praxis:open-information-center", openFromProductShell);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
+
   async function read(item: PraxisNotification) {
     setError("");
     try {
