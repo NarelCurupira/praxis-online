@@ -397,7 +397,10 @@ export function Dashboard({
       <section className="p1-home-product">
         <header className="p1-home-header">
           <div className="p1-home-brand-greeting">
-            <img className="p1-home-logo" src="/brand/praxis-1-logo-light.webp" alt="Práxis" />
+            <span className="p1-home-logo-wrap" aria-label="Práxis">
+              <img className="p1-home-logo p1-home-logo-light" src="/brand/praxis-1-logo-light.webp" alt="" />
+              <img className="p1-home-logo p1-home-logo-dark" src="/brand/praxis-1-logo-dark.webp" alt="" />
+            </span>
             <div>
               <span className="p1-home-date">{todayLabel}</span>
               <h1>Olá, {firstName}!</h1>
@@ -405,10 +408,19 @@ export function Dashboard({
             </div>
           </div>
 
-          <div className="p1-home-avatar" title={currentUserName} aria-label={`Usuário ${currentUserName}`}>
+          <button
+            type="button"
+            className="p1-home-avatar"
+            title={`Abrir perfil e menu de ${currentUserName}`}
+            aria-label={`Abrir perfil e menu de ${currentUserName}`}
+            onClick={() => {
+              hapticFeedback();
+              window.dispatchEvent(new CustomEvent("praxis:open-profile-menu"));
+            }}
+          >
             <UserCircle2 size={17} />
             <span>{initials}</span>
-          </div>
+          </button>
         </header>
 
         <button

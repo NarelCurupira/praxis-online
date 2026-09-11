@@ -1,0 +1,45 @@
+PRÁXIS 1.0 — CORREÇÃO PÓS-ÉPICO 7
+
+CORREÇÕES
+1. Logos:
+   - Sidebar passa a alternar corretamente entre logo claro e escuro.
+   - Dashboard passa a alternar corretamente entre logo claro e escuro.
+   - Menu recolhido usa o P raster aprovado.
+
+2. Dashboard:
+   - remove a restrição CSS global sobre SVG que interferia nos Recharts;
+   - restabelece dimensões explícitas dos containers dos gráficos.
+
+3. Avatar MA:
+   - deixa de ser decorativo;
+   - abre Perfil/Menu.
+
+4. Tipografia:
+   - aumenta levemente menu e textos auxiliares dos módulos;
+   - normaliza A− / A / A+ em 15 / 16 / 18 px de base.
+
+5. Sobre:
+   - logo centralizado.
+
+6. Eficiência:
+   - mesma correção estrutural de Recharts do Dashboard;
+   - alturas dos gráficos explicitadas.
+
+7. Central no celular:
+   - bottom sheet reposicionado acima da navegação inferior;
+   - cabeçalho e botões permanecem visíveis;
+   - corrigido hover persistente do Safari que deixava o botão Central azul.
+
+8. Perfil no celular:
+   - deixa de abrir Configurações diretamente;
+   - passa a abrir Perfil/Menu com Configurações, Sobre e Sair.
+
+9. Topbar mobile:
+   - botão Sair deixa de disputar espaço com Novo processo;
+   - Sair fica disponível no Perfil/Menu;
+   - ordem dos controles mobile normalizada.
+
+SEGURANÇA / ARQUITETURA
+- App.tsx não foi substituído nem reescrito.
+- Sem mudanças em Supabase, RLS, Push, Central (lógica), contingência, sync ou MFA.
+- Sem SQL.
