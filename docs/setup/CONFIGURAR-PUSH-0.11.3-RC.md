@@ -7,7 +7,7 @@ A Central de Informações funciona pelo banco e Realtime. O Push do sistema ope
 1. Substitua no GitHub os arquivos do pacote 0.11.3-RC e aguarde o GitHub Actions ficar verde.
 2. No Supabase, configure os três Secrets VAPID indicados em `SEGREDOS-PUSH-0.11.3-RC.txt`.
 3. Publique a Edge Function `push-dispatch` **sem verificação JWT no gateway**.
-4. Execute `EXECUTAR-NO-SUPABASE-0.11.3-RC.sql` no SQL Editor uma única vez.
+4. Execute `supabase/migrations/20260825_praxis_v0113_push_central.sql` no SQL Editor uma única vez.
 5. Aguarde o deploy do frontend e abra Práxis > Configurações pessoais > Notificações e Push.
 6. Ative o Push no dispositivo e conceda a permissão do sistema operacional.
 

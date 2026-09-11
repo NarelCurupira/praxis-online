@@ -40,7 +40,7 @@ Uma falha de Push nunca desfaz uma alteração processual, não impede a criaç�
 
 ## Banco
 
-Executar `supabase/manual/EXECUTAR-NO-SUPABASE-0.11.3-RC.sql` uma única vez. A migração cria:
+Executar `supabase/migrations/20260825_praxis_v0113_push_central.sql` uma única vez. A migração cria:
 
 - `notification_preferences`;
 - `user_notifications`;
