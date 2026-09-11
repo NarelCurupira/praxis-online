@@ -1,0 +1,69 @@
+PRÁXIS 1.0 — ÉPICO 5
+FLUXO OPERACIONAL
+
+ESCOPO
+- Minha fila
+- Processos
+- filtros
+- chips
+- tabela desktop
+- cards mobile
+- seleção e ações em lote
+- edição
+- cadastro
+- modal de providência obrigatória
+- histórico do processo
+
+ESTRATÉGIA DE IMPLEMENTAÇÃO
+O fluxo operacional atual já possui semântica e controles suficientes.
+Por segurança, o Épico 5 não reescreve ProcessTable, ProcessModal,
+EditProcessModal nem App.tsx. A implementação é uma nova camada de
+produto aplicada ao markup atual por CSS.
+
+Isso preserva integralmente:
+- callbacks atuais;
+- permissões ProcessPermissions;
+- filtros e presets;
+- paginação;
+- exportação;
+- arquivamento;
+- lixeira;
+- transferência;
+- contingência;
+- ações em lote;
+- histórico;
+- justificativa de alteração sensível.
+
+MOBILE
+No mobile a tabela existente é reorganizada visualmente em cards por CSS:
+- processo;
+- classe/assunto;
+- responsável;
+- entrada;
+- prazo;
+- providência;
+- status;
+- ações.
+
+MODAIS
+Os modais operacionais passam a usar padrão de bottom sheet no celular
+e card elevado no desktop, mantendo os formulários e lógica existentes.
+
+ARQUIVOS
+Alterado:
+- src/main.tsx
+
+Novo:
+- src/praxis1-workflow.css
+
+NÃO ALTERADO
+- src/App.tsx
+- src/components/ProcessTable.tsx
+- src/components/ProcessModal.tsx
+- src/components/EditProcessModal.tsx
+- banco / SQL / RLS / Supabase
+- Push / Central
+- contingência / IndexedDB / sync_queue / conflitos
+- MFA / passkey
+
+NÃO HÁ SQL.
