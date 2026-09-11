@@ -1,0 +1,19 @@
+PRÁXIS ONLINE 0.11.3-RC — CORREÇÃO DO MENU SUPERIOR NO IPHONE
+
+Problema observado:
+- a barra superior invadia a região da Ilha Dinâmica/status bar;
+- os controles ficavam difíceis ou impossíveis de tocar;
+- o seletor de Procuradoria deixava o cabeçalho excessivamente alto.
+
+Correção:
+- reaplica safe-area-inset-top no CSS importado por último;
+- compacta os controles superiores;
+- mantém a Procuradoria em segunda linha, com altura reduzida;
+- compacta o botão Novo processo no mobile;
+- preserva toda a lógica atual do App, contingência, Central, troca de Procuradoria e autenticação.
+
+Arquivos:
+- src/v0113-topbar-safearea.css (novo)
+- src/main.tsx (somente novo import ao final)
+
+Não há SQL.
