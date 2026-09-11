@@ -1,0 +1,43 @@
+PRÁXIS 1.0 — ÉPICO 3
+ENTRADA NO PRODUTO
+
+IMPLEMENTADO
+- Splash oficial do Práxis 1.0 usando a marca raster aprovada;
+- Login responsivo;
+- biometria/passkey em destaque;
+- fallback para e-mail e senha;
+- recuperação de acesso por e-mail;
+- redefinição de senha;
+- MFA/TOTP;
+- light mode e dark mode;
+- safe areas do iPhone;
+- acessibilidade básica e focus states.
+
+PRESERVADO
+- lógica atual de autenticação Supabase;
+- comportamento de passkeys;
+- sessionStorage praxis-authenticated-with-passkey;
+- Turnstile;
+- fluxo de resetPasswordForEmail;
+- updateUser para nova senha;
+- MFA enroll/challenge/verify;
+- signOut existente;
+- App.tsx intacto;
+- Supabase/RLS/Push/contingência intactos.
+
+ARQUIVOS ALTERADOS
+- src/components/SplashScreen.tsx
+- src/components/AuthPage.tsx
+- src/components/MfaGate.tsx
+- src/components/ResetPasswordPage.tsx
+- src/main.tsx
+
+ARQUIVO NOVO
+- src/praxis1-entry.css
+
+NÃO HÁ SQL.
+
+OBSERVAÇÃO
+O arquivo src/version.ts permanece inalterado. A nomenclatura de versão
+de código deve ser promovida separadamente quando você decidir consolidar
+a versão 1.0.

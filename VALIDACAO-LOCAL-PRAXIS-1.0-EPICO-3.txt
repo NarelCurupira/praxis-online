@@ -1,0 +1,13 @@
+VALIDAÇÃO LOCAL
+TypeScript: NÃO CONCLUÍDO/BASE LOCAL DIVERGENTE
+Testes: NÃO CONCLUÍDO/BASE LOCAL DIVERGENTE
+
+Observação:
+A base local disponível pode anteceder o main atual; a validação estática do fluxo
+do Épico 3 foi executada separadamente e consta em VALIDACAO-PRAXIS-1.0-EPICO-3.txt.
+
+--- TypeScript ---
+
+
+--- Testes ---
+

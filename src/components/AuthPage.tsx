@@ -1,20 +1,49 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Fingerprint, LockKeyhole, Mail, ShieldCheck, Smartphone } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Fingerprint, LockKeyhole, Mail, ShieldCheck, Sparkles } from "lucide-react";
 import { detectPasskeyCapability, friendlyPasskeyError, isPasskeyEnabledForThisBrowser } from "../passkeySupport";
 import { requireSupabase } from "../supabase";
 
-declare global { interface Window { turnstile?: { render: (element: HTMLElement, options: Record<string, unknown>) => string; reset: (id?: string) => void }; } }
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (element: HTMLElement, options: Record<string, unknown>) => string;
+      reset: (id?: string) => void;
+    };
+  }
+}
+
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim() || "";
 
 function Turnstile({ onToken }: { onToken: (token: string) => void }) {
   const container = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!turnstileSiteKey || !container.current) return;
-    const render = () => { if (container.current && window.turnstile) window.turnstile.render(container.current, { sitekey: turnstileSiteKey, callback: onToken, "expired-callback": () => onToken("") }); };
-    if (window.turnstile) { render(); return; }
-    const script = document.createElement("script"); script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; script.async = true; script.defer = true; script.onload = render; document.head.appendChild(script);
+
+    const render = () => {
+      if (container.current && window.turnstile) {
+        window.turnstile.render(container.current, {
+          sitekey: turnstileSiteKey,
+          callback: onToken,
+          "expired-callback": () => onToken(""),
+        });
+      }
+    };
+
+    if (window.turnstile) {
+      render();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = render;
+    document.head.appendChild(script);
   }, [onToken]);
-  return turnstileSiteKey ? <div className="turnstile-box" ref={container} /> : null;
+
+  return turnstileSiteKey ? <div className="turnstile-box p1-turnstile" ref={container} /> : null;
 }
 
 export function AuthPage() {
@@ -42,89 +71,273 @@ export function AuthPage() {
   }, []);
 
   async function submit(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setMessage("");
-    try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sessão sem armazenamento disponível. */ }
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+
+    try {
+      sessionStorage.removeItem("praxis-authenticated-with-passkey");
+    } catch {
+      /* Sessão sem armazenamento disponível. */
+    }
+
     const client = requireSupabase();
+
     try {
       if (mode === "forgot") {
-        const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin, captchaToken: captchaToken || undefined });
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin,
+          captchaToken: captchaToken || undefined,
+        });
         if (error) throw error;
         setMessage("Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha. Verifique também a caixa de spam.");
       } else {
-        const result = await client.auth.signInWithPassword({ email, password, options: { captchaToken: captchaToken || undefined } });
+        const result = await client.auth.signInWithPassword({
+          email,
+          password,
+          options: { captchaToken: captchaToken || undefined },
+        });
         if (result.error) throw result.error;
       }
-    } catch (error) { setMessage(error instanceof Error ? error.message : String(error)); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function signInWithBiometrics() {
     setSelectedMethod("biometric");
-    setBusy(true); setMessage("");
+    setBusy(true);
+    setMessage("");
+
     try {
       const client = requireSupabase();
-      const auth = client.auth as typeof client.auth & { signInWithPasskey?: () => Promise<{ error?: Error | null }> };
-      if (!auth.signInWithPasskey) throw new Error("Atualize a biblioteca do Supabase para habilitar passkeys.");
+      const auth = client.auth as typeof client.auth & {
+        signInWithPasskey?: () => Promise<{ error?: Error | null }>;
+      };
+      if (!auth.signInWithPasskey) {
+        throw new Error("Atualize a biblioteca do Supabase para habilitar passkeys.");
+      }
+
       const result = await auth.signInWithPasskey();
       if (result.error) throw result.error;
-      try { sessionStorage.setItem("praxis-authenticated-with-passkey", "true"); } catch { /* Marcador auxiliar indisponível. */ }
-    } catch (error) { setMessage(friendlyPasskeyError(error)); }
-    finally { setBusy(false); }
+
+      try {
+        sessionStorage.setItem("praxis-authenticated-with-passkey", "true");
+      } catch {
+        /* Marcador auxiliar indisponível. */
+      }
+    } catch (error) {
+      setMessage(friendlyPasskeyError(error));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const title = mode === "login" ? "Entre no Práxis" : "Recuperar senha";
-  const description = mode === "login"
-    ? "Acesse sua unidade com biometria, passkey ou credenciais individuais, mantendo segurança e continuidade em qualquer dispositivo."
-    : "Informe seu e-mail para receber um link seguro de recuperação.";
+  const passwordMode = mode === "login" && selectedMethod === "password";
+  const biometricMode = mode === "login" && biometricAvailable && selectedMethod === "biometric";
 
-  return <div className="auth-shell praxis-auth-shell">
-    <div className="praxis-auth-shape praxis-auth-shape-a" aria-hidden="true" />
-    <div className="praxis-auth-shape praxis-auth-shape-b" aria-hidden="true" />
-    <div className="praxis-auth-shape praxis-auth-shape-c" aria-hidden="true" />
-    <section className="auth-card praxis-auth-card">
-      <img className="auth-logo auth-logo-light" src="/brand/logo-horizontal-light.webp" alt="Práxis — Controle de Processos" />
-      <img className="auth-logo auth-logo-dark" src="/brand/logo-horizontal-dark.webp" alt="Práxis — Controle de Processos" />
+  return (
+    <div className="auth-shell p1-entry-shell">
+      <div className="p1-entry-ambient p1-entry-ambient-a" aria-hidden="true" />
+      <div className="p1-entry-ambient p1-entry-ambient-b" aria-hidden="true" />
 
-      <div className="praxis-auth-copy">
-        <p className="eyebrow">Acesso seguro</p>
-        <h1>{title}</h1>
-        <p>{description}</p>
-      </div>
+      <section className="auth-card p1-entry-card">
+        <div className="p1-entry-brand">
+          <img className="p1-entry-logo p1-entry-logo-light" src="/brand/praxis-1-logo-light.webp" alt="Práxis" />
+          <img className="p1-entry-logo p1-entry-logo-dark" src="/brand/praxis-1-logo-dark.webp" alt="Práxis" />
+        </div>
 
-      {mode === "login" && <div className="praxis-auth-features" aria-hidden="true">
-        <span><ShieldCheck size={16} />Sessão protegida</span>
-        <span><Fingerprint size={16} />Biometria / passkey</span>
-        <span><Smartphone size={16} />Experiência PWA</span>
-      </div>}
+        {mode === "forgot" ? (
+          <>
+            <div className="p1-entry-heading">
+              <span className="p1-entry-kicker"><ShieldCheck size={15} /> Recuperação segura</span>
+              <h1>Recupere seu acesso</h1>
+              <p>Informe o e-mail da sua conta. Enviaremos um link seguro para cadastrar uma nova senha.</p>
+            </div>
 
-      {mode === "login" && selectedMethod === "detecting" && <div className="auth-method-loading praxis-auth-notice">Verificando os métodos de acesso disponíveis...</div>}
+            <form className="p1-entry-form" onSubmit={submit}>
+              <label>
+                E-mail
+                <div className="input-with-icon p1-entry-input">
+                  <Mail size={18} />
+                  <input
+                    required
+                    autoFocus
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    autoComplete="email"
+                    placeholder="voce@exemplo.com"
+                  />
+                </div>
+              </label>
 
-      {mode === "login" && biometricAvailable && selectedMethod === "biometric" && <>
-        <button type="button" className="button biometric-login praxis-biometric-hero" disabled={busy} onClick={signInWithBiometrics}>
-          <Fingerprint size={22} />
-          <span>{busy ? "Aguardando biometria..." : `Entrar com ${biometricLabel}`}</span>
-        </button>
-        <small className="praxis-biometric-helper">Use Touch ID, Face ID, Windows Hello ou a biometria disponível no dispositivo.</small>
-      </>}
+              <Turnstile onToken={setCaptchaToken} />
 
-      {(mode === "forgot" || selectedMethod === "password") && <form className="praxis-auth-form" onSubmit={submit}>
-        <label>E-mail<div className="input-with-icon"><Mail size={18} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="voce@exemplo.com" /></div></label>
-        {mode !== "forgot" && <label>Senha<div className="input-with-icon"><LockKeyhole size={18} /><input required minLength={8} type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Digite sua senha" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar ou ocultar senha">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></label>}
-        <Turnstile onToken={setCaptchaToken} />
-        {message && <div className="auth-message">{message}</div>}
-        <button className="button primary auth-submit" disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}>{busy ? "Aguarde..." : mode === "login" ? "Entrar" : "Enviar link de recuperação"}</button>
-      </form>}
+              {message && <div className="auth-message p1-entry-message" aria-live="polite">{message}</div>}
 
-      {mode === "login" && biometricAvailable && selectedMethod === "biometric" && <>
-        <div className="auth-divider"><span>ou</span></div>
-        <button type="button" className="auth-switch praxis-auth-switch" disabled={busy} onClick={() => { setSelectedMethod("password"); setMessage(""); }}>Entrar com e-mail e senha</button>
-        {message && <div className="auth-message">{message}</div>}
-      </>}
+              <button
+                className="button primary auth-submit p1-entry-primary"
+                disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}
+              >
+                {busy ? "Enviando..." : "Enviar link de recuperação"}
+              </button>
+            </form>
 
-      {mode === "login" && selectedMethod === "password" && <button className="forgot-password" onClick={() => { setMode("forgot"); setMessage(""); }}>Esqueci minha senha</button>}
-      {(mode !== "login" || selectedMethod === "password") && <button className="auth-switch praxis-auth-switch" onClick={() => { setMode(mode === "login" ? "forgot" : "login"); setMessage(""); }}>{mode === "login" ? "Recuperar acesso" : "Voltar para o acesso"}</button>}
+            <button
+              type="button"
+              className="auth-switch p1-entry-text-action"
+              onClick={() => {
+                setMode("login");
+                setMessage("");
+                setCaptchaToken("");
+                setSelectedMethod(biometricAvailable ? "biometric" : "password");
+              }}
+            >
+              <ArrowLeft size={16} /> Voltar para o acesso
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="p1-entry-heading">
+              <span className="p1-entry-kicker"><Sparkles size={15} /> Acesso Práxis</span>
+              <h1>Acesse sua conta</h1>
+              <p>Use sua biometria para entrar com rapidez ou continue com suas credenciais.</p>
+            </div>
 
-      <small>Novas contas são cadastradas exclusivamente pelo administrador do gabinete.</small>
-    </section>
-  </div>;
+            {selectedMethod === "detecting" && (
+              <div className="p1-entry-method-loading">
+                <span className="splash-spinner" aria-hidden="true" />
+                <span>Verificando os métodos de acesso disponíveis...</span>
+              </div>
+            )}
+
+            {biometricMode && (
+              <div className="p1-biometric-stage">
+                <div className="p1-biometric-symbol" aria-hidden="true">
+                  <Fingerprint />
+                </div>
+                <div>
+                  <strong>Biometria pronta</strong>
+                  <span>{biometricLabel || "Passkey deste dispositivo"}</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="button primary biometric-login p1-entry-primary"
+                  disabled={busy}
+                  onClick={signInWithBiometrics}
+                >
+                  <Fingerprint size={19} />
+                  <span>{busy ? "Aguardando biometria..." : "Usar biometria"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="auth-switch p1-entry-text-action"
+                  disabled={busy}
+                  onClick={() => {
+                    setSelectedMethod("password");
+                    setMessage("");
+                  }}
+                >
+                  Entrar com sua senha
+                </button>
+              </div>
+            )}
+
+            {passwordMode && (
+              <form className="p1-entry-form" onSubmit={submit}>
+                <label>
+                  E-mail
+                  <div className="input-with-icon p1-entry-input">
+                    <Mail size={18} />
+                    <input
+                      required
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      autoComplete="email"
+                      placeholder="voce@exemplo.com"
+                    />
+                  </div>
+                </label>
+
+                <label>
+                  Senha
+                  <div className="input-with-icon p1-entry-input">
+                    <LockKeyhole size={18} />
+                    <input
+                      required
+                      minLength={8}
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                      placeholder="Digite sua senha"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label="Mostrar ou ocultar senha"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </label>
+
+                <Turnstile onToken={setCaptchaToken} />
+
+                {message && <div className="auth-message p1-entry-message" aria-live="polite">{message}</div>}
+
+                <button
+                  className="button primary auth-submit p1-entry-primary"
+                  disabled={busy || (Boolean(turnstileSiteKey) && !captchaToken)}
+                >
+                  {busy ? "Aguarde..." : "Entrar no Práxis"}
+                </button>
+
+                <button
+                  type="button"
+                  className="forgot-password p1-entry-text-action"
+                  onClick={() => {
+                    setMode("forgot");
+                    setMessage("");
+                    setCaptchaToken("");
+                  }}
+                >
+                  Esqueci minha senha
+                </button>
+
+                {biometricAvailable && (
+                  <button
+                    type="button"
+                    className="auth-switch p1-entry-text-action"
+                    disabled={busy}
+                    onClick={() => {
+                      setSelectedMethod("biometric");
+                      setMessage("");
+                    }}
+                  >
+                    <Fingerprint size={16} /> Voltar para biometria
+                  </button>
+                )}
+              </form>
+            )}
+
+            {biometricMode && message && (
+              <div className="auth-message p1-entry-message" aria-live="polite">{message}</div>
+            )}
+          </>
+        )}
+
+        <footer className="p1-entry-footer">
+          <ShieldCheck size={14} />
+          <span>Conta individual · sessão protegida · acesso auditável</span>
+        </footer>
+      </section>
+    </div>
+  );
 }
