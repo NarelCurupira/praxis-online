@@ -1,5 +1,6 @@
 import { Bell, CheckCheck, CircleAlert, ExternalLink, RefreshCw, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   listNotifications,
   markAllNotificationsRead,
@@ -161,43 +162,93 @@ export function InformationCenter({ userId, online, onOpenNotification }: Props)
     }
   }
 
-  return <div className="information-center">
-    <button
-      type="button"
-      className={`icon-button information-center-trigger ${unread ? "has-unread" : ""}`}
-      title="Central de Informações"
-      aria-label={`Central de Informações${unread ? `, ${unread} não lida${unread === 1 ? "" : "s"}` : ""}`}
-      onClick={() => { setOpen((value) => !value); if (!open && online) void refresh(); }}
-    >
-      <Bell />
-      {unread > 0 && <span className="information-center-badge">{unread > 99 ? "99+" : unread}</span>}
-    </button>
-    {open && <>
-      <button type="button" className="information-center-backdrop" aria-label="Fechar Central de Informações" onClick={() => setOpen(false)} />
+  const overlay = open && typeof document !== "undefined" ? createPortal(
+    <>
+      <button
+        type="button"
+        className="information-center-backdrop"
+        aria-label="Fechar Central de Informações"
+        onClick={() => setOpen(false)}
+      />
       <section className="information-center-panel" aria-label="Central de Informações">
         <header>
-          <div><strong>Central de Informações</strong><span>{unread ? `${unread} não lida${unread === 1 ? "" : "s"}` : "Tudo em dia"}</span></div>
+          <div>
+            <strong>Central de Informações</strong>
+            <span>{unread ? `${unread} não lida${unread === 1 ? "" : "s"}` : "Tudo em dia"}</span>
+          </div>
           <div className="information-center-header-actions">
-            <button type="button" className="icon-button" title="Atualizar" disabled={!online || loading} onClick={() => void refresh()}><RefreshCw size={17} className={loading ? "spin" : ""} /></button>
-            <button type="button" className="icon-button" title="Marcar todas como lidas" disabled={!online || !unread} onClick={() => void readAll()}><CheckCheck size={18} /></button>
-            <button type="button" className="icon-button" title="Fechar" onClick={() => setOpen(false)}><X size={18} /></button>
+            <button type="button" className="icon-button" title="Atualizar" disabled={!online || loading} onClick={() => void refresh()}>
+              <RefreshCw size={17} className={loading ? "spin" : ""} />
+            </button>
+            <button type="button" className="icon-button" title="Marcar todas como lidas" disabled={!online || !unread} onClick={() => void readAll()}>
+              <CheckCheck size={18} />
+            </button>
+            <button type="button" className="icon-button" title="Fechar" onClick={() => setOpen(false)}>
+              <X size={18} />
+            </button>
           </div>
         </header>
-        {!online && <div className="information-center-offline"><CircleAlert size={17} /><span>Sem conexão: a Central não altera nem substitui dados da contingência. As informações serão atualizadas na reconexão.</span></div>}
+
+        {!online && (
+          <div className="information-center-offline">
+            <CircleAlert size={17} />
+            <span>Sem conexão: a Central não altera nem substitui dados da contingência. As informações serão atualizadas na reconexão.</span>
+          </div>
+        )}
+
         {error && <div className="information-center-error">{error}</div>}
+
         <div className="information-center-list">
-          {!items.length && !loading && !error && <div className="information-center-empty"><Bell size={28} /><strong>Nenhuma informação nova</strong><span>Atribuições, transferências e atualizações relevantes aparecerão aqui.</span></div>}
-          {items.map((item) => <button type="button" key={item.id} className={`information-item severity-${item.severity} ${item.readAt ? "read" : "unread"}`} onClick={() => void read(item)}>
-            <span className="information-item-dot" />
-            <span className="information-item-main">
-              <span className="information-item-title">{item.title}</span>
-              <span className="information-item-body">{item.body}</span>
-              <span className="information-item-meta">{item.workspaceName}{item.processNumber ? ` · ${item.processNumber}` : ""} · {when(item.createdAt)}</span>
-            </span>
-            {item.movementId && <ExternalLink size={15} className="information-item-open" />}
-          </button>)}
+          {!items.length && !loading && !error && (
+            <div className="information-center-empty">
+              <Bell size={28} />
+              <strong>Nenhuma informação nova</strong>
+              <span>Atribuições, transferências e atualizações relevantes aparecerão aqui.</span>
+            </div>
+          )}
+
+          {items.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={`information-item severity-${item.severity} ${item.readAt ? "read" : "unread"}`}
+              onClick={() => void read(item)}
+            >
+              <span className="information-item-dot" />
+              <span className="information-item-main">
+                <span className="information-item-title">{item.title}</span>
+                <span className="information-item-body">{item.body}</span>
+                <span className="information-item-meta">
+                  {item.workspaceName}{item.processNumber ? ` · ${item.processNumber}` : ""} · {when(item.createdAt)}
+                </span>
+              </span>
+              {item.movementId && <ExternalLink size={15} className="information-item-open" />}
+            </button>
+          ))}
         </div>
       </section>
-    </>}
-  </div>;
+    </>,
+    document.body,
+  ) : null;
+
+  return (
+    <>
+      <div className="information-center">
+        <button
+          type="button"
+          className={`icon-button information-center-trigger ${unread ? "has-unread" : ""}`}
+          title="Central de Informações"
+          aria-label={`Central de Informações${unread ? `, ${unread} não lida${unread === 1 ? "" : "s"}` : ""}`}
+          onClick={() => {
+            setOpen((value) => !value);
+            if (!open && online) void refresh();
+          }}
+        >
+          <Bell />
+          {unread > 0 && <span className="information-center-badge">{unread > 99 ? "99+" : unread}</span>}
+        </button>
+      </div>
+      {overlay}
+    </>
+  );
 }

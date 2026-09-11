@@ -1,0 +1,73 @@
+/* ============================================================
+   PRÁXIS 1.0 — MOBILE STABILITY FIXES
+   Corrige conflitos residuais entre o layout 0.x e o shell 1.0.
+   Deve ser carregado por último em main.tsx.
+   ============================================================ */
+
+@media (max-width: 900px) {
+  /* Novo processo: deixa de ser FAB legado e volta para a topbar. */
+  .topbar .new-process-button {
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    flex: 0 0 44px;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin-left: 0 !important;
+    border-radius: 13px !important;
+    box-shadow: 0 7px 16px rgba(31,110,212,.18);
+  }
+
+  /* Drawer deve ficar acima da topbar no mobile. */
+  .sidebar-backdrop {
+    z-index: 69 !important;
+  }
+
+  .app.sidebar-visible .sidebar {
+    z-index: 70 !important;
+  }
+}
+
+@media (max-width: 700px) {
+  /* A tabela vira cards no mobile; remove dimensões desktop herdadas. */
+  .table-scroll-v092 {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .process-data-table,
+  .queue-data-table,
+  .all-processes-data-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .process-data-table tbody,
+  .process-data-table tbody tr {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .process-data-table tbody td:not(.col-select) {
+    position: static !important;
+    left: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .process-data-table .col-actions {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  .process-data-table .row-actions {
+    min-width: 0 !important;
+  }
+}
