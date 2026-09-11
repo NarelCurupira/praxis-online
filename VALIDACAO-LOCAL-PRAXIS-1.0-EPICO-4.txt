@@ -1,0 +1,63 @@
+VALIDAÇÃO LOCAL — ÉPICO 4
+
+TypeScript: NÃO CONCLUÍDO / BASE LOCAL DIVERGENTE
+Testes: NÃO CONCLUÍDO / BASE LOCAL DIVERGENTE
+
+--- TypeScript ---
+error TS2688: Cannot find type definition file for 'node'.
+  The file is in the program because:
+    Entry point of type library 'node' specified in compilerOptions
+error TS2688: Cannot find type definition file for 'vite/client'.
+  The file is in the program because:
+    Entry point of type library 'vite/client' specified in compilerOptions
+
+
+--- Testes ---
+
+> praxis-online@0.10.7.7 test
+> npm run test:reports && npm run test:efficiency && npm run test:time && npm run test:reliability && npm run test:action-groups && npm run test:diagnostics && npm run test:data-quality && npm run test:intelligent-import && npm run test:pwa && npm run test:passkeys && npm run test:auth-method && npm run test:configuration-export && npm run test:layout-regression && npm run test:class-options && npm run test:admin-users && npm run test:procedural-priorities --run
+
+
+> praxis-online@0.10.7.7 test:reports
+> node --import tsx --test src/reporting.test.ts
+
+TAP version 13
+# node:internal/modules/package_json_reader:256
+#   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+#         ^
+# Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /mnt/data/praxis_epico4_validation/
+# [90m    at Object.getPackageJSONURL (node:internal/modules/package_json_reader:256:9)[39m
+# [90m    at packageResolve (node:internal/modules/esm/resolve:768:81)[39m
+# [90m    at moduleResolve (node:internal/modules/esm/resolve:854:18)[39m
+# [90m    at defaultResolve (node:internal/modules/esm/resolve:984:11)[39m
+# [90m    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:780:12)[39m
+# [90m    at \#cachedDefaultResolve (node:internal/modules/esm/loader:704:25)[39m
+# [90m    at ModuleLoader.resolve (node:internal/modules/esm/loader:687:38)[39m
+# [90m    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:305:38)[39m
+# [90m    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:643:36)[39m
+# [90m    at TracingChannel.tracePromise (node:diagnostics_channel:344:14)[39m {
+#   code: [32m'ERR_MODULE_NOT_FOUND'[39m
+# }
+# Node.js v22.16.0
+# Subtest: src/reporting.test.ts
+not ok 1 - src/reporting.test.ts
+  ---
+  duration_ms: 28.984156
+  type: 'test'
+  location: '/mnt/data/praxis_epico4_validation/src/reporting.test.ts:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 36.357579
+

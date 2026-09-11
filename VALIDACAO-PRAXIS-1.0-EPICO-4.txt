@@ -1,0 +1,12 @@
+VALIDAÇÃO ESTÁTICA — ÉPICO 4
+
+- Dashboard mantém Props atuais: OK
+- Dashboard mantém filtros: OK
+- Dashboard mantém movimento mensal: OK
+- Dashboard mantém natureza: OK
+- Dashboard mantém comparativo anual: OK
+- Dashboard mantém prioridades: OK
+- Sidebar preserva contratos de marca: OK
+- Navegação respeita visiblePages: OK
+- App.tsx não incluído: OK
+- Dark mode usa tokens: OK

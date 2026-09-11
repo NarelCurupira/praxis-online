@@ -1,0 +1,49 @@
+PRÁXIS 1.0 — ÉPICO 4
+HOME / DASHBOARD
+
+OBJETIVO
+Transformar a tela inicial no modelo de produto aprovado: home acionável primeiro,
+analytics depois.
+
+IMPLEMENTADO
+- nova Home 1.0 responsiva;
+- marca Práxis 1.0 raster no cabeçalho da Home;
+- saudação e identidade do usuário;
+- hero "Processos em andamento" com valor real;
+- 3 KPIs prioritários: Minha fila, Prazos e Qualidade/Produção;
+- acesso rápido em grade;
+- navegação para Fila/Processos/Configurações sem alterar App.tsx;
+- acesso direto à Central de Informações;
+- análises existentes preservadas abaixo da Home;
+- filtros de responsável e período preservados;
+- Movimento mensal preservado;
+- Natureza da atuação preservada;
+- Comparativo anual preservado;
+- Prioridades da fila preservadas;
+- light mode e dark mode;
+- composição específica para mobile e desktop.
+
+ARQUITETURA
+O Dashboard dispara o evento "praxis:navigate".
+O Sidebar, que já recebe AccessCapabilities do App, só executa a navegação quando
+a página está autorizada em access.visiblePages. Isso preserva as permissões atuais
+sem duplicar regras de acesso no Dashboard e sem alterar App.tsx.
+
+ARQUIVOS ALTERADOS
+- src/components/Dashboard.tsx
+- src/components/Sidebar.tsx
+- src/main.tsx
+
+ARQUIVO NOVO
+- src/praxis1-home.css
+
+NÃO ALTERADO
+- App.tsx
+- banco / SQL / RLS
+- Supabase
+- contingência / IndexedDB / sync_queue / conflitos
+- Push
+- MFA / passkey
+- regras de processo
+
+NÃO HÁ SQL.

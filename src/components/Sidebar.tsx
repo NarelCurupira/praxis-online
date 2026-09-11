@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, Settings, ShieldCheck, Trash2, UserRound, Users } from "lucide-react";
 import type { AccessCapabilities } from "../access";
 import type { Page } from "../types";
@@ -25,6 +26,17 @@ interface Props {
 
 export function Sidebar({ page, access, onChange }: Props) {
   const profilePage: Page = access.visiblePages.has("settings") ? "settings" : "about";
+
+  useEffect(() => {
+    const navigateFromProduct = (event: Event) => {
+      const target = (event as CustomEvent<Page>).detail;
+      if (!target || !access.visiblePages.has(target)) return;
+      onChange(target);
+    };
+
+    window.addEventListener("praxis:navigate", navigateFromProduct);
+    return () => window.removeEventListener("praxis:navigate", navigateFromProduct);
+  }, [access.visiblePages, onChange]);
 
   function openCentral() {
     window.dispatchEvent(new CustomEvent("praxis:open-information-center"));

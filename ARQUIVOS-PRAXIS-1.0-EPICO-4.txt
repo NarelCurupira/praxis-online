@@ -1,0 +1,5 @@
+src/components/Dashboard.tsx
+src/components/Sidebar.tsx
+src/main.tsx
+src/praxis1-home.css
+ATUALIZACAO-PRAXIS-1.0-EPICO-4.txt
