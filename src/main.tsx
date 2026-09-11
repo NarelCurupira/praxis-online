@@ -15,6 +15,7 @@ import "./v0113-mobile-concept.css";
 import "./v0113-topbar-safearea.css";
 import "./praxis1-tokens.css";
 import "./praxis1-shell.css";
+import "./praxis1-entry.css";
 
 const App = lazy(() => import("./App"));
 

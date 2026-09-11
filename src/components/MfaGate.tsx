@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { KeyRound, LoaderCircle, QrCode, RefreshCw, ShieldCheck } from "lucide-react";
+import { KeyRound, LoaderCircle, LogOut, QrCode, RefreshCw, ShieldCheck } from "lucide-react";
 import { requireSupabase } from "../supabase";
 
 type MfaMode = "loading" | "setup" | "verify" | "error";
@@ -47,8 +47,6 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // O QR Code só é retornado no momento da inscrição. Fatores incompletos
-    // precisam ser removidos para que um novo QR Code possa ser gerado.
     for (const factor of totpFactors) {
       const removal = await client.auth.mfa.unenroll({ factorId: factor.id });
       if (removal.error) {
@@ -152,42 +150,58 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
   if (ready) return <>{children}</>;
 
   return (
-    <div className="auth-shell">
-      <section className="auth-card mfa-card">
-        <div className="mfa-icon">
-          {mode === "loading"
-            ? <LoaderCircle className="splash-spinner" size={34} />
-            : mode === "setup"
-              ? <QrCode size={34} />
-              : <ShieldCheck size={34} />}
+    <div className="auth-shell p1-entry-shell">
+      <div className="p1-entry-ambient p1-entry-ambient-a" aria-hidden="true" />
+      <div className="p1-entry-ambient p1-entry-ambient-b" aria-hidden="true" />
+
+      <section className="auth-card mfa-card p1-entry-card p1-mfa-card">
+        <div className="p1-entry-brand">
+          <img className="p1-entry-logo p1-entry-logo-light" src="/brand/praxis-1-logo-light.webp" alt="Práxis" />
+          <img className="p1-entry-logo p1-entry-logo-dark" src="/brand/praxis-1-logo-dark.webp" alt="Práxis" />
         </div>
 
-        <p className="eyebrow">Proteção da conta</p>
-        <h1>Verificação em duas etapas</h1>
+        <div className="p1-security-icon" aria-hidden="true">
+          {mode === "loading"
+            ? <LoaderCircle className="p1-spin" size={29} />
+            : mode === "setup"
+              ? <QrCode size={29} />
+              : <ShieldCheck size={29} />}
+        </div>
+
+        <div className="p1-entry-heading">
+          <span className="p1-entry-kicker"><ShieldCheck size={15} /> Proteção da conta</span>
+          <h1>Verificação em duas etapas</h1>
+        </div>
 
         {mode === "loading" && (
-          <p>Preparando a verificação de segurança da sua conta...</p>
+          <div className="p1-entry-method-loading">
+            <span>Preparando a verificação de segurança da sua conta...</span>
+          </div>
         )}
 
         {mode === "setup" && (
           <>
-            <p>
-              Escaneie o QR Code com o recurso Senhas do iPhone, Google Authenticator
-              ou outro aplicativo compatível. Depois, informe o código de seis dígitos.
+            <p className="p1-entry-description">
+              Escaneie o QR Code com Senhas do iPhone, Google Authenticator ou outro
+              aplicativo compatível. Depois, informe o código de seis dígitos.
             </p>
-            <img className="mfa-qr" src={qr} alt="QR Code para configurar o autenticador" />
+            <div className="p1-qr-frame">
+              <img className="mfa-qr p1-mfa-qr" src={qr} alt="QR Code para configurar o autenticador" />
+            </div>
           </>
         )}
 
         {mode === "verify" && (
-          <p>Informe o código atual do seu aplicativo autenticador para continuar.</p>
+          <p className="p1-entry-description">
+            Informe o código atual do seu aplicativo autenticador para continuar.
+          </p>
         )}
 
         {(mode === "setup" || mode === "verify") && (
-          <form onSubmit={verify}>
+          <form className="p1-entry-form" onSubmit={verify}>
             <label>
               Código do autenticador
-              <div className="input-with-icon">
+              <div className="input-with-icon p1-entry-input p1-code-input">
                 <KeyRound size={18} />
                 <input
                   autoFocus
@@ -197,15 +211,16 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
                   inputMode="numeric"
                   pattern="[0-9]{6}"
                   maxLength={6}
+                  placeholder="000000"
                   value={code}
                   onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
                 />
               </div>
             </label>
 
-            {message && <div className="auth-message">{message}</div>}
+            {message && <div className="auth-message p1-entry-message">{message}</div>}
 
-            <button className="button primary auth-submit" disabled={busy || code.length !== 6}>
+            <button className="button primary auth-submit p1-entry-primary" disabled={busy || code.length !== 6}>
               {busy
                 ? "Verificando..."
                 : mode === "setup"
@@ -217,10 +232,10 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
 
         {mode === "error" && (
           <>
-            <div className="auth-message">
+            <div className="auth-message p1-entry-message">
               {message || "Não foi possível preparar a verificação em duas etapas."}
             </div>
-            <button className="button primary auth-submit" onClick={() => void prepare()}>
+            <button className="button primary auth-submit p1-entry-primary" onClick={() => void prepare()}>
               <RefreshCw size={17} />
               Tentar novamente
             </button>
@@ -228,11 +243,11 @@ export function MfaGate({ children }: { children: React.ReactNode }) {
         )}
 
         <button
-          className="auth-switch"
+          className="auth-switch p1-entry-text-action"
           onClick={() => void requireSupabase().auth.signOut()}
           disabled={busy}
         >
-          Sair desta conta
+          <LogOut size={16} /> Sair desta conta
         </button>
       </section>
     </div>
