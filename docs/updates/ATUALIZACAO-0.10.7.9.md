@@ -1,7 +1,7 @@
 # Atualização do Práxis para 0.10.7.9
 
 1. Substitua no GitHub os arquivos indicados em `ARQUIVOS-0.10.7.9.txt`, preservando as mesmas pastas.
-2. Execute no SQL Editor do Supabase o arquivo `EXECUTAR-NO-SUPABASE-0.10.7.9.sql`.
+2. Execute no SQL Editor do Supabase o arquivo `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.7.9.sql`.
 3. Confirme que a execução terminou sem erro e que as RPCs `list_my_workspaces_v01079` e `set_current_workspace_v01079` foram criadas.
 4. Execute `npm install` se necessário e valide com `npm run quality`.
 5. Publique a nova build e confirme a versão **0.10.7.9** na aba **Sobre**.

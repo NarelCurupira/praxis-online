@@ -3,7 +3,7 @@
 ## Ordem obrigatória
 
 1. No Supabase, abra o **SQL Editor**.
-2. Execute integralmente `EXECUTAR-NO-SUPABASE-0.10.7.sql`.
+2. Execute integralmente `supabase/manual/EXECUTAR-NO-SUPABASE-0.10.7.sql`.
 3. Extraia o ZIP na raiz do repositório, preservando as pastas.
 4. Confirme a substituição dos arquivos existentes.
 5. Envie as alterações ao GitHub e aguarde o workflow.
