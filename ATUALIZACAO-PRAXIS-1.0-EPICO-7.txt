@@ -1,0 +1,59 @@
+PRÁXIS 1.0 — ÉPICO 7
+CONSOLIDAÇÃO FINAL DA VERSÃO 1.0
+
+OBJETIVO
+Encerrar o ciclo visual dos Épicos 1–6 e promover o Práxis de 0.11.3-RC
+para 1.0.0, sem redesenhar as funções de negócio.
+
+CONSOLIDAÇÃO VISUAL
+- adiciona a camada final praxis1-final.css;
+- normaliza foco, controles, superfícies, modais, tabelas e gráficos;
+- melhora responsividade em telas pequenas;
+- reforça modo noite;
+- respeita prefers-reduced-motion, prefers-contrast e forced-colors;
+- inclui regras de impressão;
+- mantém safe areas do iPhone.
+
+CSS LEGADO DESATIVADO
+src/main.tsx deixa de importar:
+- v0113-mobile-concept.css
+- v0113-topbar-safearea.css
+
+Essas duas camadas foram substituídas pelos Épicos 1–7:
+- praxis1-shell.css
+- praxis1-entry.css
+- praxis1-home.css
+- praxis1-workflow.css
+- praxis1-secondary.css
+- praxis1-final.css
+
+Os arquivos legados podem permanecer no repositório sem efeito; não é necessário
+apagá-los nesta atualização.
+
+IDENTIDADE PWA
+- favicon 16/32 e favicon.ico;
+- Apple Touch Icon 180;
+- ícones PWA 192/512;
+- ícones maskable 192/512;
+- splash light/dark 1170x2532;
+- todos os novos assets derivam do P raster aprovado, sem SVG;
+- Service Worker passa a pré-cachear os assets oficiais Práxis 1.0.
+
+VERSÃO
+- package.json: 1.0.0
+- package-lock.json: 1.0.0
+- src/version.ts: 1.0.0
+- public/sw.js: cache 1.0.0
+- Sobre: histórico passa a registrar Product UI 1.0.
+
+NÃO ALTERADO
+- App.tsx;
+- regras de negócio;
+- Supabase / banco / RLS;
+- contingência / IndexedDB / sync_queue / conflitos;
+- Push e Central em nível de lógica;
+- MFA / passkeys;
+- relatórios, cálculos de eficiência e importação;
+- permissões multi-Procuradoria.
+
+NÃO HÁ SQL.

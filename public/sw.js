@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-0.11.3-RC-push-1";
+const CACHE_NAME = "praxis-shell-1.0.0-push-1";
 const SHELL = [
   "/",
   "/index.html",
@@ -6,8 +6,9 @@ const SHELL = [
   "/offline.html",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
-  "/brand/logo-horizontal-light.webp",
-  "/brand/logo-horizontal-dark.webp",
+  "/brand/praxis-1-logo-light.webp",
+  "/brand/praxis-1-logo-dark.webp",
+  "/brand/praxis-1-mark.webp",
   "/brand/symbol-light.webp",
   "/brand/symbol-dark.webp",
   "/brand/empty-processes.webp",
@@ -56,7 +57,6 @@ async function networkFirst(request) {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
-
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith("/rest/") || url.pathname.startsWith("/auth/")) return;
@@ -84,7 +84,6 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
-
 
 self.addEventListener("push", (event) => {
   let payload = {};

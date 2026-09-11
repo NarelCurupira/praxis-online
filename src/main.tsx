@@ -11,14 +11,13 @@ import "./mobileDashboard.css";
 import "./v0107.css";
 import "./v0110-layout-fixes.css";
 import "./v0113-notifications.css";
-import "./v0113-mobile-concept.css";
-import "./v0113-topbar-safearea.css";
 import "./praxis1-tokens.css";
 import "./praxis1-shell.css";
 import "./praxis1-entry.css";
 import "./praxis1-home.css";
 import "./praxis1-workflow.css";
 import "./praxis1-secondary.css";
+import "./praxis1-final.css";
 
 const App = lazy(() => import("./App"));
 

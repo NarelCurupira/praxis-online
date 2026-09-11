@@ -1,0 +1,368 @@
+/* ============================================================
+   PRÁXIS 1.0 — ÉPICO 7 · CONSOLIDAÇÃO
+   Polimento global · acessibilidade · responsividade · dark mode
+   Camada final do Product UI 1.0
+   ============================================================ */
+
+:root {
+  --p1-control-height: 44px;
+  --p1-touch-target: 44px;
+}
+
+html {
+  min-width: 320px;
+  background: var(--p1-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--p1-bg);
+}
+
+#root { min-height: 100dvh; }
+
+img, svg { max-width: 100%; }
+
+button, a, input, select, textarea, summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, summary, label[for], input[type="checkbox"], input[type="radio"] {
+  touch-action: manipulation;
+}
+
+.button,
+.icon-button,
+.nav-item,
+.mobile-bottom-nav button,
+.settings-subnav button,
+.admin-tabs button,
+.metric-selector button,
+.table-quick-views button {
+  transition:
+    color var(--p1-ease),
+    background-color var(--p1-ease),
+    border-color var(--p1-ease),
+    box-shadow var(--p1-ease),
+    transform var(--p1-ease),
+    opacity var(--p1-ease);
+}
+
+button:disabled,
+.button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+  opacity: .58;
+}
+
+a {
+  color: var(--p1-blue-600);
+  text-underline-offset: 3px;
+}
+
+a:hover { color: var(--p1-blue-500); }
+
+:where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--p1-blue-500);
+  outline-offset: 2px;
+  box-shadow: var(--p1-focus);
+}
+
+.content { width: 100%; }
+
+.page-stack {
+  width: 100%;
+  min-width: 0;
+}
+
+.page-stack > * { min-width: 0; }
+
+.panel,
+.stat-card,
+.settings-card,
+.device-access-panel {
+  background-clip: padding-box;
+}
+
+.panel-title > div { min-width: 0; }
+
+.panel-title h2,
+.panel-title h3,
+.page-heading h1 {
+  overflow-wrap: anywhere;
+}
+
+.muted,
+.muted-note {
+  color: var(--p1-text-secondary) !important;
+}
+
+:where(.page-stack,.modal,.confirm-dialog)
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+:where(.page-stack,.modal,.confirm-dialog) select {
+  min-height: var(--p1-control-height);
+}
+
+:where(.page-stack,.modal,.confirm-dialog) textarea {
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .topbar { isolation: isolate; }
+
+  .topbar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: inherit;
+  }
+
+  .topbar .mobile-menu,
+  .topbar > .icon-button,
+  .topbar .new-process-button,
+  .mobile-bottom-nav button {
+    min-width: var(--p1-touch-target);
+    min-height: var(--p1-touch-target);
+  }
+
+  .content { overflow-x: clip; }
+}
+
+.modal-backdrop { overscroll-behavior: contain; }
+
+.modal,
+.confirm-dialog {
+  scrollbar-width: thin;
+  scrollbar-color: var(--p1-border) transparent;
+}
+
+.modal :where(input, select, textarea),
+.confirm-dialog :where(input, select, textarea) {
+  font-size: max(16px, 1em);
+}
+
+@media (min-width: 701px) {
+  .modal :where(input, select, textarea),
+  .confirm-dialog :where(input, select, textarea) {
+    font-size: inherit;
+  }
+}
+
+.table-scroll-v092,
+.annual-table-wrap,
+.workspace-member-table,
+.permission-table {
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.process-data-table th,
+.process-data-table td,
+.annual-table th,
+.annual-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.recharts-wrapper,
+.recharts-surface {
+  max-width: 100%;
+}
+
+.recharts-tooltip-wrapper { z-index: 20; }
+
+.info-box,
+.settings-message,
+.device-access-message,
+.table-export-message {
+  line-height: 1.45;
+}
+
+.success-box {
+  border-color: color-mix(in srgb, var(--p1-success) 28%, var(--p1-border)) !important;
+  background: var(--p1-success-soft) !important;
+}
+
+.period-error,
+.import-error,
+.modal-save-error,
+.information-center-error {
+  border-color: color-mix(in srgb, var(--p1-danger) 30%, var(--p1-border)) !important;
+}
+
+/* Sobre usa diretamente os assets raster oficiais. */
+.about-card::before {
+  display: none !important;
+}
+
+.about-card .about-logo {
+  width: min(300px, 74%);
+  height: auto;
+  margin: 0 0 14px;
+  object-fit: contain;
+}
+
+.about-card .about-logo-light { display: block !important; }
+.about-card .about-logo-dark { display: none !important; }
+
+html[data-theme="dark"] .about-card .about-logo-light { display: none !important; }
+html[data-theme="dark"] .about-card .about-logo-dark { display: block !important; }
+
+html[data-theme="dark"] { background: var(--p1-bg); }
+
+html[data-theme="dark"] .button.secondary,
+html[data-theme="dark"] .icon-button {
+  border-color: var(--p1-border);
+}
+
+html[data-theme="dark"] :where(
+  .panel,
+  .stat-card,
+  .settings-card,
+  .device-access-panel,
+  .information-center-panel,
+  .modal,
+  .confirm-dialog
+) {
+  color: var(--p1-text);
+}
+
+html[data-theme="dark"] .recharts-default-tooltip {
+  background: var(--p1-surface-raised) !important;
+}
+
+@media (max-width: 700px) {
+  .page-stack > .page-heading:not(.dashboard-heading) {
+    display: grid;
+    align-items: start;
+    gap: 10px;
+  }
+
+  .page-stack > .page-heading:not(.dashboard-heading) h1 { font-size: 28px; }
+  .page-stack > .page-heading:not(.dashboard-heading) p { font-size: 12px; }
+
+  .button { min-height: var(--p1-touch-target); }
+
+  .icon-button {
+    min-width: var(--p1-touch-target);
+    min-height: var(--p1-touch-target);
+  }
+
+  .panel,
+  .settings-card,
+  .device-access-panel {
+    scroll-margin-top: calc(var(--praxis-safe-top, 0px) + 88px);
+  }
+
+  .modal-actions {
+    padding-bottom: max(6px, var(--praxis-safe-bottom, 0px));
+  }
+
+  .information-center-panel {
+    padding-bottom: max(8px, var(--praxis-safe-bottom, 0px));
+  }
+
+  .mobile-bottom-nav {
+    padding-bottom: max(7px, var(--praxis-safe-bottom, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto !important; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --p1-border: #B7C6D6;
+    --p1-text-secondary: #4E647A;
+  }
+
+  html[data-theme="dark"] {
+    --p1-border: #4A6A88;
+    --p1-text-secondary: #B5C7D8;
+  }
+
+  .button.primary,
+  .nav-item.active,
+  .settings-subnav button.active,
+  .admin-tabs button.active {
+    box-shadow: inset 0 0 0 1px currentColor;
+  }
+}
+
+@media (forced-colors: active) {
+  .p1-home-hero,
+  .sidebar,
+  .button.primary,
+  .nav-item.active {
+    forced-color-adjust: auto;
+  }
+
+  .information-item-dot,
+  .database-usage > span {
+    background: Highlight;
+  }
+
+  .p1-home-hero,
+  .panel,
+  .stat-card,
+  .modal,
+  .confirm-dialog {
+    border: 1px solid CanvasText;
+  }
+}
+
+@media print {
+  .sidebar,
+  .topbar,
+  .mobile-bottom-nav,
+  .information-center,
+  .bulk-action-bar,
+  .button,
+  .icon-button {
+    display: none !important;
+  }
+
+  .app,
+  main,
+  .content {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .panel,
+  .stat-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
