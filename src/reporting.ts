@@ -1,9 +1,10 @@
+import { currentWorkdayHours } from "./date";
 import { localDatePart } from "./date";
 import { actionLabel } from "./labels";
 import { inspectDataQuality } from "./dataQuality";
 import type { ProcessMovement, TeamMember } from "./types";
 
-export const WORKDAY_HOURS = 6;
+export const WORKDAY_HOURS = 6; // Compatibilidade; cálculos usam currentWorkdayHours().
 export const DEFAULT_NEAR_DUE_DAYS = 3;
 
 export type ReportMode = "executive" | "complete" | "highlights";
@@ -145,19 +146,20 @@ function fallbackCompleteTime(value: string | null | undefined): boolean {
 
 export function calculateDistribution(records: ProcessMovement[], startDate: string, endDate: string): DistributionStats {
   const completed = records.filter((record) => inRange(sentDate(record), startDate, endDate));
-  const measured = completed.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours));
-  const values = measured.map((record) => record.elapsedHours as number);
+  const valid = completed.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours) && record.elapsedHours >= 0 && new Date(record.sentAt!).getTime() >= new Date(record.receivedAt).getTime());
   const precise = (record: ProcessMovement) => (record.receivedTimePrecise ?? fallbackCompleteTime(record.receivedAt)) && (record.sentTimePrecise ?? fallbackCompleteTime(record.sentAt));
+  const measured = valid.filter(precise);
+  const values = measured.map((record) => record.elapsedHours as number);
   return {
     count: values.length,
     mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
     median: percentile(values, .5), p75: percentile(values, .75), p90: percentile(values, .9),
     min: values.length ? Math.min(...values) : null, max: values.length ? Math.max(...values) : null,
     sameBusinessDay: measured.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
-    withinOneBusinessDay: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= WORKDAY_HOURS).length,
-    withinThreeBusinessDays: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= WORKDAY_HOURS * 3).length,
+    withinOneBusinessDay: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= currentWorkdayHours()).length,
+    withinThreeBusinessDays: measured.filter((record) => precise(record) && (record.elapsedHours as number) <= currentWorkdayHours() * 3).length,
     zeroSameDate: measured.filter((record) => record.elapsedHours === 0 && dateKey(record.receivedAt) === sentDate(record)).length,
-    withoutCompleteTime: measured.filter((record) => !precise(record)).length,
+    withoutCompleteTime: completed.length - measured.length,
   };
 }
 

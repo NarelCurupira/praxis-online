@@ -1,88 +1,38 @@
-const CACHE_NAME = "praxis-shell-1.0.0-push-2";
-const SHELL = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/offline.html",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/brand/praxis-1-logo-light.webp",
-  "/brand/praxis-1-logo-dark.webp",
-  "/brand/praxis-1-mark.webp",
-  "/brand/symbol-light.webp",
-  "/brand/symbol-dark.webp",
-  "/brand/empty-processes.webp",
-  "/brand/empty-search.webp",
-];
+const CACHE_NAME = "praxis-shell-1.1.0-dev";
+// Substituído pelo build com todos os arquivos e um identificador de conteúdo.
+const SHELL = ["/", "/index.html", "/offline.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)));
-  self.skipWaiting();
 });
-
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) =>
-        Promise.all(
-          keys
-            .filter((key) => key.startsWith("praxis-shell-") && key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
-      ),
-      self.clients.claim(),
-    ]),
-  );
+  event.waitUntil((async () => {
+    // Conserva a versão anterior para abas que ainda estão abertas.
+    const keys = (await caches.keys()).filter((key) => key.startsWith("praxis-shell-"));
+    const previous = keys.filter((key) => key !== CACHE_NAME).slice(-1);
+    await Promise.all(keys.filter((key) => key !== CACHE_NAME && !previous.includes(key)).map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
-
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request, { cache: "no-store" });
-    if (response.ok) await cache.put(request, response.clone());
-    return response;
-  } catch {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    if (request.mode === "navigate") {
-      const shell = await cache.match("/") ?? await cache.match("/index.html");
-      if (shell) return shell;
-      const offline = await cache.match("/offline.html");
-      if (offline) return offline;
-    }
-    throw new Error("Recurso indisponível na rede e no cache.");
-  }
-}
-
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-  if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.origin !== location.origin) return;
-  if (url.pathname.startsWith("/rest/") || url.pathname.startsWith("/auth/")) return;
-
-  if (
-    request.mode === "navigate"
-    || request.destination === "script"
-    || request.destination === "style"
-    || url.pathname === "/sw.js"
-  ) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
-        return response;
-      });
-    }),
-  );
+  if (request.method !== "GET" || url.origin !== self.location.origin || url.pathname === "/sw.js") return;
+  if (request.mode !== "navigate" && !SHELL.includes(url.pathname) && !url.pathname.startsWith("/assets/")) return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // HTML e chunks vêm da mesma versão, inclusive em uma rede instável.
+    const cached = await cache.match(request.mode === "navigate" ? "/index.html" : url.pathname);
+    if (cached) return cached;
+    const previous = await caches.match(request);
+    if (previous) return previous;
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  })());
 });
 
 self.addEventListener("push", (event) => {
@@ -110,7 +60,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  const requested = new URL(event.notification.data?.url || "/", self.location.origin);
+  const targetUrl = requested.origin === self.location.origin ? requested.href : self.location.origin + "/";
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const client of windows) {

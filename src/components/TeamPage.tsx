@@ -175,7 +175,7 @@ export function TeamPage({ onChanged }: Props) {
       <div className="panel-title"><div><h2>Usuários</h2><p>O nome completo permanece nos relatórios e na auditoria.</p></div><Users /></div>
       <div className="team-list">{members.map((member) => <div className="team-row" key={member.userId}>
         <div className="team-avatar">{(member.displayName || member.fullName || member.email)[0]}</div>
-        <div className="grow"><strong>{member.fullName}</strong><span>{member.email}</span><small>Nas tabelas: <b>{member.displayName || suggestedDisplayName(member.fullName, member.email)}</b> · Eficiência: {member.efficiencyAccess ?? "own"} · Relatórios: {member.reportsAccess ?? "own"}</small></div>
+        <div className="grow"><strong>{member.fullName}</strong><span>{member.email}</span><small>Nas tabelas: <b>{member.displayName || suggestedDisplayName(member.fullName, member.email)}</b> · Eficiência: {{ none: "Sem acesso", own: "Próprios dados", team: "Equipe" }[member.efficiencyAccess ?? "own"]} · Relatórios: {{ none: "Sem acesso", own: "Próprios dados", team: "Equipe" }[member.reportsAccess ?? "own"]}</small></div>
         <span className="role-badge">{labels[member.role]}</span>
         <button className="button secondary" onClick={() => open(member)}><Pencil size={15} />Editar</button>
       </div>)}</div>

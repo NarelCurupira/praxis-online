@@ -1,5 +1,6 @@
+import { currentWorkdayHours } from "./date";
 import { localDatePart } from "./date";
-import { WORKDAY_HOURS, percentile } from "./reporting";
+import { percentile } from "./reporting";
 import type { ProcessMovement, TeamMember } from "./types";
 
 export type EfficiencyScope = "team" | string;
@@ -184,20 +185,20 @@ export function calculateEfficiencyFlow(records: ProcessMovement[], range: DateR
 
 export function calculateEfficiencyTime(records: ProcessMovement[], range: DateRange): EfficiencyTimeMetrics {
   const sent = records.filter((record) => inRange(sentDate(record), range));
-  const measured = sent.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours));
+  const measured = sent.filter((record) => record.elapsedHours != null && Number.isFinite(record.elapsedHours) && record.elapsedHours >= 0 && new Date(record.sentAt!).getTime() >= new Date(record.receivedAt).getTime());
   const precise = measured.filter((record) =>
     (record.receivedTimePrecise ?? hasCompleteTime(record.receivedAt))
     && (record.sentTimePrecise ?? hasCompleteTime(record.sentAt)));
-  const values = measured.map((record) => record.elapsedHours as number);
+  const values = precise.map((record) => record.elapsedHours as number);
   const preciseValues = precise.map((record) => record.elapsedHours as number);
 
   return {
     sentCount: sent.length,
     measuredCount: measured.length,
     preciseCount: precise.length,
-    sameDay: sent.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
+    sameDay: measured.filter((record) => dateKey(record.receivedAt) === sentDate(record)).length,
     withinTwoHours: preciseValues.filter((value) => value <= 2).length,
-    withinOneDay: preciseValues.filter((value) => value <= WORKDAY_HOURS).length,
+    withinOneDay: preciseValues.filter((value) => value <= currentWorkdayHours()).length,
     median: percentile(values, .5),
     mean: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
     p90: percentile(values, .9),
@@ -448,9 +449,9 @@ export function formatEfficiencyDuration(value: number | null, time?: Efficiency
     maximumFractionDigits: 1,
   });
 
-  if (value < WORKDAY_HOURS) return `${formatted} ${value < 1.05 ? "h útil" : "h úteis"}`;
+  if (value < currentWorkdayHours()) return `${formatted} ${value < 1.05 ? "h útil" : "h úteis"}`;
 
-  const days = value / WORKDAY_HOURS;
+  const days = value / currentWorkdayHours();
   return `${formatted} h úteis — ${days.toLocaleString("pt-BR", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,

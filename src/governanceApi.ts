@@ -1,5 +1,6 @@
+import { applyMovementOperation } from "./movementOperations";
 import { toStorageTimestamp } from "./date";
-import type { AccessScope, ClosedPeriod, ProcessEditData, TeamMember, WorkspaceSettings } from "./types";
+import type { AccessScope, ClosedPeriod, ProcessMovement, ProcessEditData, TeamMember, WorkspaceSettings } from "./types";
 import { workspaceContext } from "./workspaceContext";
 
 function fail(error: { message: string } | null): void { if (error) throw new Error(error.message); }
@@ -137,6 +138,9 @@ export async function getWorkspaceSettings(): Promise<WorkspaceSettings> {
 }
 
 export async function saveWorkspaceSettings(settings: WorkspaceSettings): Promise<void> {
+  const minutes = (value: string) => { const [h,m] = value.split(":").map(Number); return h * 60 + m; };
+  const duration = (minutes(settings.workdayEnd) - minutes(settings.workdayStart)) / 60;
+  if (!Number.isFinite(duration) || duration <= 0 || Math.abs(duration - settings.workdayHours) > .01) throw new Error("As horas úteis devem corresponder ao intervalo entre o início e o fim do expediente.");
   const { client, workspaceId } = await context();
   const { error } = await client.from("workspace_settings").upsert({
     workspace_id: workspaceId, workday_hours: settings.workdayHours, workday_start: settings.workdayStart,
@@ -181,14 +185,6 @@ export async function reopenPeriod(id: number, reason: string): Promise<void> {
   fail(error);
 }
 
-export async function updateMovementGoverned(movementId: number, data: ProcessEditData): Promise<void> {
-  const { client } = await context();
-  const payload = { ...data, receivedAt: toStorageTimestamp(data.receivedAt), sentAt: toStorageTimestamp(data.sentAt) };
-  const current = await client.rpc("update_movement_v01076", { target_movement: movementId, payload, change_reason: data.sensitiveChangeReason?.trim() || null });
-  if (!current.error) return;
-  const missingCurrent = current.error.code === "PGRST202"
-    || current.error.code === "42883"
-    || /update_movement_v01076|schema cache/i.test(current.error.message);
-  if (!missingCurrent) fail(current.error);
-  throw new Error("A atualização do Supabase da versão 0.10.7.6 ainda não foi executada.");
+export async function updateMovementGoverned(movementId: number, data: ProcessEditData, baseline?: ProcessMovement): Promise<void> {
+  await applyMovementOperation("edit", movementId, data, { baseline });
 }

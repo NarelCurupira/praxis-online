@@ -1,0 +1,57 @@
+/* Práxis 1.1: refinamento da interface existente, com suporte a fonte ampliada. */
+:root { --p1-sidebar-width: 228px; --p1-topbar-height: 60px; }
+html:not([data-theme="dark"]) { --p1-text-secondary: #52677e; --p1-text-tertiary: #63768a; }
+.sidebar nav.sidebar-nav { gap: 2px; }
+.sidebar .nav-item { min-height: 40px; font-size: .82rem; }
+.sidebar .nav-item[aria-current="page"] { box-shadow: inset 3px 0 var(--p1-cyan-400); }
+.sidebar .praxis1-sidebar-foot { font-size: .68rem; }
+.p1-home-section-head { margin-bottom: 12px; }
+.p1-home-hero-copy strong { font-variant-numeric: tabular-nums; }
+.p1-home-kpi strong, .stat-card strong { font-variant-numeric: tabular-nums; }
+.table-organization { border-top: 1px solid var(--p1-border); padding-top: 8px; }
+.table-organization > summary { cursor: pointer; color: var(--p1-text-secondary); font-size: .82rem; padding: 8px 0; }
+.table-organization[open] > summary { color: var(--p1-text); }
+.saved-view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.saved-view-actions button { font-size: .78rem; min-height: 34px; }
+.table-panel .table-export-message { position: sticky; top: 64px; z-index: 3; padding: 12px 16px; border: 1px solid var(--p1-border); border-radius: 10px; background: var(--p1-surface-raised); color: var(--p1-text); }
+.process-data-table .number-copy-line strong { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: .8rem; letter-spacing: -.025em; }
+.process-data-table .secondary-number span { overflow-wrap: anywhere; font-size: .75rem; }
+.process-data-table tr[aria-busy="true"] { opacity: .7; }
+.row-save-state { color: var(--p1-info); font-size: .7rem; }
+.session-lock { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; padding: 32px; color: var(--p1-text); background: var(--p1-bg); text-align: center; }
+button:focus-visible, summary:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--p1-blue-500); outline-offset: 3px; }
+@media (min-width: 1101px) {
+  .app:not(.sidebar-collapsed):not(.table-focus-mode) { grid-template-columns: var(--p1-sidebar-width) minmax(0,1fr); }
+  .topbar { min-height: 60px; padding-top: 10px; padding-bottom: 10px; gap: 12px; }
+  .page-heading { margin-bottom: 18px; }
+  .page-heading h1 { font-size: 1.7rem; line-height: 1.2; }
+  .dashboard-page .p1-home-hero { min-height: 132px; padding: 20px 26px; border-radius: 18px; }
+  .dashboard-page .p1-home-hero-copy strong { font-size: 3rem; }
+  .dashboard-page .p1-home-kpi { min-height: 112px; padding: 16px; }
+  .dashboard-page .p1-home-quick-card { min-height: 100px; padding: 14px; }
+  .dashboard-page .chart-box { height: 280px; }
+  .table-panel .table-toolbar-v092 { padding: 14px 18px; gap: 10px; }
+  .table-panel .table-toolbar-row.table-filter-row { gap: 10px; }
+  .table-panel .table-filter-row .search-filter { flex: 2 1 260px; }
+  .table-panel .table-display-controls { padding: 10px 18px; }
+  .table-panel .table-quick-views { margin-top: 8px; margin-bottom: 8px; }
+  .table-panel .process-data-table { table-layout: auto; min-width: 1080px; }
+  .table-panel .process-data-table .col-process { width: 220px; min-width: 220px; }
+  .table-panel .process-data-table td { padding-top: 12px; padding-bottom: 12px; }
+  .table-panel.table-density-compact .process-data-table td { padding-top: 8px; padding-bottom: 8px; }
+  .table-panel.table-density-spacious .process-data-table td { padding-top: 18px; padding-bottom: 18px; }
+}
+@media (max-width: 700px) {
+  .saved-view-actions { width: 100%; }
+  .saved-view-actions .button { flex: 1 1 auto; min-height: 42px; }
+  .table-organization { width: 100%; }
+  .table-organization .table-sort-row { display: flex; flex-wrap: wrap; }
+  .table-organization .filter-field { flex: 1 1 130px; min-width: 0; }
+  .table-organization .toolbar-actions { flex: 1 1 100%; }
+  .process-data-table .number-copy-line strong { font-size: .82rem; }
+  .modal .modal-actions { position: sticky; bottom: 0; padding: 14px 0; background: var(--p1-surface); z-index: 2; }
+  .pwa-notice.update { align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

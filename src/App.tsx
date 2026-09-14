@@ -1,4 +1,6 @@
 "use client";
+import { endLocalSession } from "./sessionLifecycle";
+import { revisionFor } from "./movementOperations";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, LogOut, Menu, Moon, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Sun, WifiOff } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
@@ -67,7 +69,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   onToggleTheme: () => void;
   onFontSizeChange: (value: UiFontSize) => void;
 }) {
-  useIdleSession();
+  const idleExpired = useIdleSession(session.user.id);
   const [page, setPage] = useState<Page>("dashboard");
   const [records, setRecords] = useState<ProcessMovement[]>([]);
   const [classes, setClasses] = useState<ClassSetting[]>([]);
@@ -103,6 +105,11 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   const [offlineQueueOpen, setOfflineQueueOpen] = useState(false);
   const [syncingOffline, setSyncingOffline] = useState(false);
   const pushRouteHandled = useRef(false);
+  useEffect(() => {
+    document.documentElement.dataset.praxisBusy = String(syncingOffline || offlineOperations.length > 0 || modal || Boolean(editing));
+    return () => { delete document.documentElement.dataset.praxisBusy; };
+  }, [syncingOffline, offlineOperations.length, modal, editing]);
+
 
   function applyOfflineSnapshot(snapshot: OfflineWorkspaceSnapshot, cachedWorkspaces: AvailableWorkspace[], pending: OfflineOperation[]) {
     configureWorkdaySchedule(snapshot.settings);
@@ -679,10 +686,11 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
   }
 
   async function save(data: ProcessFormData) {
+    const operationId = crypto.randomUUID();
     let queueLocally = contingencyMode || !navigator.onLine;
     if (!queueLocally) {
       try {
-        const created = await measureAsync("movements.create", () => createMovement(data));
+        const created = await measureAsync("movements.create", () => createMovement(data, operationId));
         setRecords((current) => [{ ...created, detailsLoaded: true }, ...current.filter((item) => item.movementId !== created.movementId)]);
         setDataVersion((value) => value + 1);
         setModal(false);
@@ -703,7 +711,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         tempMovementId: temporaryId,
         payload: { kind: "create", data },
         baseline: null,
-      });
+      }, operationId);
       setRecords((current) => projectOfflineOperations(current, [operation], members));
       await refreshOfflineOperations();
       setDataVersion((value) => value + 1);
@@ -716,12 +724,13 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     let queueLocally = contingencyMode || !navigator.onLine;
     if (!queueLocally) {
       try {
-        await measureAsync("movements.update", () => updateMovementGoverned(id, data));
+        await measureAsync("movements.update", () => updateMovementGoverned(id, data, editing ?? undefined));
         const receivedAt = asIso(data.receivedAt) ?? data.receivedAt;
         const sentAt = asIso(data.sentAt);
         const excludedDates = new Set<string>(exclusions.map((item) => item.date));
         setRecords((current) => current.map((record) => record.movementId !== id ? record : {
           ...record,
+          ...revisionFor(record.movementId),
           ...data,
           receivedAt,
           sentAt,
@@ -757,10 +766,11 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     if (!queueLocally) {
       const sentAt = value === "Enviado" ? new Date().toISOString() : null;
       try {
-        await measureAsync("movements.status", () => updateMovementStatus(id, value, actionType, sentAt ?? undefined));
+        await measureAsync("movements.status", () => updateMovementStatus(id, value, actionType, sentAt ?? undefined, records.find(r => r.movementId === id)));
         const excludedDates = new Set<string>(exclusions.map((item) => item.date));
         setRecords((current) => current.map((record) => record.movementId !== id ? record : {
           ...record,
+          ...revisionFor(record.movementId),
           workflowStatus: value,
           actionType: actionType ?? record.actionType,
           draftStatus: value === "Minutado" || value === "Enviado" ? "Minutado" : record.draftStatus,
@@ -791,8 +801,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     let queueLocally = contingencyMode || !navigator.onLine;
     if (!queueLocally) {
       try {
-        await measureAsync("movements.action", () => updateMovementAction(id, actionType));
-        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, actionType } : record));
+        await measureAsync("movements.action", () => updateMovementAction(id, actionType, records.find(r => r.movementId === id)));
+        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, ...revisionFor(record.movementId), actionType } : record));
         hapticFeedback("success");
         return;
       } catch (error) {
@@ -814,9 +824,9 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     let queueLocally = contingencyMode || !navigator.onLine;
     if (!queueLocally) {
       try {
-        await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId));
+        await measureAsync("movements.assignment", () => updateMovementAssignment(id, userId, records.find(r => r.movementId === id)));
         const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
-        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, assignedTo: userId, assignedName } : record));
+        setRecords((current) => current.map((record) => record.movementId === id ? { ...record, ...revisionFor(record.movementId), assignedTo: userId, assignedName } : record));
         hapticFeedback("success");
         return;
       } catch (error) {
@@ -841,7 +851,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         await measureAsync("movements.bulkAssignment", () => updateMovementAssignments(ids, userId));
         const selected = new Set(ids);
         const assignedName = members.find((member) => member.userId === userId)?.fullName || "";
-        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, assignedTo: userId, assignedName } : record));
+        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, ...revisionFor(record.movementId), assignedTo: userId, assignedName } : record));
         return;
       } catch (error) {
         if (!isTransientWriteFailure(error)) throw error;
@@ -866,7 +876,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
       try {
         await measureAsync("movements.bulkAction", () => updateMovementActions(ids, actionType));
         const selected = new Set(ids);
-        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, actionType } : record));
+        setRecords((current) => current.map((record) => selected.has(record.movementId) ? { ...record, ...revisionFor(record.movementId), actionType } : record));
         return;
       } catch (error) {
         if (!isTransientWriteFailure(error)) throw error;
@@ -937,6 +947,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
     }
   }
 
+  if (idleExpired) return <div className="session-lock" role="status">Sessão encerrada por inatividade. Entre novamente para continuar. A fila local foi preservada.</div>;
   if (loading) return <LoadingScreen message="Preparando seus processos..." />;
   if (!settings) return <div className="offline-startup-error"><WifiOff size={34} /><h1>Práxis indisponível</h1><p>{startupError || "Não há dados de contingência disponíveis neste dispositivo."}</p><small>Conecte-se ao servidor ao menos uma vez para preparar a contingência desta Procuradoria.</small></div>;
 
@@ -971,7 +982,7 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
           <button type="button" className={fontSize === "large" ? "active" : ""} aria-label="Letra grande" title="Letra grande" onClick={() => onFontSizeChange("large")}>A+</button>
         </div>
         <button className="icon-button" title={theme === "dark" ? "Usar modo claro" : "Usar modo noturno"} onClick={onToggleTheme}>{theme === "dark" ? <Sun /> : <Moon />}</button>
-        <button className="icon-button" onClick={() => { void (async () => { if (offlineOperations.length && !window.confirm(`Há ${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} ainda não sincronizada${offlineOperations.length === 1 ? "" : "s"}. Sair agora apagará essa fila deste dispositivo. Deseja continuar?`)) return; try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } await clearOfflineUserData(session.user.id).catch(() => undefined); await supabase?.auth.signOut({ scope: "local" }); })(); }} title="Sair"><LogOut /></button>
+        <button className="icon-button" onClick={() => { void (async () => { if (offlineOperations.length && !window.confirm(`Há ${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} ainda não sincronizada${offlineOperations.length === 1 ? "" : "s"}. Sair agora apagará essa fila deste dispositivo. Deseja continuar?`)) return; try { sessionStorage.removeItem("praxis-authenticated-with-passkey"); } catch { /* Sem armazenamento. */ } await clearOfflineUserData(session.user.id).catch(() => undefined); await endLocalSession(); })(); }} title="Sair"><LogOut /></button>
         {access.canCreateProcess && <button className="button primary new-process-button" aria-label="Novo processo" onClick={() => { hapticFeedback(); setModal(true); }}><Plus /><span>Novo processo</span></button>}
       </header>
       {contingencyMode && <div className="contingency-banner contingency-write-banner" role="status"><WifiOff size={19} /><div><strong>Modo contingência · gravação local</strong><span>Base local sincronizada {offlineSavedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(offlineSavedAt)) : "anteriormente"}. {offlineOperations.length ? `${offlineOperations.length} alteração${offlineOperations.length === 1 ? "" : "ões"} aguardando sincronização.` : "Nenhuma alteração pendente."} Retenção: {offlineRetentionHours()} horas.{recoveringOnline || syncingOffline ? " Sincronizando com o servidor…" : ""}</span></div>{offlineOperations.length > 0 && <button type="button" className="button secondary compact" onClick={() => setOfflineQueueOpen(true)}>Ver fila ({offlineOperations.length})</button>}</div>}
@@ -982,8 +993,8 @@ function PraxisApp({ session, theme, fontSize, onToggleTheme, onFontSizeChange }
         {pagePreparing && <div className="page-loading" role="status"><span className="splash-spinner" /><span>Preparando dados desta área...</span></div>}
         {!pagePreparing && pagePreparationError && <div className="info-box">Não foi possível preparar os dados desta área: {pagePreparationError}</div>}
         {!pagePreparing && page === "dashboard" && <Dashboard records={records} currentUserId={session.user.id} currentUserName={currentMember?.fullName || "Meus dados"} onOpenProcesses={(preset) => { setProcessPreset(preset); setPage("processes"); }} onOpenQuality={() => setPage("quality")} canOpenQuality={access.canViewQuality} />}
-        {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
-        {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={contingencyMode ? undefined : async () => { await ensureArchivedRecords(); }} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
+        {!pagePreparing && page === "queue" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Minha fila</h1><p>Processos pendentes atribuídos a você.</p></div></div><ProcessTable workspaceId={currentWorkspace?.workspaceId ?? ""} records={records} queueOnly currentUserId={session.user.id} members={members} permissions={access} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
+        {!pagePreparing && page === "processes" && <div className="page-stack wide-data-page"><div className="page-heading"><div><h1>Processos</h1><p>Todos os processos da unidade, com filtros e leitura compacta.</p></div></div><ProcessTable workspaceId={currentWorkspace?.workspaceId ?? ""} records={records} currentUserId={session.user.id} members={members} permissions={access} preset={processPreset} onClearPreset={() => setProcessPreset(null)} focusMode={tableFocusMode} onToggleFocusMode={() => setTableFocusMode((value) => !value)} onStatus={status} onAction={action} onAssignment={assignment} onBulkAssignment={bulk} onBulkAction={bulkAction} onBulkArchive={bulkArchive} onBulkDelete={bulkDelete} onDelete={remove} onEdit={openEdit} onExport={saveExport} onPrepareExportRecords={prepareExportRecords} onArchivedRequested={contingencyMode ? undefined : async () => { await ensureArchivedRecords(); }} onTransfer={transferTargets.length ? setTransferRecord : undefined} /></div>}
         {!pagePreparing && !pagePreparationError && page === "efficiency" && access.efficiencyScope !== "none" && <EfficiencyPage records={records} members={members} currentUserId={session.user.id} accessScope={access.efficiencyScope} />}
         {!pagePreparing && !pagePreparationError && page === "reports" && access.reportsScope !== "none" && <ReportsPage records={records} members={members} currentUserId={session.user.id} onSave={savePdf} onLoadRecords={listReportMovementsFast} accessScope={access.reportsScope} settings={settings} />}
         {!pagePreparing && !pagePreparationError && page === "quality" && access.canViewQuality && <DataQualityPage records={records} members={members} isAdmin onEdit={(record) => void openEdit(record)} onBulkAssignment={bulk} />}
@@ -1047,6 +1058,7 @@ export default function App() {
   if (checking) return <LoadingScreen message="Verificando acesso seguro..." />;
   if (recovery && session) return <ResetPasswordPage onDone={async () => { await supabase?.auth.signOut({ scope: "local" }); setRecovery(false); }} />;
   if (!session) return <AuthPage />;
+
   return <PraxisApp
     session={session}
     theme={theme}
