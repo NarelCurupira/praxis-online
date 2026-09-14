@@ -201,6 +201,151 @@ html[data-font-size="large"] {
   --p111-text-tabs: .875rem;
 }
 
+/* ============================================================
+   REFINO DE LEGIBILIDADE — SETEMBRO/2026
+   A camada precisa ser mais específica que os estilos históricos
+   de 8–10 px ainda presentes nos módulos secundários.
+   ============================================================ */
+
+/* Relatórios — Prévia conciliada */
+.report-preview .report-settings-applied strong {
+  font-size: var(--p111-text-secondary) !important;
+  line-height: 1.35;
+}
+
+.report-preview .report-settings-applied span,
+.report-preview .report-settings-applied small {
+  font-size: var(--p111-text-small) !important;
+  line-height: 1.45;
+}
+
+.report-preview .empty-state {
+  font-size: var(--p111-text-body) !important;
+  line-height: 1.55;
+}
+
+.report-preview > p {
+  font-size: var(--p111-text-secondary) !important;
+  line-height: 1.5;
+}
+
+.report-preview > small {
+  display: block;
+  font-size: var(--p111-text-small) !important;
+  line-height: 1.45;
+}
+
+.report-preview dl dt,
+.report-preview dl dd,
+.report-preview .report-reconciliation strong,
+.report-preview .report-reconciliation span {
+  font-size: var(--p111-text-secondary) !important;
+}
+
+.report-preview .report-reconciliation small {
+  font-size: var(--p111-text-small) !important;
+}
+
+/* Qualidade dos dados — número MP não pode virar microtexto */
+.quality-process .secondary-number small {
+  font-size: var(--p111-text-secondary) !important;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* Lixeira — mesma escala de leitura das demais listas */
+.trash-panel .trash-row > div > strong {
+  font-size: var(--p111-text-body) !important;
+  line-height: 1.35;
+}
+
+.trash-panel .trash-row > div > small,
+.trash-panel .trash-row > div > span {
+  font-size: var(--p111-text-secondary) !important;
+  line-height: 1.4;
+}
+
+.trash-panel .trash-row .button,
+.trash-panel .trash-row .role-badge {
+  font-size: var(--p111-text-secondary) !important;
+}
+
+/* Procuradorias — labels, cartões, integrantes e notas */
+.procuradorias-panel .procuradoria-create-grid label,
+.procuradorias-panel .procuradoria-copy-option,
+.procuradorias-panel .procuradoria-rename-row label,
+.procuradorias-panel .muted-note {
+  font-size: var(--p111-text-secondary) !important;
+  line-height: 1.5;
+}
+
+.procuradorias-panel .procuradoria-name-input,
+.procuradorias-panel .workspace-member-row select {
+  font-size: var(--p111-text-secondary) !important;
+}
+
+.procuradorias-panel .procuradoria-card strong,
+.procuradorias-panel .workspace-lifecycle-card strong,
+.procuradorias-panel .workspace-member-identity strong {
+  font-size: var(--p111-text-secondary) !important;
+  line-height: 1.35;
+}
+
+.procuradorias-panel .procuradoria-card small,
+.procuradorias-panel .workspace-lifecycle-card span,
+.procuradorias-panel .workspace-member-identity small,
+.procuradorias-panel .workspace-member-actions {
+  font-size: var(--p111-text-small) !important;
+  line-height: 1.45;
+}
+
+.procuradorias-panel .workspace-member-head {
+  font-size: var(--p111-text-small) !important;
+}
+
+.procuradorias-panel .workspace-state-badge {
+  font-size: .71875rem !important;
+}
+
+/* Equipe — todos os labels começam na mesma linha.
+   O helper do Nome de exibição fica abaixo sem deslocar o campo para cima. */
+.managed-member-form-v091 {
+  align-items: start !important;
+}
+
+.managed-member-form-v091 > label {
+  align-self: start !important;
+}
+
+.managed-member-form-v091 > label > input,
+.managed-member-form-v091 > label > select {
+  min-height: 44px;
+}
+
+.managed-member-form-v091 > label > small {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--p111-text-small) !important;
+  line-height: 1.35;
+}
+
+.managed-member-form-v091 > .button {
+  align-self: start !important;
+  min-height: 44px;
+  margin-top: 1.45rem;
+}
+
+/* A sexta sub-aba continua legível em larguras intermediárias. */
+.settings-subnav {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.settings-subnav button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 @media (max-width: 700px) {
   .settings-subnav button,
   .admin-tabs button {
@@ -209,5 +354,9 @@ html[data-font-size="large"] {
 
   .team-settings-stack {
     gap: 16px;
+  }
+
+  .managed-member-form-v091 > .button {
+    margin-top: 0;
   }
 }
