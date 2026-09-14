@@ -7,7 +7,6 @@ import {
   Save,
   ShieldCheck,
   Trash2,
-  Users,
 } from "lucide-react";
 import type {
   AccessScope,
@@ -159,7 +158,7 @@ export function SettingsPage(props: Props) {
   const [end, setEnd] = useState(today());
   const [period, setPeriod] = useState(today().slice(0, 7));
   const [reason, setReason] = useState("");
-  const [settingsSection, setSettingsSection] = useState<"procuradorias" | "equipe" | "prazos" | "relatorios" | "governanca">("procuradorias");
+  const [settingsSection, setSettingsSection] = useState<"pessoal" | "procuradorias" | "equipe" | "prazos" | "relatorios" | "governanca">("pessoal");
 
   const calendarYears = useMemo(
     () => groupCalendar(props.exclusions),
@@ -186,22 +185,23 @@ export function SettingsPage(props: Props) {
         <div>
           <p className="eyebrow">Governança</p>
           <h1>Configurações</h1>
-          <p>Perfis, prazos, calendário, relatórios e integridade.</p>
+          <p>Acesso pessoal, equipe, prazos, calendário, relatórios e integridade.</p>
         </div>
       </div>
 
 
       <nav className="settings-subnav" aria-label="Seções de Configurações">
         {[
-          ["procuradorias", "Procuradorias"], ["equipe", "Equipe e permissões"], ["prazos", "Prazos e calendário"], ["relatorios", "Relatórios"], ["governanca", "Governança e dados"],
+          ["pessoal", "Acesso pessoal"], ["procuradorias", "Procuradorias"], ["equipe", "Equipe e permissões"], ["prazos", "Prazos e calendário"], ["relatorios", "Relatórios"], ["governanca", "Governança e dados"],
         ].map(([key, title]) => <button type="button" key={key} className={settingsSection === key ? "active" : ""} onClick={() => setSettingsSection(key as typeof settingsSection)}>{title}</button>)}
       </nav>
 
-      {settingsSection === "equipe" && <>
-        <TeamPage embedded />
+      {settingsSection === "pessoal" && <>
         <DeviceAccessPanel />
         <PushSettingsPanel />
       </>}
+
+      {settingsSection === "equipe" && <TeamPage embedded onChanged={props.onWorkspacesChanged} />}
 
       {settingsSection === "procuradorias" && <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />}
 
@@ -234,79 +234,6 @@ export function SettingsPage(props: Props) {
           >
             <Download size={17} /> Exportar configurações
           </button>
-        </div>
-      </section>)}
-
-      {settingsSection === "equipe" && (<section className="panel governance-section">
-        <div className="panel-title">
-          <div>
-            <h2>Perfis e permissões</h2>
-            <p>
-              Eficiência e Relatórios podem ser liberados somente para dados
-              próprios ou para toda a equipe.
-            </p>
-          </div>
-          <Users />
-        </div>
-
-        <div className="permission-table">
-          <div className="permission-head">
-            <span>Usuário</span>
-            <span>Perfil</span>
-            <span>Eficiência</span>
-            <span>Relatórios</span>
-          </div>
-
-          {props.members.map((member) => {
-            const fixed = ["admin", "procurador", "estagiario", "consulta"].includes(member.role);
-            const efficiency = fixed
-              ? member.role === "admin" || member.role === "procurador" ? "team" : "none"
-              : member.efficiencyAccess ?? "own";
-            const reports = fixed
-              ? member.role === "admin" || member.role === "procurador" ? "team" : "none"
-              : member.reportsAccess ?? "own";
-
-            return (
-              <div className="permission-row" key={member.userId}>
-                <strong>{member.fullName || member.email}</strong>
-                <span className="role-badge">{member.role}</span>
-
-                <select
-                  disabled={fixed || busy}
-                  value={efficiency}
-                  onChange={(event) => run(
-                    () => props.onSaveMemberAccess(
-                      member.userId,
-                      event.target.value as AccessScope,
-                      reports,
-                    ),
-                    "Permissão atualizada.",
-                  )}
-                >
-                  <option value="none">Sem acesso</option>
-                  <option value="own">Somente próprios dados</option>
-                  <option value="team">Toda a equipe</option>
-                </select>
-
-                <select
-                  disabled={fixed || busy}
-                  value={reports}
-                  onChange={(event) => run(
-                    () => props.onSaveMemberAccess(
-                      member.userId,
-                      efficiency,
-                      event.target.value as AccessScope,
-                    ),
-                    "Permissão atualizada.",
-                  )}
-                >
-                  <option value="none">Sem acesso</option>
-                  <option value="own">Somente relatório próprio</option>
-                  <option value="team">Relatórios da equipe</option>
-                </select>
-              </div>
-            );
-          })}
         </div>
       </section>)}
 
