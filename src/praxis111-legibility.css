@@ -363,38 +363,103 @@ html[data-font-size="large"] {
 
 
 /* ============================================================
-   FILTROS DE PROCESSOS / MINHA FILA
-   Harmoniza a largura dos campos e evita que a pesquisa domine
-   visualmente os demais controles.
+   FILTROS DE PROCESSOS / MINHA FILA — REFINO V2
+   Pesquisa continua prioritária, sem comprimir excessivamente
+   as listas, e todos os controles têm exatamente a mesma altura.
    ============================================================ */
 
+.table-panel .table-filter-row .search-box,
+.table-panel .table-filter-row select {
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+.table-panel .table-filter-row .search-box {
+  display: flex;
+  align-items: center;
+}
+
+.table-panel .table-filter-row .search-box input {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Os filtros salvos pertencem ao mesmo bloco funcional dos filtros. */
+.table-panel .filter-preset-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--p1-border);
+}
+
+/* Minha fila: pesquisa ampla e Status compacto, sem ocupar toda a linha. */
 @media (min-width: 701px) {
-  .table-panel .table-filter-row {
+  .queue-table-panel .table-filter-row {
     display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 10px !important;
+    grid-template-columns: minmax(420px, 2.8fr) minmax(190px, .8fr) minmax(0, 1.4fr);
+    gap: 12px !important;
+    align-items: end;
+  }
+
+  .queue-table-panel .table-filter-row .search-filter {
+    grid-column: 1;
+  }
+
+  .queue-table-panel .table-filter-row .status-filter {
+    grid-column: 2;
+  }
+
+  /* Processos: pesquisa maior que os selects, mas sem esmagá-los. */
+  .processes-table-panel .table-filter-row {
+    display: grid !important;
+    grid-template-columns:
+      minmax(360px, 1.65fr)
+      minmax(150px, .8fr)
+      minmax(210px, 1fr)
+      minmax(180px, .9fr)
+      minmax(190px, .95fr);
+    gap: 12px !important;
     align-items: end;
   }
 
   .table-panel .table-filter-row .filter-field,
   .table-panel .table-filter-row .search-filter {
+    width: 100% !important;
     min-width: 0 !important;
-    width: 100% !important;
     flex: none !important;
-  }
-
-  .table-panel .table-filter-row .search-box,
-  .table-panel .table-filter-row select {
-    width: 100% !important;
-    min-height: 44px;
   }
 }
 
-/* No celular, mantém os controles em coluna e com a mesma altura. */
+@media (max-width: 1100px) and (min-width: 701px) {
+  .processes-table-panel .table-filter-row {
+    grid-template-columns: minmax(320px, 1.6fr) repeat(2, minmax(170px, 1fr));
+  }
+
+  .processes-table-panel .table-filter-row .responsible-filter,
+  .processes-table-panel .table-filter-row .status-filter,
+  .processes-table-panel .table-filter-row .highlight-filter {
+    grid-column: auto;
+  }
+
+  .queue-table-panel .table-filter-row {
+    grid-template-columns: minmax(360px, 2.4fr) minmax(180px, .9fr);
+  }
+}
+
 @media (max-width: 700px) {
   .table-panel .table-filter-row .search-box,
   .table-panel .table-filter-row select {
     width: 100% !important;
-    min-height: 44px;
+  }
+
+  .table-panel .filter-preset-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
   }
 }
