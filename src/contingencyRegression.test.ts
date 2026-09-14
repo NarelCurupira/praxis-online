@@ -123,6 +123,7 @@ test("logout alerta antes de apagar fila e depois limpa dados locais", () => {
 });
 
 test("service worker continua devolvendo o shell em navegação offline", () => {
-  assert.match(sw, /request.mode === "navigate" \? "\/index.html"/);
-  assert.match(sw, /if \(cached\) return cached/);
+  assert.match(sw, /const cachedShell = await cache\.match\("\/"\)/);
+  assert.match(sw, /if \(cachedShell\) return cleanResponse\(cachedShell\)/);
+  assert.doesNotMatch(sw, /request\.mode === "navigate" \? "\/index\.html"/);
 });
