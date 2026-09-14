@@ -87,9 +87,10 @@ test("data configurada posterior não oculta movimentações já cadastradas", (
   assert.equal(model.rows[0].coverage.since, "2025-02-03");
   assert.equal(model.flow?.received, 2);
 });
-test("envio na mesma data com zero é apresentado como mesmo dia útil", () => {
+test("envio sem horário confirmado não produz mediana horária", () => {
   const time = calculateEfficiencyTime(records.slice(0, 1), { startDate: "2025-01-01", endDate: "2025-12-31" });
-  assert.equal(formatEfficiencyDuration(time.median, time), "Mesmo dia útil");
+  assert.equal(formatEfficiencyDuration(time.median, time), "Não disponível");
+  assert.equal(time.sameDay, 1);
 });
 test("horário incompleto não entra no indicador de duas horas", () => {
   const time = calculateEfficiencyTime(records.slice(0, 2), { startDate: "2025-01-01", endDate: "2025-12-31" });

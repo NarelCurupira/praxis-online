@@ -205,7 +205,7 @@ export function Dashboard({
   const affectedRecords = new Set(qualityIssues.map((issue) => issue.record.movementId)).size;
   const qualityScore = scopedRecords.length
     ? Math.round(((scopedRecords.length - affectedRecords) / scopedRecords.length) * 100)
-    : 100;
+    : null;
 
   const sent = filteredRecords.filter((record) => record.workflowStatus === "Enviado");
   const measuredSent = sent.filter(
@@ -352,7 +352,7 @@ export function Dashboard({
   const thirdKpi = canOpenQuality
     ? {
         label: "Qualidade",
-        value: `${qualityScore}%`,
+        value: qualityScore === null ? "Sem dados" : scopedRecords.some(record => record.qualityDetailsLoaded === false) ? "Parcial" : `${qualityScore}%`,
         helper: affectedRecords ? `${affectedRecords} com apontamento` : "dados consistentes",
         tone: "quality",
         icon: ShieldCheck,
@@ -589,7 +589,7 @@ export function Dashboard({
           {canOpenQuality && (
             <StatCard
               label="Qualidade dos dados"
-              value={`${qualityScore}%`}
+              value={qualityScore === null ? "Sem dados" : scopedRecords.some(record => record.qualityDetailsLoaded === false) ? "Parcial" : `${qualityScore}%`}
               helper={`${affectedRecords} registro(s) com apontamento`}
               icon={ShieldCheck}
               onClick={() => {

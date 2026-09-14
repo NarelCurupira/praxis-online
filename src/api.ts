@@ -1,3 +1,4 @@
+import { rememberRevision, applyMovementOperation } from "./movementOperations";
 import { localDatePart, toStorageTimestamp, usefulElapsedHours } from "./date";
 import type { AdminAuditEntry, BackupInfo, BackupStatus, CalendarExclusion, CalendarExclusionRange, ChangeHistory, ClassSetting, ImportRecord, ImportResult, MovementQuery, PagedMovements, PraxisRole, ProcessEditData, ProcessFormData, ProcessMovement, StorageDirectoryKind, StorageSettings, TeamComparison, TeamMember, WorkflowStatus } from "./types";
 import { clearWorkspaceContext, workspaceContext } from "./workspaceContext";
@@ -23,8 +24,9 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
   const item = caseRow(row);
   const assigneeValue = row.assignee;
   const assignee = Array.isArray(assigneeValue) ? (assigneeValue[0] ?? {}) : (assigneeValue ?? {});
-  return {
+  return rememberRevision({
     movementId: Number(row.id), caseId: Number(row.case_id),
+    qualityDetailsLoaded: true, rowVersion: Number(row.row_version), caseUpdatedAt: String(item.updated_at ?? ""),
     mpNumber: item.mp_number ?? "", judicialNumber: item.judicial_number ?? "",
     className: item.class_name ?? "", subject: item.subject ?? "",
     receivedAt: row.received_at, receivedTimePrecise: Boolean(row.received_time_precise), deadlineAt: row.deadline_at ?? "",
@@ -40,7 +42,7 @@ function movementFromRow(row: Record<string, any>, excludedDates: ReadonlySet<st
     complexityReason: item.complexity_reason ?? "", deletedAt: row.deleted_at,
     archivedAt: row.archived_at ?? null,
     assignedTo: row.assigned_to ?? "", assignedName: assignee.full_name ?? "",
-  };
+  });
 }
 
 function caseValues(data: ProcessFormData | ProcessEditData) {
@@ -181,66 +183,21 @@ export async function getMovementOfflineSyncState(movementId: number): Promise<O
   };
 }
 
-export async function createMovement(data: ProcessFormData): Promise<ProcessMovement> {
-  const { client, user, workspaceId } = await context();
-  const found = await findOrCreateCase(data);
-  const receivedAt = requiredTimestamp(data.receivedAt, "A entrada");
-  const { data: row, error } = await client.from("movements").insert({
-    workspace_id: workspaceId, case_id: found.id, received_at: receivedAt, received_time_precise: data.receivedTimePrecise ?? true,
-    deadline_at: data.deadlineAt || null, action_type: data.actionType, notes: data.notes,
-    priority: data.priority, procedural_priority: data.proceduralPriority, document_path: data.documentPath,
-    assigned_to: data.assignedTo || user.id,
-    created_by: user.id, updated_by: user.id,
-  }).select(SELECT_MOVEMENT).single();
-  fail(error);
-  return movementFromRow(row!);
+export async function createMovement(data: ProcessFormData, operationId?: string): Promise<ProcessMovement> {
+  const id = await applyMovementOperation("create", null, data, { operationId });
+  const created = await getMovementForOfflineSync(id);
+  if (!created) throw new Error("Cadastro confirmado; atualize a lista para visualizar o registro.");
+  return created;
 }
 
-export async function updateMovementStatus(movementId: number, status: WorkflowStatus, actionType?: string, occurredAt?: string): Promise<void> {
-  const { client, user, workspaceId } = await context();
-  const { data: old, error: oldError } = await client.from("movements").select("workflow_status, action_type, received_at").eq("workspace_id", workspaceId).eq("id", movementId).single();
-  fail(oldError);
-  const sentAt = status === "Enviado" ? (occurredAt ?? new Date().toISOString()) : null;
-  const elapsed = usefulElapsedHours(old!.received_at, sentAt);
-  const values: Record<string, any> = { workflow_status: status, updated_by: user.id, updated_at: new Date().toISOString(), row_version: undefined };
-  delete values.row_version;
-  if (actionType !== undefined) values.action_type = actionType;
-  if (status === "Minutado" || status === "Enviado") values.draft_status = "Minutado";
-  if (status === "Enviado") { values.sent_at = sentAt; values.sent_time_precise = true; values.elapsed_hours = elapsed; }
-  else { values.sent_at = null; values.sent_time_precise = false; values.elapsed_hours = null; }
-  const { error } = await client.from("movements").update(values).eq("workspace_id", workspaceId).eq("id", movementId);
-  fail(error);
-  const history = await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, action_name: "Alteração de status", field_name: "Status", old_value: old!.workflow_status, new_value: status });
-  if (history.error && /action_name|schema cache/i.test(history.error.message)) {
-    const legacyHistory = await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: "Status", old_value: old!.workflow_status, new_value: status });
-    fail(legacyHistory.error);
-  } else {
-    fail(history.error);
-  }
+export async function updateMovementStatus(movementId: number, status: WorkflowStatus, actionType?: string, occurredAt?: string, baseline?: ProcessMovement): Promise<void> {
+  await applyMovementOperation("status", movementId, { status, ...(actionType !== undefined ? { actionType } : {}), occurredAt: occurredAt ?? new Date().toISOString() }, { baseline });
 }
-
-export async function updateMovementAction(movementId: number, actionType: string): Promise<void> {
-  const { client, user, workspaceId } = await context();
-  const optimized = await client.rpc("update_movement_action_v0106", {
-    target_movement: movementId,
-    new_action_type: actionType,
-  });
-  if (!optimized.error) return;
-  const missingOptimizedRpc = optimized.error.code === "PGRST202"
-    || optimized.error.code === "42883"
-    || /update_movement_action_v0106|schema cache/i.test(optimized.error.message);
-  if (!missingOptimizedRpc) fail(optimized.error);
-
-  // Compatibilidade durante a publicação: mantém a operação funcional caso
-  // o frontend seja atualizado antes da migração SQL da versão 0.10.6.
-  const { data: old } = await client.from("movements").select("action_type").eq("workspace_id", workspaceId).eq("id", movementId).single();
-  const { error } = await client.from("movements").update({ action_type: actionType, updated_by: user.id, updated_at: new Date().toISOString() }).eq("workspace_id", workspaceId).eq("id", movementId);
-  fail(error);
-  await client.from("change_history").insert({ workspace_id: workspaceId, movement_id: movementId, changed_by: user.id, field_name: "Providência", old_value: old?.action_type ?? "", new_value: actionType });
+export async function updateMovementAction(movementId: number, actionType: string, baseline?: ProcessMovement): Promise<void> {
+  await applyMovementOperation("action", movementId, { actionType }, { baseline });
 }
-
-export async function updateMovementAssignment(movementId: number, assignedTo: string): Promise<void> {
-  await updateMovementAssignments([movementId], assignedTo);
+export async function updateMovementAssignment(movementId: number, assignedTo: string, baseline?: ProcessMovement): Promise<void> {
+  await applyMovementOperation("assignment", movementId, { assignedTo }, { baseline });
 }
 
 function missingV0107Rpc(error: { code?: string; message: string } | null): boolean {
@@ -546,9 +503,7 @@ export async function importRecords(records: ImportRecord[], onProgress?: (messa
       continue;
     }
 
-    const automaticSentAt = record.workflowStatus === "Enviado" && !informedSentAt
-      ? new Date(new Date(receivedAt).getTime() + 10 * 86_400_000).toISOString()
-      : informedSentAt;
+    const automaticSentAt = informedSentAt;
     movementRows.push({
       workspace_id: workspaceId, case_id: caseId,
       received_at: receivedAt, received_time_precise: Boolean(record.receivedTimePrecise),
@@ -584,14 +539,16 @@ function download(bytes: BlobPart, type: string, fileName: string) {
 }
 
 export async function createBackup(): Promise<string> {
-  const records = await listMovements();
-  download(JSON.stringify({ createdAt: new Date().toISOString(), records }, null, 2), "application/json", `praxis-online-backup-${new Date().toISOString().slice(0, 10)}.json`);
-  await recordAdminAudit("backup_created", { records: records.length });
-  return "Cópia JSON baixada para este computador.";
+  const { client, workspaceId } = await context();
+  const { data, error } = await client.rpc("export_operational_backup_v11", { target_workspace: workspaceId });
+  fail(error);
+  if (!data || !Array.isArray(data.movements)) throw new Error("O servidor não retornou um backup válido.");
+  download(JSON.stringify(data, null, 2), "application/json", `praxis-1.1-backup-${new Date().toISOString().slice(0,10)}.json`);
+  return `Backup operacional baixado: ${data.movements.length} movimentações, incluindo lixeira e arquivados. Guarde o arquivo em local seguro.`;
 }
 
 export async function getBackupStatus(): Promise<BackupStatus> {
-  return { hasValidBackup: false, lastValidAt: null, backupType: null, path: null, sizeBytes: null, integrityResult: null, lastAttemptAt: null, lastAttemptOk: null, message: "O plano gratuito exige cópias manuais externas." };
+  return { hasValidBackup: false, lastValidAt: null, backupType: null, path: null, sizeBytes: null, integrityResult: null, lastAttemptAt: null, lastAttemptOk: null, message: "Crie e guarde cópias externas. Consulte os backups do projeto no painel Supabase; o aplicativo não verifica a retenção do provedor." };
 }
 
 export async function databaseInfo(): Promise<string> { return "Práxis Online · PostgreSQL no Supabase · acesso protegido por usuário e RLS"; }
@@ -608,28 +565,14 @@ export async function savePdf(bytes: number[], fileName: string): Promise<string
 
 export async function listBackups(): Promise<BackupInfo[]> { return []; }
 export async function restoreBackup(file: File): Promise<string> {
-  const parsed = JSON.parse(await file.text()) as { records?: ProcessMovement[] };
-  if (!Array.isArray(parsed.records) || !parsed.records.length) throw new Error("O arquivo não contém um backup válido do Práxis.");
-  const invalid = parsed.records.find((item) => !item.judicialNumber || !item.receivedAt);
-  if (invalid) throw new Error("O backup possui registros incompletos e não pode ser restaurado com segurança.");
-  const activeMemberIds = new Set((await listTeamMembers()).filter((item) => item.active).map((item) => item.userId));
-  const records: ImportRecord[] = parsed.records.map((item) => ({
-    assignedTo: activeMemberIds.has(item.assignedTo) ? item.assignedTo : undefined, mpNumber: item.mpNumber, judicialNumber: item.judicialNumber,
-    className: item.className, subject: item.subject, receivedAt: item.receivedAt, receivedTimePrecise: item.receivedTimePrecise, deadlineAt: item.deadlineAt?.slice(0, 10) ?? "",
-    draftStatus: item.draftStatus, workflowStatus: item.workflowStatus, sentAt: item.sentAt, sentTimePrecise: item.sentTimePrecise,
-    actionType: item.actionType, notes: item.notes, priority: item.priority, proceduralPriority: item.proceduralPriority ?? "Nenhuma", documentPath: item.documentPath,
-    sociallyRelevant: item.sociallyRelevant, extremelyComplex: item.extremelyComplex, socialTheme: item.socialTheme,
-    relevanceReason: item.relevanceReason, fundamentalRight: item.fundamentalRight, affectedGroup: item.affectedGroup,
-    reach: item.reach, territorialScope: item.territorialScope, impactType: item.impactType, socialResult: item.socialResult,
-    sdgs: Array.isArray(item.sdgs) ? item.sdgs : [],
-    complexityReason: item.complexityReason,
-  }));
-  await createBackup();
+  if (file.size > 50 * 1024 * 1024) throw new Error("Arquivo acima de 50 MB. Use a recuperação administrativa do banco.");
+  const parsed = JSON.parse(await file.text());
   const { client, workspaceId } = await context();
-  const { error } = await client.from("cases").delete().eq("workspace_id", workspaceId).gte("id", 0); fail(error);
-  const result = await importRecords(records);
-  await recordAdminAudit("backup_restored", { file: file.name, records: result.movementsCreated });
-  return `Backup restaurado: ${result.movementsCreated} movimentação(ões) recuperada(s).`;
+  if (parsed.format !== "praxis-operational" || parsed.version !== 1 || parsed.workspaceId !== workspaceId) throw new Error("Selecione um backup 1.1 desta Procuradoria. Backups antigos devem ser convertidos e revisados antes de recuperar.");
+  if (!Array.isArray(parsed.cases) || !Array.isArray(parsed.movements)) throw new Error("Estrutura de backup inválida.");
+  const { data, error } = await client.rpc("restore_operational_backup_v11", { target_workspace: workspaceId, backup: parsed });
+  fail(error);
+  return `Recuperação concluída em transação única: ${data} movimentações. Registros ausentes do arquivo foram preservados; configurações e auditoria não foram substituídas.`;
 }
 
 export async function listCalendarExclusions(): Promise<CalendarExclusion[]> {

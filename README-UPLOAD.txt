@@ -1,29 +1,14 @@
-PRÁXIS — PACOTE FINAL DE ÍCONES
+PRÁXIS ONLINE 1.1.0
 
-Este pacote usa a versão do ícone aprovada na conversa.
+Leia ATUALIZAR-1.1.md antes de publicar.
 
-SUBSTITUA estes arquivos no GitHub:
-public/icons/icon-192.png
-public/icons/icon-512.png
-public/icons/maskable-192.png
-public/icons/maskable-512.png
-public/icons/apple-touch-icon-180.png
-public/icons/favicon-32.png
-public/icons/favicon-16.png
-public/favicon.ico
-public/sw.js
+1. Sincronize as filas locais e guarde uma cópia da versão atual e do banco.
+2. Execute integralmente supabase/migrations/20260914_praxis_v110.sql
+   no SQL Editor do projeto Supabase existente.
+3. Envie todos os arquivos novos/alterados em um único commit no GitHub.
+4. Mantenha o build npm run build e a saída dist.
+5. Aguarde o deploy, feche as janelas antigas e confira 1.1.0 em Sobre.
 
-NÃO é necessário alterar index.html nem manifest.webmanifest:
-os nomes/caminhos atuais já apontam para esses arquivos.
-
-O sw.js incluído é idêntico ao atual, exceto pela versão do cache:
-praxis-shell-1.0.0-push-1 -> praxis-shell-1.0.0-push-2
-Isso força o PWA a abandonar os ícones antigos que estavam no cache.
-
-A pasta SOURCE é apenas referência e NÃO precisa ser enviada ao repositório.
-
-Após o deploy:
-1. No iPhone, remova o Práxis já instalado da Tela de Início.
-2. Abra novamente o site no Safari.
-3. Use Compartilhar > Adicionar à Tela de Início.
-O iOS costuma manter o ícone de instalação em cache, por isso reinstalar é importante.
+Não reaplique schema.sql ou migrações antigas em um banco existente.
+O pacote de entrega possui pastas GITHUB e SUPABASE para separar os destinos.
+No repositório, envie o CONTEÚDO de GITHUB, sem criar essa pasta na raiz.

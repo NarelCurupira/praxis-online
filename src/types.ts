@@ -3,6 +3,8 @@ export type Priority = "Baixa" | "Normal" | "Alta" | "Urgente";
 export type ProceduralPriority = "Nenhuma" | "Idoso" | "Idoso +80" | "ECA" | "Doença grave";
 
 export interface ProcessMovement {
+  rowVersion?: number;
+  caseUpdatedAt?: string;
   movementId: number;
   caseId: number;
   mpNumber: string;
@@ -39,6 +41,7 @@ export interface ProcessMovement {
   assignedTo: string;
   assignedName: string;
   detailsLoaded?: boolean;
+  qualityDetailsLoaded?: boolean;
 }
 
 export interface ProcessFormData {

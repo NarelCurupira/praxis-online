@@ -1,6 +1,7 @@
+import { currentWorkdayHours } from "./date";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { categoryPresentation, pluralize, reportFilterDescription, reportScopeInfo, type CategoryMetric, type DistributionStats, type ReportMode, type ReportModel, type UserReportMetrics, WORKDAY_HOURS } from "./reporting";
+import { categoryPresentation, pluralize, reportFilterDescription, reportScopeInfo, type CategoryMetric, type DistributionStats, type ReportMode, type ReportModel, type UserReportMetrics } from "./reporting";
 import type { TeamMember } from "./types";
 import { PRAXIS_VERSION } from "./version";
 
@@ -29,20 +30,20 @@ function chartNumber(value: number): string { return value.toLocaleString("pt-BR
 function formatDuration(value: number | null, stats?: DistributionStats, withEquivalent = false): string {
   if (value == null) return "Não disponível";
   if (value === 0) return stats?.zeroSameDate ? "Mesmo dia útil" : "Não disponível";
-  const approximate = stats?.withoutCompleteTime ? "Aprox. " : "";
-  if (withEquivalent && value > WORKDAY_HOURS) {
-    const days = value / WORKDAY_HOURS;
+  const approximate = "";
+  if (withEquivalent && value > currentWorkdayHours()) {
+    const days = value / currentWorkdayHours();
     return `${approximate}${durationNumber(value)} h úteis - ${durationNumber(days)} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
   }
   if (value > 8) {
-    const days = value / WORKDAY_HOURS;
+    const days = value / currentWorkdayHours();
     return `${approximate}${durationNumber(days)} ${days < 1.05 ? "dia útil" : "dias úteis"}`;
   }
   return `${approximate}${durationNumber(value)} h úteis`;
 }
 function formatChartDuration(value: number, stats?: DistributionStats): string {
   if (value === 0) return stats?.zeroSameDate ? "Mesmo dia útil" : "Não disponível";
-  if (value > WORKDAY_HOURS) return `${chartNumber(value)} h / ${chartNumber(value / WORKDAY_HOURS)} dias`;
+  if (value > currentWorkdayHours()) return `${chartNumber(value)} h / ${chartNumber(value / currentWorkdayHours())} dias`;
   return `${chartNumber(value)} h`;
 }
 function deadlineRate(value: number | null): string {
@@ -298,7 +299,7 @@ function drawTransitChart(doc: jsPDF, users: UserReportMetrics[], x: number, y: 
 }
 
 function drawIndividualTransitCards(doc: jsPDF, user: UserReportMetrics | undefined, x: number, y: number, w: number, h: number) {
-  chartTitle(doc, "Tempo de tramitação", "Visão individual em horas úteis; valores sem horário completo são aproximados.", x, y);
+  chartTitle(doc, "Tempo de tramitação", "Visão individual em horas úteis, apenas com horários confirmados.", x, y);
   if (!user || !user.transit.count) { emptyChart(doc, x, y + 8, w, h - 8, "Não há medições suficientes"); return; }
   const metrics = [
     ["Mediana", user.transit.median, GREEN], ["P75", user.transit.p75, BLUE], ["P90", user.transit.p90, GOLD],
@@ -307,7 +308,7 @@ function drawIndividualTransitCards(doc: jsPDF, user: UserReportMetrics | undefi
   const gap = 3; const cardW = (w - gap * 2) / 3; const cardH = (h - 15 - gap) / 2;
   metrics.forEach(([label, value, tone], index) => {
     const cx = x + (index % 3) * (cardW + gap); const cy = y + 11 + Math.floor(index / 3) * (cardH + gap);
-    drawCard(doc, cx, cy, cardW, cardH, label, formatDuration(value, user.transit), value && value > WORKDAY_HOURS ? `${durationNumber(value)} horas úteis` : "", tone);
+    drawCard(doc, cx, cy, cardW, cardH, label, formatDuration(value, user.transit), value && value > currentWorkdayHours() ? `${durationNumber(value)} horas úteis` : "", tone);
   });
 }
 
@@ -460,7 +461,7 @@ function deadlinesAndTransitPage(builder: PdfBuilder, model: ReportModel, includ
   });
   const finalY = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 140) + 7;
   doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(...GREY);
-  doc.text(`A jornada útil adotada é de ${WORKDAY_HOURS} horas. "Mesmo dia útil" representa duração calculada igual a zero em envio ocorrido na mesma data; quando faltam horários completos, não é uma duração exata.`, 14, Math.min(finalY, 190));
+  doc.text(`A jornada útil adotada é de ${currentWorkdayHours()} horas. "Mesmo dia útil" representa duração calculada igual a zero em envio ocorrido na mesma data; registros sem horários confirmados ficam fora das métricas horárias.`, 14, Math.min(finalY, 190));
 }
 
 function profilePage(builder: PdfBuilder, model: ReportModel) {
@@ -594,10 +595,10 @@ function notesPage(builder: PdfBuilder, model: ReportModel, members: TeamMember[
     ["Recebido", "Movimentação cuja data de entrada está dentro do período. Retornos do mesmo número processual são movimentações distintas para fins de fluxo."],
     ["Enviado", "Movimentação com status Enviado e data de envio dentro do período, mesmo que tenha sido recebida anteriormente."],
     ["Estoque", "Estoque inicial são os registros já pendentes antes do início. Estoque final = estoque inicial + recebidos - enviados. O saldo do período não é tratado isoladamente como estoque."],
-    ["Horas úteis", `São reutilizadas as horas calculadas pela função central do Práxis: jornada de ${WORKDAY_HOURS} horas, exclusão de fins de semana, feriados e recessos cadastrados, além dos descontos já aplicados pelo sistema.`],
+    ["Horas úteis", `São reutilizadas as horas calculadas pela função central do Práxis: jornada de ${currentWorkdayHours()} horas, exclusão de fins de semana, feriados e recessos cadastrados, além dos descontos já aplicados pelo sistema.`],
     ["Prazos", `Concluídos e pendentes são separados. Próximo do vencimento segue o alerta atual de ${model.filters.nearDueDays ?? 3} dias. A taxa entre concluídos e a conformidade atual usam apenas processos com prazo aplicável. Base atual: ${model.deadline.applicable} ${pluralize(model.deadline.applicable, "processo com prazo aplicável", "processos com prazo aplicável")}.`],
     ["Sem prazo aplicável", `${model.deadline.noDeadline} ${pluralize(model.deadline.noDeadline, "processo foi classificado", "processos foram classificados")} sem prazo aplicável. Esses registros não entram nos denominadores de cumprimento ou conformidade.`],
-    ["Tempo de tramitação", "Média, mediana, percentis 75 e 90, mínimo e máximo usam horas úteis. Se o cálculo for zero e o recebimento e o envio ocorrerem na mesma data, o relatório exibe “Mesmo dia útil”. Em registros importados sem horário completo, essa expressão indica o intervalo do mesmo dia, não uma duração exata de zero hora."],
+    ["Tempo de tramitação", "Média, mediana, percentis 75 e 90, mínimo e máximo usam horas úteis. Se o cálculo for zero e o recebimento e o envio ocorrerem na mesma data, o relatório exibe “Mesmo dia útil”. Registros sem horários confirmados ficam fora das métricas horárias."],
     ["ODS", "Um processo pode possuir vários Objetivos de Desenvolvimento Sustentável. Cada ODS é contado uma vez por processo e seu percentual usa como base o total de processos socialmente relevantes."],
     ["Responsabilidade", "Os cortes por usuário usam o responsável atualmente associado à movimentação. O Práxis ainda não mantém histórico temporal completo de redistribuições para reconstruir a responsabilidade em datas passadas."],
   ];

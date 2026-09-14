@@ -164,7 +164,8 @@ test("carga inicial usa núcleo ativo e reserva detalhes e arquivados para deman
   const coreStart = fastApi.indexOf("const SELECT_MOVEMENT_CORE");
   const detailStart = fastApi.indexOf("const SELECT_MOVEMENT_DETAIL");
   const core = fastApi.slice(coreStart, detailStart);
-  assert.doesNotMatch(core, /notes|document_path|relevance_reason|complexity_reason|sdgs/);
+  assert.doesNotMatch(core, /notes|document_path|sdgs/);
+  assert.match(core, /relevance_reason,complexity_reason/);
   assert.match(fastApi, /dataset === "active"\) query = query\.is\("archived_at", null\)/);
   assert.match(app, /listArchivedMovementsFast/);
   assert.match(app, /listDetailedMovementsFast/);

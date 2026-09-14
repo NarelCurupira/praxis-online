@@ -71,8 +71,8 @@ export function inspectDataQuality(records: ProcessMovement[]): QualityIssue[] {
     if (!cnjPattern.test(record.judicialNumber.trim())) issues.push({ id: `cnj-${record.caseId}`, severity: "Atenção", category: "Número judicial", description: "O número judicial está fora do formato CNJ esperado.", record });
     if (!record.className.trim() || record.className === "Não identificada") issues.push({ id: `class-${record.caseId}`, severity: "Cadastro", category: "Classe", description: "A classe não foi identificada ou está vazia.", record });
     if (!record.subject.trim()) issues.push({ id: `subject-${record.caseId}`, severity: "Cadastro", category: "Assunto", description: "O assunto ou observação da fila está vazio.", record });
-    if (record.sociallyRelevant && !record.relevanceReason.trim()) issues.push({ id: `social-${record.caseId}`, severity: "Cadastro", category: "Relevância social", description: "Marcado como socialmente relevante, mas sem justificativa.", record });
-    if (record.extremelyComplex && !record.complexityReason.trim()) issues.push({ id: `complex-${record.caseId}`, severity: "Cadastro", category: "Alta complexidade", description: "Marcado como altamente complexo, mas sem justificativa.", record });
+    if (record.qualityDetailsLoaded !== false && record.sociallyRelevant && !record.relevanceReason.trim()) issues.push({ id: `social-${record.caseId}`, severity: "Cadastro", category: "Relevância social", description: "Marcado como socialmente relevante, mas sem justificativa.", record });
+    if (record.qualityDetailsLoaded !== false && record.extremelyComplex && !record.complexityReason.trim()) issues.push({ id: `complex-${record.caseId}`, severity: "Cadastro", category: "Alta complexidade", description: "Marcado como altamente complexo, mas sem justificativa.", record });
   }
 
   const duplicates = new Map<string, ProcessMovement[]>();

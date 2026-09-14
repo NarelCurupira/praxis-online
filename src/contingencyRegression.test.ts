@@ -94,17 +94,14 @@ test("fila oferece manter servidor ou aplicar alteração local", () => {
 
 test("resolução local volta pela mesma API protegida e não contorna RLS", () => {
   assert.match(offlineSync, /getMovementForOfflineSync/);
-  assert.match(offlineSync, /updateMovementGoverned/);
-  assert.match(offlineSync, /updateMovementStatus/);
-  assert.match(offlineSync, /updateMovementAction/);
-  assert.match(offlineSync, /updateMovementAssignment/);
-  assert.match(api, /export async function getMovementForOfflineSync/);
+  assert.match(offlineSync, /applyMovementOperation/);
+  assert.match(offlineSync, /baseline: current, userId, workspaceId/);
 });
 
 test("sincronização permanece idempotente quando servidor já contém o alvo local", () => {
   assert.match(offlineSync, /operationAlreadyApplied/);
-  assert.match(offlineSync, /findMovementForOfflineCreate/);
-  assert.match(offlineSync, /existing \?\? await createMovement/);
+  assert.match(offlineSync, /applyMovementOperation/);
+  assert.match(offlineSync, /operationId: operation.id/);
 });
 
 test("falha transitória de escrita muda para fila local sem contornar erro de validação", () => {
@@ -114,7 +111,7 @@ test("falha transitória de escrita muda para fila local sem contornar erro de v
 });
 
 test("horário local de envio em contingência é preservado na sincronização", () => {
-  assert.match(offlineSync, /updateMovementStatus\(movementId, operation\.payload\.status, operation\.payload\.actionType, operation\.createdAt\)/);
+  assert.match(offlineSync, /occurredAt: operation.createdAt/);
   assert.match(api, /occurredAt\?: string/);
   assert.match(api, /occurredAt \?\? new Date\(\)\.toISOString\(\)/);
 });
@@ -126,6 +123,6 @@ test("logout alerta antes de apagar fila e depois limpa dados locais", () => {
 });
 
 test("service worker continua devolvendo o shell em navegação offline", () => {
-  assert.match(sw, /cache\.match\("\/"\)/);
-  assert.match(sw, /cache\.match\("\/index\.html"\)/);
+  assert.match(sw, /request.mode === "navigate" \? "\/index.html"/);
+  assert.match(sw, /if \(cached\) return cached/);
 });

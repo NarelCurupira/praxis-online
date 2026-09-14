@@ -1,3 +1,4 @@
+import { rememberRevision, applyMovementOperation } from "./movementOperations";
 import { usefulElapsedHours } from "./date";
 import { measureAsync, measureAsyncResult, measureSync } from "./performanceMonitoring";
 import { requireSupabase } from "./supabase";
@@ -11,16 +12,16 @@ const CACHE_TTL_MS = 30_000;
 // eficiência. Observações, documentos e classificações analíticas textuais são
 // carregados somente quando uma tela realmente precisa deles.
 const SELECT_MOVEMENT_CORE = [
-  "id", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
+  "id", "row_version", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
   "sent_at", "sent_time_precise", "action_type", "priority", "procedural_priority", "deleted_at", "archived_at", "assigned_to",
-  "cases!inner(mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex)",
+  "cases!inner(updated_at,mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex,relevance_reason,complexity_reason)",
   "assignee:profiles!movements_assigned_to_fkey(id,full_name)",
 ].join(",");
 
 const SELECT_MOVEMENT_DETAIL = [
-  "id", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
+  "id", "row_version", "case_id", "received_at", "received_time_precise", "deadline_at", "draft_status", "workflow_status",
   "sent_at", "sent_time_precise", "action_type", "notes", "priority", "procedural_priority", "document_path", "deleted_at", "archived_at", "assigned_to",
-  "cases!inner(mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex,social_theme,relevance_reason,fundamental_right,affected_group,reach,territorial_scope,impact_type,social_result,sdgs,complexity_reason)",
+  "cases!inner(updated_at,mp_number,judicial_number,class_name,subject,socially_relevant,extremely_complex,social_theme,relevance_reason,fundamental_right,affected_group,reach,territorial_scope,impact_type,social_result,sdgs,complexity_reason)",
   "assignee:profiles!movements_assigned_to_fkey(id,full_name)",
 ].join(",");
 
@@ -98,8 +99,9 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
   const assignee = nested(row, "assignee");
   const receivedAt = String(row.received_at ?? "");
   const sentAt = row.sent_at ? String(row.sent_at) : null;
-  return {
+  return rememberRevision({
     movementId: Number(row.id), caseId: Number(row.case_id),
+    qualityDetailsLoaded: true, rowVersion: Number(row.row_version), caseUpdatedAt: String(item.updated_at ?? ""),
     mpNumber: String(item.mp_number ?? ""), judicialNumber: String(item.judicial_number ?? ""),
     className: String(item.class_name ?? ""), subject: String(item.subject ?? ""),
     receivedAt, receivedTimePrecise: Boolean(row.received_time_precise), deadlineAt: String(row.deadline_at ?? ""),
@@ -109,16 +111,16 @@ function mapMovement(row: Record<string, unknown>, excludedDates: ReadonlySet<st
     documentPath: detailed ? String(row.document_path ?? "") : "",
     elapsedHours: usefulElapsedHours(receivedAt, sentAt, excludedDates),
     sociallyRelevant: Boolean(item.socially_relevant), extremelyComplex: Boolean(item.extremely_complex),
-    socialTheme: detailed ? String(item.social_theme ?? "") : "", relevanceReason: detailed ? String(item.relevance_reason ?? "") : "",
+    socialTheme: detailed ? String(item.social_theme ?? "") : "", relevanceReason: String(item.relevance_reason ?? ""),
     fundamentalRight: detailed ? String(item.fundamental_right ?? "") : "", affectedGroup: detailed ? String(item.affected_group ?? "") : "",
     reach: detailed ? String(item.reach ?? "") : "", territorialScope: detailed ? String(item.territorial_scope ?? "") : "",
     impactType: detailed ? String(item.impact_type ?? "") : "", socialResult: detailed ? String(item.social_result ?? "") : "",
     sdgs: detailed && Array.isArray(item.sdgs) ? item.sdgs.map(String) : [],
-    complexityReason: detailed ? String(item.complexity_reason ?? "") : "", deletedAt: row.deleted_at ? String(row.deleted_at) : null,
+    complexityReason: String(item.complexity_reason ?? ""), deletedAt: row.deleted_at ? String(row.deleted_at) : null,
     archivedAt: row.archived_at ? String(row.archived_at) : null,
     assignedTo: String(row.assigned_to ?? ""), assignedName: String(assignee.full_name ?? ""),
     detailsLoaded: detailed,
-  };
+  });
 }
 
 export type MovementLoadReason = "initial" | "pull" | "refresh" | "import" | "restore" | "trash" | "archive" | "detail" | "export" | "other";

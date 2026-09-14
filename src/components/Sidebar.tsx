@@ -77,6 +77,7 @@ export function Sidebar({ page, access, onChange }: Props) {
           .map(({ page: itemPage, label, icon: Icon }) =>
             <button
               aria-label={label}
+              aria-current={page === itemPage ? "page" : undefined}
               className={page === itemPage ? "nav-item active" : "nav-item"}
               key={itemPage}
               onClick={() => onChange(itemPage)}
@@ -90,7 +91,7 @@ export function Sidebar({ page, access, onChange }: Props) {
 
       <div className="sidebar-foot praxis1-sidebar-foot">
         <Database size={16} />
-        <span>Práxis 1.0 · ambiente protegido</span>
+        <span>Práxis 1.1 · ambiente protegido</span>
       </div>
     </aside>
 

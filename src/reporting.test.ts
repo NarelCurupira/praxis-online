@@ -62,12 +62,12 @@ test("estatísticas de tramitação usam horas úteis já calculadas", () => {
   assert.equal(percentile([], .5), null);
 });
 
-test("tempo zero na mesma data é preservado como envio no mesmo dia útil", () => {
+test("data civil sem horário confirmado não produz duração exata", () => {
   const result = calculateDistribution([
     movement({ movementId: 1, caseId: 1, receivedAt: "2026-01-05", workflowStatus: "Enviado", sentAt: "2026-01-05", elapsedHours: 0 }),
   ], "2026-01-01", "2026-01-31");
-  assert.equal(result.median, 0);
-  assert.equal(result.zeroSameDate, 1);
+  assert.equal(result.median, null);
+  assert.equal(result.zeroSameDate, 0);
   assert.equal(result.withoutCompleteTime, 1);
 });
 

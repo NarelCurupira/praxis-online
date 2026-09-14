@@ -188,7 +188,7 @@ function offlineSafeRecords(records: ProcessMovement[]): ProcessMovement[] {
     notes: "",
     documentPath: "",
     socialTheme: "",
-    relevanceReason: "",
+    qualityDetailsLoaded: false, relevanceReason: "",
     fundamentalRight: "",
     affectedGroup: "",
     reach: "",
@@ -287,13 +287,13 @@ export async function markOfflineWorkspaceCurrent(userId: string, workspaceId: s
   await saveMeta(currentKey(userId), workspaceId);
 }
 
-export async function enqueueOfflineOperation(input: OfflineOperationInput): Promise<OfflineOperation> {
+export async function enqueueOfflineOperation(input: OfflineOperationInput, stableId?: string): Promise<OfflineOperation> {
   const operation: OfflineOperation = {
     ...input,
     baseline: input.baseline ?? null,
     conflict: null,
     conflictResolution: "",
-    id: operationId(),
+    id: stableId ?? operationId(),
     createdAt: new Date().toISOString(),
     attempts: 0,
     lastError: "",

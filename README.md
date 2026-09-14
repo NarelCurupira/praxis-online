@@ -1,10 +1,18 @@
 # Práxis Online
 
-Versão atual: **1.0.0**, conectada ao PostgreSQL do Supabase e consolidada como aplicação web/PWA estável, com contingência local, múltiplas Procuradorias, governança de acesso, auditoria, relatórios, Central de Informações e Web Push.
+Versão atual: **1.1.0**, conectada ao PostgreSQL do Supabase e consolidada como aplicação web/PWA estável, com contingência local, múltiplas Procuradorias, governança de acesso, auditoria, relatórios, Central de Informações e Web Push.
 
 Aplicação web/PWA privada para organização e controle auxiliar de processos, com autenticação, múltiplos usuários, múltiplas Procuradorias, governança de acesso, relatórios, auditoria, diagnóstico, funcionamento responsivo e contingência local com leitura, gravação operacional e resolução de conflitos concorrentes.
 
-## Versão 1.0.0
+## Atualização 1.1.0
+
+Para atualizar uma instalação 1.0 existente, leia [ATUALIZAR-1.1.md](ATUALIZAR-1.1.md). Execute somente `supabase/migrations/20260914_praxis_v110.sql` e depois publique os arquivos da versão 1.1. Não reaplique o esquema-base nem as migrações antigas em um banco em uso.
+
+A versão inclui recuperação operacional transacional, proteção de edições individuais por versão, recibos para operações offline, métricas com horários confirmados, proteção de Push e inatividade, cache PWA versionado e refinamento da tabela e do painel.
+
+Para uma instalação nova, a sequência de dependências do histórico está em `scripts/migrations-order.json`. Alguns nomes antigos não seguem a ordem semântica das versões: não use simplesmente a ordenação alfabética. As extensões e o serviço de autenticação precisam estar disponíveis no Supabase.
+
+## Histórico: versão 1.0.0
 
 - Consolida como versão estável as funcionalidades desenvolvidas na série 0.x e nas versões 0.11.x-RC.
 - Mantém contingência local com snapshot operacional, fila de gravações no IndexedDB e resolução de conflitos por comparação em três vias.

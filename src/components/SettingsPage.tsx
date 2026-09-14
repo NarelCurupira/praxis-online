@@ -309,7 +309,7 @@ export function SettingsPage(props: Props) {
         <div className="panel-title">
           <div>
             <div className="title-with-help"><h2>Prazos e jornada</h2><HelpTip title="Horas úteis">Os cálculos consideram apenas a interseção entre entrada, envio, expediente, fins de semana e datas sem expediente.</HelpTip></div>
-            <p>Alterações futuras não recalculam o histórico automaticamente.</p>
+            <p>Os indicadores são recalculados com a jornada e o calendário atuais ao recarregar os dados.</p>
           </div>
           <Save />
         </div>

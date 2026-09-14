@@ -1,6 +1,6 @@
-import { createMovement, findMovementForOfflineCreate, getMovementForOfflineSync, updateMovementAction, updateMovementAssignment, updateMovementStatus } from "./api";
+import { applyMovementOperation } from "./movementOperations";
+import { getMovementForOfflineSync } from "./api";
 import { usefulElapsedHours } from "./date";
-import { updateMovementGoverned } from "./governanceApi";
 import {
   listOfflineOperations,
   markOfflineOperationConflict,
@@ -338,7 +338,7 @@ export interface OfflineSyncResult {
   error: string;
 }
 
-export async function syncOfflineOperationsForWorkspace(userId: string, workspaceId: string): Promise<OfflineSyncResult> {
+async function syncWorkspace(userId: string, workspaceId: string): Promise<OfflineSyncResult> {
   const operations = await listOfflineOperations(userId, workspaceId);
   const tempMap = new Map<number, number>();
   let synced = 0;
@@ -354,10 +354,8 @@ export async function syncOfflineOperationsForWorkspace(userId: string, workspac
       }
 
       if (operation.payload.kind === "create") {
-        // Idempotência prática para perda de confirmação: se o INSERT chegou ao servidor
-        // mas a resposta se perdeu, a próxima tentativa reconhece o mesmo movimento.
-        const existing = await findMovementForOfflineCreate(operation.payload.data);
-        const created = existing ?? await createMovement(operation.payload.data);
+        const id = await applyMovementOperation("create", null, operation.payload.data, { operationId: operation.id, userId, workspaceId });
+        const created = { movementId: id };
         if (operation.tempMovementId != null) {
           tempMap.set(operation.tempMovementId, created.movementId);
           await remapOfflineMovementId(userId, workspaceId, operation.tempMovementId, created.movementId);
@@ -382,15 +380,11 @@ export async function syncOfflineOperationsForWorkspace(userId: string, workspac
         if (!current) throw new Error("O movimento não está mais disponível no servidor.");
 
         if (!operationAlreadyApplied(operation, current)) {
-          if (operation.payload.kind === "edit") {
-            await updateMovementGoverned(movementId, operation.payload.data);
-          } else if (operation.payload.kind === "status") {
-            await updateMovementStatus(movementId, operation.payload.status, operation.payload.actionType, operation.createdAt);
-          } else if (operation.payload.kind === "action") {
-            await updateMovementAction(movementId, operation.payload.actionType);
-          } else {
-            await updateMovementAssignment(movementId, operation.payload.assignedTo);
-          }
+          const payload = operation.payload.kind === "edit" ? operation.payload.data
+            : operation.payload.kind === "status" ? { status: operation.payload.status, ...(operation.payload.actionType !== undefined ? { actionType: operation.payload.actionType } : {}), occurredAt: operation.createdAt }
+            : operation.payload.kind === "action" ? { actionType: operation.payload.actionType }
+            : { assignedTo: operation.payload.assignedTo };
+          await applyMovementOperation(operation.payload.kind, movementId, payload, { operationId: operation.id, baseline: current, userId, workspaceId });
         }
       }
       await removeOfflineOperation(operation.id);
@@ -404,4 +398,9 @@ export async function syncOfflineOperationsForWorkspace(userId: string, workspac
 
   const remaining = (await listOfflineOperations(userId, workspaceId)).length;
   return { synced, failed: error && !conflicts ? 1 : 0, conflicts, remaining, error };
+}
+
+export async function syncOfflineOperationsForWorkspace(userId: string, workspaceId: string): Promise<OfflineSyncResult> {
+  if (typeof navigator !== "undefined" && navigator.locks) return navigator.locks.request(`praxis-sync:${userId}:${workspaceId}`, () => syncWorkspace(userId, workspaceId));
+  return syncWorkspace(userId, workspaceId); // A transação e o recibo no servidor também protegem navegadores sem Web Locks.
 }

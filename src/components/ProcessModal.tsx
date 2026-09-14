@@ -1,3 +1,4 @@
+import { useModalFocus } from "../useModalFocus";
 import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { addBusinessDays, toLocalInput } from "../date";
@@ -24,6 +25,8 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
     affectedGroup: "", reach: "", territorialScope: "", impactType: "", socialResult: "", sdgs: [], complexityReason: "",
   });
   const [saving, setSaving] = useState(false);
+  const modalRef = useModalFocus(() => { if (!saving) onClose(); }, saving);
+  const [saveError, setSaveError] = useState("");
 
   function change<K extends keyof ProcessFormData>(key: K, value: ProcessFormData[K]) {
     setForm((current) => {
@@ -40,12 +43,13 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
 
   async function submit(event: React.FormEvent) {
     event.preventDefault(); setSaving(true);
-    try { await onSave(form); } finally { setSaving(false); }
+    setSaveError("");
+    try { await onSave(form); } catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); } finally { setSaving(false); }
   }
 
-  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <form className="modal" onSubmit={submit}>
-      <div className="modal-head"><div><p className="eyebrow">Novo registro</p><h2>{offlineMode ? "Cadastrar em contingência" : "Cadastrar processo"}</h2></div><button type="button" className="icon-button" onClick={onClose}><X size={20} /></button></div>
+  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && !saving && onClose()}>
+    <form ref={modalRef} className="modal" role="dialog" aria-modal="true" aria-label="Cadastrar processo" onSubmit={submit}>
+      <div className="modal-head"><div><p className="eyebrow">Novo registro</p><h2>{offlineMode ? "Cadastrar em contingência" : "Cadastrar processo"}</h2></div><button type="button" className="icon-button" disabled={saving} aria-label="Fechar" onClick={onClose}><X size={20} /></button></div>
       {offlineMode && <div className="info-box offline-form-note">O cadastro será salvo neste dispositivo e enviado ao Supabase automaticamente quando a conexão retornar. Enquanto estiver pendente, o registro é identificado apenas localmente.</div>}
       <div className="form-grid process-form-grid">
         <label>Número MP<div className="input-copy-row"><input required value={form.mpNumber} onChange={(e) => change("mpNumber", e.target.value)} placeholder="08.2026.00000000-0" /><PasteButton onPaste={(value) => change("mpNumber", value)} label="Colar número MP" /></div></label>
@@ -61,7 +65,8 @@ export function ProcessModal({ classes, exclusions, members, currentUserId, isAd
         <label className="full">Observações internas<textarea rows={2} value={form.notes} onChange={(e) => change("notes", e.target.value)} /></label>
         <SpecialClassificationFields data={form} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} />
       </div>
-      <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={saving}>{saving ? "Salvando..." : "Cadastrar processo"}</button></div>
+      {saveError && <p role="alert" className="import-error">{saveError}</p>}
+      <div className="modal-actions"><button type="button" className="button secondary" disabled={saving} onClick={onClose}>Cancelar</button><button className="button primary" disabled={saving}>{saving ? "Salvando..." : "Cadastrar processo"}</button></div>
     </form>
   </div>;
 }

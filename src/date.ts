@@ -14,6 +14,8 @@ const DEFAULT_WORKDAY_SCHEDULE: WorkdaySchedule = {
   workdayHours: 6,
 };
 
+export function currentWorkdayHours(): number { return activeWorkdaySchedule.workdayHours; }
+
 let activeWorkdaySchedule: WorkdaySchedule = { ...DEFAULT_WORKDAY_SCHEDULE };
 
 const ZONED_PARTS_FORMATTER = new Intl.DateTimeFormat("en-CA", {
@@ -248,7 +250,8 @@ export function usefulElapsedHours(
   const start = new Date(receivedAt);
   const end = new Date(sentAt);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  if (end.getTime() <= start.getTime()) return 0;
+  if (end.getTime() < start.getTime()) return null;
+  if (end.getTime() === start.getTime()) return 0;
 
   const startKey = localDatePart(receivedAt);
   const endKey = localDatePart(sentAt);

@@ -1,5 +1,5 @@
 import { localDatePart, toStorageTimestamp, usefulElapsedHours } from "./date";
-import { requireSupabase } from "./supabase";
+import { workspaceContext } from "./workspaceContext";
 import type { ImportRecord, ImportResult, ProcessMovement, WorkflowStatus } from "./types";
 
 export type ExistingRecordPolicy = "skip" | "fill_missing" | "update_different";
@@ -22,7 +22,7 @@ export const DEFAULT_IMPORT_RULES: IntelligentImportRules = {
   timestampConflictPolicy: "keep_existing",
   validationMode: "tolerant",
   useCurrentUserWhenAssigneeMissing: true,
-  estimateMissingSentAt: true,
+  estimateMissingSentAt: false,
 };
 
 export type ImportPreviewKind = "new_case" | "new_movement" | "update" | "unchanged" | "duplicate" | "conflict" | "invalid";
@@ -83,31 +83,9 @@ export interface MovementProvenance {
   batchCode: string;
 }
 
-interface ApiContext {
-  client: ReturnType<typeof requireSupabase>;
-  userId: string;
-  workspaceId: string;
-}
-
-let contextPromise: Promise<ApiContext> | null = null;
-
-async function context(): Promise<ApiContext> {
-  if (contextPromise) return contextPromise;
-  contextPromise = (async () => {
-    const client = requireSupabase();
-    const { data: userData, error: userError } = await client.auth.getUser();
-    if (userError) throw userError;
-    if (!userData.user) throw new Error("Sessão expirada. Entre novamente.");
-    const { data: profile } = await client.from("profiles").select("current_workspace_id").eq("id", userData.user.id).maybeSingle();
-    let workspaceId = String(profile?.current_workspace_id ?? "");
-    if (!workspaceId) {
-      const { data, error } = await client.from("workspace_members").select("workspace_id").eq("user_id", userData.user.id).eq("active", true).limit(1).single();
-      if (error) throw error;
-      workspaceId = String(data.workspace_id);
-    }
-    return { client, userId: userData.user.id, workspaceId };
-  })();
-  return contextPromise;
+async function context() {
+  const { client, user, workspaceId } = await workspaceContext();
+  return { client, userId: user.id, workspaceId };
 }
 
 function normal(value: string | null | undefined): string {
@@ -353,9 +331,7 @@ export async function executeIntelligentImport(
       const receivedAt = toStorageTimestamp(record.receivedAt);
       if (!receivedAt) throw new Error(`Entrada inválida no processo ${record.judicialNumber}.`);
       const informedSentAt = toStorageTimestamp(record.sentAt);
-      const estimatedSentAt = record.workflowStatus === "Enviado" && !informedSentAt && rules.estimateMissingSentAt
-        ? new Date(new Date(receivedAt).getTime() + 10 * 86_400_000).toISOString()
-        : informedSentAt;
+      const estimatedSentAt = informedSentAt;
       const assignedTo = record.assignedTo || (rules.useCurrentUserWhenAssigneeMissing ? userId : null);
       if (!assignedTo) throw new Error(`Responsável ausente no processo ${record.judicialNumber}.`);
 
@@ -371,7 +347,7 @@ export async function executeIntelligentImport(
           workflow_status: record.workflowStatus,
           sent_at: estimatedSentAt,
           sent_time_precise: Boolean(informedSentAt && record.sentTimePrecise),
-          sent_origin: informedSentAt && record.sentTimePrecise ? "imported_confirmed" : estimatedSentAt ? "system_estimated" : "not_informed",
+          sent_origin: informedSentAt && record.sentTimePrecise ? "imported_confirmed" : informedSentAt ? "imported_date_only" : "not_informed",
           action_type: record.actionType,
           notes: record.notes,
           priority: record.priority,
@@ -461,7 +437,7 @@ export async function executeIntelligentImport(
     onProgress?.("Importação concluída.");
     return { ...result, batchId, batchCode: code };
   } catch (error) {
-    await client.from("import_batches").update({ status: "failed", completed_at: new Date().toISOString(), error_message: String(error) }).eq("workspace_id", workspaceId).eq("id", batchId);
+    await client.from("import_batches").update({ status: "failed", completed_at: new Date().toISOString(), error_message: String(error), result: { casesCreated, movementsCreated, movementsUpdated, ignoredRows } }).eq("workspace_id", workspaceId).eq("id", batchId);
     throw error;
   }
 }
