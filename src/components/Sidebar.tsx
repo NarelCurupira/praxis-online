@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, LogOut, Settings, ShieldCheck, Trash2, UserRound, Users, X } from "lucide-react";
+import { Activity, Bell, ClipboardList, Database, FileSpreadsheet, FileText, Gavel, Info, LayoutDashboard, ListTodo, LogOut, Settings, ShieldCheck, Trash2, UserRound, X } from "lucide-react";
 import type { AccessCapabilities } from "../access";
 import type { Page } from "../types";
 
@@ -12,7 +12,6 @@ const items: Array<{ page: Page; label: string; icon: typeof LayoutDashboard }> 
   { page: "quality", label: "Qualidade dos dados", icon: ShieldCheck },
   { page: "import", label: "Importar e backup", icon: FileSpreadsheet },
   { page: "trash", label: "Lixeira", icon: Trash2 },
-  { page: "team", label: "Equipe", icon: Users },
   { page: "settings", label: "Configurações", icon: Settings },
   { page: "audit", label: "Auditoria e diagnóstico", icon: ClipboardList },
   { page: "about", label: "Sobre", icon: Info },
