@@ -528,7 +528,7 @@ export function ProcessTable({
       </div></details>
     </div>
 
-    <div className="saved-view-actions"><button type="button" className="button secondary" onClick={saveFavorite}>Salvar visualização</button><button type="button" className="button secondary" onClick={loadFavorite}>Minha visualização</button></div>
+    <div className="saved-view-actions"><button type="button" className="button secondary" onClick={saveFavorite}>Salvar filtros</button><button type="button" className="button secondary" onClick={loadFavorite}>Usar filtros salvos</button></div>
 
     {hasActiveFilters && <div className="active-filter-chips" aria-label="Filtros ativos">
       {preset && <button type="button" onClick={onClearPreset}>Atalho: {preset.label}<X size={13} /></button>}

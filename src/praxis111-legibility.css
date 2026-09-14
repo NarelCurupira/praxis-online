@@ -360,3 +360,41 @@ html[data-font-size="large"] {
     margin-top: 0;
   }
 }
+
+
+/* ============================================================
+   FILTROS DE PROCESSOS / MINHA FILA
+   Harmoniza a largura dos campos e evita que a pesquisa domine
+   visualmente os demais controles.
+   ============================================================ */
+
+@media (min-width: 701px) {
+  .table-panel .table-filter-row {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 10px !important;
+    align-items: end;
+  }
+
+  .table-panel .table-filter-row .filter-field,
+  .table-panel .table-filter-row .search-filter {
+    min-width: 0 !important;
+    width: 100% !important;
+    flex: none !important;
+  }
+
+  .table-panel .table-filter-row .search-box,
+  .table-panel .table-filter-row select {
+    width: 100% !important;
+    min-height: 44px;
+  }
+}
+
+/* No celular, mantém os controles em coluna e com a mesma altura. */
+@media (max-width: 700px) {
+  .table-panel .table-filter-row .search-box,
+  .table-panel .table-filter-row select {
+    width: 100% !important;
+    min-height: 44px;
+  }
+}
