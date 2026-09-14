@@ -254,7 +254,10 @@ export function ProcessTable({
   async function runRow(id: number, task: () => Promise<void>): Promise<boolean> {
     if (savingRows.has(id)) return false;
     setSavingRows(current => new Set(current).add(id)); setMessage("");
-    try { await task(); setMessage("Alteração concluída. Em contingência, consulte a fila local para confirmar a sincronização."); return true; }
+    try {
+      await task();
+      return true;
+    }
     catch (error) { setMessage(error instanceof Error ? error.message : String(error)); return false; }
     finally { setSavingRows(current => { const next = new Set(current); next.delete(id); return next; }); }
   }
