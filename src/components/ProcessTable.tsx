@@ -526,9 +526,11 @@ export function ProcessTable({
         <label className="filter-field order-filter"><span>Ordem</span><select value={sortDirection} onChange={(event) => { setSortDirection(event.target.value as "asc" | "desc"); setPage(1); }}>{directionLabels(sortField).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
         <div className="toolbar-actions"><button type="button" className="button secondary clear-filters-button" disabled={!hasActiveFilters} onClick={clearFilters}>Limpar filtros</button>{permissions.canExport && <button type="button" className="button secondary" disabled={!filtered.length} onClick={exportFiltered}><Download size={16} />Exportar</button>}</div>
       </div></details>
+      <div className="saved-view-actions filter-preset-actions" aria-label="Filtros salvos">
+        <button type="button" className="button secondary" onClick={saveFavorite}>Salvar filtros</button>
+        <button type="button" className="button secondary" onClick={loadFavorite}>Usar filtros salvos</button>
+      </div>
     </div>
-
-    <div className="saved-view-actions"><button type="button" className="button secondary" onClick={saveFavorite}>Salvar filtros</button><button type="button" className="button secondary" onClick={loadFavorite}>Usar filtros salvos</button></div>
 
     {hasActiveFilters && <div className="active-filter-chips" aria-label="Filtros ativos">
       {preset && <button type="button" onClick={onClearPreset}>Atalho: {preset.label}<X size={13} /></button>}
