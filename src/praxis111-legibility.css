@@ -1,0 +1,213 @@
+/* ============================================================
+   PRÁXIS 1.1.1 — LEGIBILIDADE E CONSOLIDAÇÃO DE NAVEGAÇÃO
+   Camada final: padroniza tipografia, contraste e leitura.
+   ============================================================ */
+
+:root {
+  --p111-text-body: .875rem;
+  --p111-text-secondary: .8125rem;
+  --p111-text-small: .75rem;
+  --p111-text-tabs: .8125rem;
+}
+
+/* Escala mínima comum para páginas secundárias */
+.page-stack > .page-heading:not(.dashboard-heading) p,
+.page-stack .panel-title p,
+.action-panel p {
+  font-size: var(--p111-text-body);
+  line-height: 1.5;
+}
+
+.settings-subnav button,
+.admin-tabs button,
+.metric-selector button,
+.table-quick-views button {
+  font-size: var(--p111-text-tabs);
+  line-height: 1.25;
+}
+
+/* Configurações / equipe */
+.team-settings-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.settings-grid label,
+.managed-member-form-v091 label,
+.member-editor-grid label,
+.technical-settings-grid label,
+.permission-head,
+.permission-row,
+.workspace-member-actions,
+.personal-settings-note {
+  font-size: var(--p111-text-secondary);
+}
+
+.workspace-member-identity strong,
+.device-access-actions strong,
+.push-device-row strong,
+.passkey-row strong,
+.push-preferences strong,
+.configuration-export-actions strong,
+.team-row .grow strong {
+  font-size: var(--p111-text-secondary);
+}
+
+.workspace-member-identity small,
+.device-access-actions small,
+.push-device-row small,
+.passkey-row small,
+.push-preferences small,
+.team-row .grow span,
+.team-row .grow small,
+.device-access-title p,
+.settings-card-heading p,
+.device-access-message,
+.settings-message {
+  font-size: var(--p111-text-small);
+  line-height: 1.45;
+}
+
+/* Qualidade dos dados */
+.quality-card small,
+.quality-severity,
+.quality-select-all,
+.quality-bulk,
+.quality-description span,
+.quality-process span,
+.quality-process small {
+  font-size: var(--p111-text-small);
+}
+
+.quality-description strong,
+.quality-process strong,
+.quality-toolbar input,
+.quality-toolbar select {
+  font-size: var(--p111-text-secondary);
+}
+
+/* Auditoria e diagnóstico */
+.audit-row strong,
+.performance-list strong,
+.performance-list b,
+.technical-error-list strong,
+.technical-error-list b,
+.diagnostic-card > span,
+.diagnostic-list dd,
+.technical-settings-grid label {
+  font-size: var(--p111-text-secondary);
+}
+
+.audit-row small,
+.audit-row code,
+.performance-list span,
+.performance-list small,
+.technical-error-list small,
+.diagnostic-card > small,
+.diagnostic-list dt,
+.database-usage > b {
+  font-size: var(--p111-text-small);
+  line-height: 1.4;
+}
+
+/* Sobre */
+.about-version,
+.build-metadata span,
+.build-metadata strong,
+.about-copy p,
+.about-purpose p,
+.pwa-about-grid span {
+  font-size: var(--p111-text-secondary);
+  line-height: 1.5;
+}
+
+/* Relatórios e demais superfícies densas */
+.report-mode small,
+.report-preview dt,
+.report-preview dd,
+.report-period-grid label,
+.report-filter-grid label,
+.import-rules-grid label,
+.compact-row span,
+.stat-card span,
+.stat-card small {
+  font-size: var(--p111-text-small);
+}
+
+.report-mode strong,
+.compact-row strong {
+  font-size: var(--p111-text-secondary);
+}
+
+/* Menu lateral: fonte única e contraste adequado */
+.sidebar .nav-item {
+  font-size: var(--p111-text-body);
+  font-weight: 650;
+}
+
+html:not([data-theme="dark"]) .sidebar {
+  background: #FFFFFF;
+  color: #334E68;
+  border-right: 1px solid #DDE7F0;
+  box-shadow: 10px 0 28px rgba(13,49,82,.05);
+}
+
+html:not([data-theme="dark"]) .sidebar .brand.praxis1-brand {
+  border-bottom-color: #E3EBF2;
+}
+
+html:not([data-theme="dark"]) .sidebar .nav-item {
+  color: #334E68;
+}
+
+html:not([data-theme="dark"]) .sidebar .nav-item svg {
+  color: #55738F;
+}
+
+html:not([data-theme="dark"]) .sidebar .nav-item:hover {
+  color: #123F78;
+  background: #F1F6FB;
+}
+
+html:not([data-theme="dark"]) .sidebar .nav-item.active,
+html:not([data-theme="dark"]) .sidebar .nav-item[aria-current="page"] {
+  color: #0F62D6;
+  background: #E8F2FF;
+  box-shadow: inset 3px 0 #2E82E8;
+}
+
+html:not([data-theme="dark"]) .sidebar .nav-item.active svg,
+html:not([data-theme="dark"]) .sidebar .nav-item[aria-current="page"] svg {
+  color: #1F6ED4;
+}
+
+html:not([data-theme="dark"]) .sidebar-foot.praxis1-sidebar-foot {
+  color: #607A92;
+  border-top-color: #E3EBF2;
+}
+
+/* Mantém o dimensionamento adaptativo do controle Pequena/Normal/Grande */
+html[data-font-size="small"] {
+  --p111-text-body: .875rem;
+  --p111-text-secondary: .8125rem;
+  --p111-text-small: .75rem;
+  --p111-text-tabs: .8125rem;
+}
+
+html[data-font-size="large"] {
+  --p111-text-body: .9375rem;
+  --p111-text-secondary: .875rem;
+  --p111-text-small: .8125rem;
+  --p111-text-tabs: .875rem;
+}
+
+@media (max-width: 700px) {
+  .settings-subnav button,
+  .admin-tabs button {
+    min-height: 42px;
+  }
+
+  .team-settings-stack {
+    gap: 16px;
+  }
+}

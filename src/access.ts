@@ -41,7 +41,7 @@ export function resolveAccess(member: TeamMember | undefined): AccessCapabilitie
   if (efficiencyScope !== "none") visiblePages.add("efficiency");
   if (reportsScope !== "none") visiblePages.add("reports");
   if (isAdmin) {
-    ["quality", "import", "team", "audit"].forEach((page) => visiblePages.add(page as Page));
+    ["quality", "import", "audit"].forEach((page) => visiblePages.add(page as Page));
   }
 
   return {

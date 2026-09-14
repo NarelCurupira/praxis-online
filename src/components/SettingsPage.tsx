@@ -22,6 +22,7 @@ import { HelpTip } from "./HelpTip";
 import { DeviceAccessPanel } from "./DeviceAccessPanel";
 import { PushSettingsPanel } from "./PushSettingsPanel";
 import { ProcuradoriasPanel } from "./ProcuradoriasPanel";
+import { TeamPage } from "./TeamPage";
 import { buildConfigurationExport, downloadConfigurationExport } from "../configurationExport";
 
 interface Props {
@@ -196,7 +197,11 @@ export function SettingsPage(props: Props) {
         ].map(([key, title]) => <button type="button" key={key} className={settingsSection === key ? "active" : ""} onClick={() => setSettingsSection(key as typeof settingsSection)}>{title}</button>)}
       </nav>
 
-      {settingsSection === "equipe" && <><DeviceAccessPanel /><PushSettingsPanel /></>}
+      {settingsSection === "equipe" && <>
+        <TeamPage embedded />
+        <DeviceAccessPanel />
+        <PushSettingsPanel />
+      </>}
 
       {settingsSection === "procuradorias" && <ProcuradoriasPanel currentWorkspaceId={props.currentWorkspaceId} onChanged={props.onWorkspacesChanged} />}
 

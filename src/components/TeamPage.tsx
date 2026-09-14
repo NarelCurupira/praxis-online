@@ -6,6 +6,7 @@ import type { AccessScope, PraxisRole, TeamMember } from "../types";
 
 interface Props {
   onChanged?: () => Promise<void>;
+  embedded?: boolean;
 }
 
 const labels: Record<PraxisRole, string> = {
@@ -29,7 +30,7 @@ function suggestedDisplayName(fullName: string, email = ""): string {
   return `${words[0]} ${words.at(-1)}`;
 }
 
-export function TeamPage({ onChanged }: Props) {
+export function TeamPage({ onChanged, embedded = false }: Props) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [busy, setBusy] = useState(false);
@@ -154,8 +155,8 @@ export function TeamPage({ onChanged }: Props) {
     }
   }
 
-  return <div className="page-stack">
-    <div className="page-heading"><div><p className="eyebrow">Acesso compartilhado</p><h1>Equipe</h1><p>Perfis, segurança, permissões e nomes de exibição.</p></div></div>
+  return <div className={embedded ? "team-settings-stack" : "page-stack"}>
+    {!embedded && <div className="page-heading"><div><p className="eyebrow">Acesso compartilhado</p><h1>Equipe</h1><p>Perfis, segurança, permissões e nomes de exibição.</p></div></div>}
 
     <section className="panel">
       <div className="panel-title"><div><h2>Cadastrar usuário</h2><p>O nome de exibição aparece nas tabelas para economizar espaço.</p></div><UserPlus /></div>
