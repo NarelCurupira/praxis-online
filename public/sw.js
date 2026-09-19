@@ -78,23 +78,31 @@ self.addEventListener("fetch", (event) => {
     const cache = await caches.open(CACHE_NAME);
 
     if (isNavigation) {
-      // App shell canônico: "/" em vez de "/index.html".
-      // Isto evita o redirect comum /index.html -> / em hosts estáticos.
+      // Toda rota da SPA deve servir o shell canônico "/".
+      // Consultamos o cache apenas como fallback, mas buscamos primeiro
+      // a versão atual do shell na rede para não prender o iPhone/PWA
+      // em um index.html antigo que referencia assets já removidos.
       const cachedShell = await cache.match("/");
-      if (cachedShell) return cleanResponse(cachedShell);
 
       try {
-        const network = await fetch(request);
+        const network = await fetch("/", {
+          cache: "no-store",
+          redirect: "follow",
+        });
         const normalized = cleanResponse(network);
 
-        if (normalized.ok) {
-          await cache.put("/", normalized.clone());
+        if (!normalized.ok) {
+          throw new Error(`Falha ao atualizar o shell: ${normalized.status}`);
         }
 
+        await cache.put("/", normalized.clone());
         return normalized;
       } catch {
+        if (cachedShell) return cleanResponse(cachedShell);
+
         const offline = await cache.match("/offline.html");
         if (offline) return cleanResponse(offline);
+
         throw new Error("Práxis indisponível e sem shell offline.");
       }
     }

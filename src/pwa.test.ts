@@ -39,3 +39,33 @@ test("manifesto 0.10.7 declara ícones comuns e maskable da nova identidade", ()
   assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"));
   manifest.icons.forEach((icon) => assert.equal(fs.existsSync(`public${icon.src}`), true));
 });
+
+test("service worker atualiza o shell canônico pela rede antes de servir fallback em cache", () => {
+  const worker = fs.readFileSync("public/sw.js", "utf8");
+  const navigationBlockStart = worker.indexOf("if (isNavigation)");
+  assert.notEqual(navigationBlockStart, -1);
+
+  const navigationBlock = worker.slice(navigationBlockStart, worker.indexOf("const cached =", navigationBlockStart));
+  const canonicalNetworkFetch = navigationBlock.indexOf('await fetch("/",');
+  const cachedShellLookup = navigationBlock.indexOf('cache.match("/")');
+  const cachedShellFallback = navigationBlock.indexOf("if (cachedShell) return cleanResponse(cachedShell);");
+
+  assert.notEqual(canonicalNetworkFetch, -1);
+  assert.notEqual(cachedShellLookup, -1);
+  assert.notEqual(cachedShellFallback, -1);
+  assert.ok(
+    canonicalNetworkFetch < cachedShellFallback,
+    "o shell em cache deve ser servido somente se a atualização pela rede falhar",
+  );
+  assert.ok(navigationBlock.includes('cache: "no-store"'));
+});
+
+test("watchdog de inicialização oferece recuperação local sem apagar dados do servidor", () => {
+  const script = fs.readFileSync("public/startup-recovery.js", "utf8");
+  assert.ok(script.includes("Verificando acesso seguro"));
+  assert.ok(script.includes("Preparando seus processos"));
+  assert.ok(script.includes("praxis-shell-"));
+  assert.ok(script.includes("auth-token"));
+  assert.ok(script.includes("registration.unregister()"));
+  assert.ok(script.includes("não apaga os dados do servidor"));
+});
