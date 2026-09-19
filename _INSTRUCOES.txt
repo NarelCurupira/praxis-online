@@ -1,0 +1,21 @@
+PRÁXIS — correção de inicialização móvel/PWA
+
+Arquivos para substituir/adicionar no repositório:
+
+SUBSTITUIR:
+- index.html
+- public/sw.js
+- src/pwa.test.ts
+
+ADICIONAR:
+- public/startup-recovery.js
+
+Não há alteração de banco de dados, Supabase schema ou package-lock.
+
+Depois de publicar a nova versão:
+1. Feche todas as abas do Práxis no celular.
+2. Abra novamente no navegador normal.
+3. Se a tela de inicialização permanecer presa por cerca de 10 segundos, será exibida a opção "Recuperar acesso neste dispositivo".
+4. Essa opção remove apenas a sessão local do Supabase e o cache do PWA do navegador; não apaga dados do servidor.
+
+A navegação do Service Worker passa a ser network-first para o HTML principal, evitando que uma versão antiga do app-shell prenda o dispositivo após novo deploy.
