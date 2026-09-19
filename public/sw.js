@@ -78,13 +78,18 @@ self.addEventListener("fetch", (event) => {
     const cache = await caches.open(CACHE_NAME);
 
     if (isNavigation) {
-      // App shell canônico: "/" em vez de "/index.html".
-      // Isto evita o redirect comum /index.html -> / em hosts estáticos.
+      // Inicia a rede primeiro para evitar prender o iPhone em um index.html
+      // antigo. Em paralelo, prepara o shell canônico apenas como fallback.
+      // Assim preservamos o contrato da versão 1.1 (cache em "/") sem voltar
+      // ao comportamento cache-first.
+      const networkPromise = (async () => await fetch(request, {
+        cache: "no-store",
+        redirect: "follow",
+      }))();
       const cachedShell = await cache.match("/");
-      if (cachedShell) return cleanResponse(cachedShell);
 
       try {
-        const network = await fetch(request);
+        const network = await networkPromise;
         const normalized = cleanResponse(network);
 
         if (normalized.ok) {
@@ -93,6 +98,8 @@ self.addEventListener("fetch", (event) => {
 
         return normalized;
       } catch {
+        if (cachedShell) return cleanResponse(cachedShell);
+
         const offline = await cache.match("/offline.html");
         if (offline) return cleanResponse(offline);
         throw new Error("Práxis indisponível e sem shell offline.");
