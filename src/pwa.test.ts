@@ -39,3 +39,28 @@ test("manifesto 0.10.7 declara ícones comuns e maskable da nova identidade", ()
   assert.ok(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.purpose === "maskable"));
   manifest.icons.forEach((icon) => assert.equal(fs.existsSync(`public${icon.src}`), true));
 });
+
+test("service worker usa rede antes do cache nas navegações", () => {
+  const worker = fs.readFileSync("public/sw.js", "utf8");
+  const navigationBlockStart = worker.indexOf("if (isNavigation)");
+  assert.notEqual(navigationBlockStart, -1);
+
+  const navigationBlock = worker.slice(navigationBlockStart, worker.indexOf("const cached =", navigationBlockStart));
+  const networkFetch = navigationBlock.indexOf("await fetch(request");
+  const cachedShell = navigationBlock.indexOf('cache.match("/")');
+
+  assert.notEqual(networkFetch, -1);
+  assert.notEqual(cachedShell, -1);
+  assert.ok(networkFetch < cachedShell, "a navegação deve consultar a rede antes do shell em cache");
+  assert.ok(navigationBlock.includes('cache: "no-store"'));
+});
+
+test("watchdog de inicialização oferece recuperação local sem apagar dados do servidor", () => {
+  const script = fs.readFileSync("public/startup-recovery.js", "utf8");
+  assert.ok(script.includes("Verificando acesso seguro"));
+  assert.ok(script.includes("Preparando seus processos"));
+  assert.ok(script.includes("praxis-shell-"));
+  assert.ok(script.includes("auth-token"));
+  assert.ok(script.includes("registration.unregister()"));
+  assert.ok(script.includes("não apaga os dados do servidor"));
+});
