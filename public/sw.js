@@ -1,4 +1,4 @@
-const CACHE_NAME = "praxis-shell-1.1.0-dev";
+const CACHE_NAME = "praxis-shell-1.1.1-dev";
 // Substituído pelo build com todos os arquivos e um identificador de conteúdo.
 const SHELL = ["/", "/offline.html", "/manifest.webmanifest"];
 

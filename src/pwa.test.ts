@@ -60,12 +60,16 @@ test("service worker atualiza o shell canônico pela rede antes de servir fallba
   assert.ok(navigationBlock.includes('cache: "no-store"'));
 });
 
-test("watchdog de inicialização oferece recuperação local sem apagar dados do servidor", () => {
+test("watchdog de inicialização força worker atual antes de recarregar e mantém fallback", () => {
   const script = fs.readFileSync("public/startup-recovery.js", "utf8");
   assert.ok(script.includes("Verificando acesso seguro"));
   assert.ok(script.includes("Preparando seus processos"));
   assert.ok(script.includes("praxis-shell-"));
   assert.ok(script.includes("auth-token"));
+  assert.ok(script.includes('navigator.serviceWorker.register(workerUrl.toString()'));
+  assert.ok(script.includes('updateViaCache: "none"'));
+  assert.ok(script.includes('worker.postMessage({ type: "SKIP_WAITING" })'));
+  assert.ok(script.includes('addEventListener("controllerchange"'));
   assert.ok(script.includes("registration.unregister()"));
   assert.ok(script.includes("não apaga os dados do servidor"));
 });
